@@ -1,0 +1,2 @@
+-- Local seed data (runs after the migrations on `pnpm db:reset`).
+-- Intentionally empty: sign up two accounts in the app to try the DM and player views.

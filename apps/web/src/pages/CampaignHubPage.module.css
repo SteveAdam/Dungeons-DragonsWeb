@@ -1,0 +1,59 @@
+.page {
+  display: grid;
+  gap: 1rem;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  color: var(--paper);
+}
+
+.back {
+  justify-self: start;
+  color: var(--gold-soft);
+}
+
+.back:focus-visible {
+  outline: 3px solid var(--gold-soft);
+  outline-offset: 2px;
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  color: var(--ink);
+}
+
+.kicker {
+  margin: 0;
+  color: var(--ink-faded);
+  font-family: Cinzel, serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.name {
+  margin: 0.1rem 0;
+  color: var(--ink);
+  font-size: 2rem;
+}
+
+.sub {
+  margin: 0;
+  color: var(--ink-faded);
+  font-style: italic;
+}
+
+.panel {
+  min-height: 6rem;
+}
+
+.status {
+  color: var(--paper-aged);
+  font-style: italic;
+  text-align: center;
+}

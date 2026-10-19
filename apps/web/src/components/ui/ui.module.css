@@ -1,0 +1,164 @@
+.paper {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 0.5rem 1.5rem var(--shadow);
+}
+
+.torn {
+  clip-path: polygon(0 3%, 4% 0, 12% 2%, 22% 0, 35% 2%, 48% 0, 61% 2%, 73% 0, 86% 2%, 96% 0, 100% 3%,
+    100% 97%, 95% 100%, 84% 98%, 71% 100%, 58% 98%, 45% 100%, 33% 98%, 20% 100%, 9% 98%, 0 100%);
+  background: linear-gradient(180deg, var(--paper), var(--paper-deep));
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  font-family: Cinzel, serif;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.button:focus-visible,
+.input:focus-visible,
+.tab:focus-visible,
+.toggleInput:focus-visible + .toggleTrack {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.primary {
+  background: var(--wax-red);
+  color: var(--paper);
+}
+
+.primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--ink);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--panel);
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.input {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--paper-aged);
+  color: var(--ink);
+}
+
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: Cinzel, serif;
+  cursor: pointer;
+}
+
+.toggleInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.toggleTrack {
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  transition: background 0.15s;
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--ink-faded);
+  transition: transform 0.15s;
+}
+
+.toggleInput:checked + .toggleTrack {
+  background: var(--wax-red);
+}
+
+.toggleInput:checked + .toggleTrack .toggleThumb {
+  background: var(--paper);
+  transform: translateX(1.25rem);
+}
+
+.dmBanner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  background: var(--wax-red);
+  color: var(--paper);
+  font-family: Cinzel, serif;
+  text-align: center;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 2px solid var(--gold-dark);
+}
+
+.tab {
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--gold-dark);
+  border-bottom: none;
+  border-radius: 0.25rem 0.25rem 0 0;
+  background: var(--paper-deep);
+  color: var(--ink);
+  font-family: Cinzel, serif;
+  cursor: pointer;
+}
+
+.tabSelected {
+  background: var(--wax-red);
+  color: var(--paper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggleTrack,
+  .toggleThumb {
+    transition: none;
+  }
+}

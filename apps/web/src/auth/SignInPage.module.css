@@ -1,0 +1,37 @@
+.page {
+  display: grid;
+  place-items: center;
+  min-height: 70vh;
+  padding: 1.5rem 1rem;
+}
+
+.card {
+  display: grid;
+  gap: 1rem;
+  width: min(24rem, 100%);
+  padding: 1.5rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+}
+
+.title {
+  margin: 0;
+  font-family: Cinzel, serif;
+}
+
+.form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.error {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.notice {
+  margin: 0;
+  color: var(--verdigris);
+  font-weight: 700;
+}
