@@ -114,3 +114,18 @@ describe('limits and speed', () => {
     expect(Date.now() - start).toBeLessThan(100);
   });
 });
+
+describe('settleWithBonusDice', () => {
+  it('says when the unrolled bonus dice decide the result', async () => {
+    const { settleWithBonusDice, bonusDiceRange } = await import('./dice');
+    expect(bonusDiceRange([bless])).toEqual({ min: 1, max: 4 });
+    expect(bonusDiceRange([bane])).toEqual({ min: -4, max: -1 });
+    // total 13 vs DC 14 with Bless: a 1 makes 14, so it is certain
+    expect(settleWithBonusDice({ kind: 'check', kept: 10, total: 13, target: 14, bonusDice: [bless] })).toBe('success');
+    expect(settleWithBonusDice({ kind: 'check', kept: 8, total: 11, target: 14, bonusDice: [bless] })).toBe('depends');
+    expect(settleWithBonusDice({ kind: 'check', kept: 5, total: 8, target: 14, bonusDice: [bless] })).toBe('failure');
+    expect(settleWithBonusDice({ kind: 'check', kept: 14, total: 17, target: 14, bonusDice: [bane] })).toBe('depends');
+    expect(settleWithBonusDice({ kind: 'attack', kept: 20, total: 25, target: 40, bonusDice: [bane] })).toBe('success');
+    expect(settleWithBonusDice({ kind: 'check', kept: 5, total: 8, target: null, bonusDice: [bless] })).toBeNull();
+  });
+});

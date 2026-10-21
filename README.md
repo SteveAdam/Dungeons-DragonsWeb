@@ -169,6 +169,15 @@ the DM only, each person can roll at most 30 times a minute (the API answers 429
 through Supabase realtime. The client side is `apps/web/src/data/rolls.ts` (`rollD20`, `listRecentRolls`,
 `subscribeToRolls`).
 
+## Odds popup (P1-6)
+
+`apps/web/src/components/odds/OddsPopup.tsx` shows the chance to succeed for a check, save or attack: the reasons for
+advantage and disadvantage (cancelled ones struck through), bonus dice such as Bless, the critical hit chance for
+attacks, and the server roll with the kept die highlighted. Every number comes from the rules engine. It is a card next
+to the button on wide screens and a bottom sheet under 600 px; Escape closes it and focus returns where it was. The
+server rolls only the d20 in Phase 1, so with bonus dice the result may say "roll Bless and add it". In development,
+`/dev/odds` tries it with a pretend roll or a real one through `roll_d20` (choose a campaign; the roll log updates).
+
 ## Rules content licence
 
 This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,

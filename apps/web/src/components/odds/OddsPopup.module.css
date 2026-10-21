@@ -1,0 +1,235 @@
+/* The odds popup: a parchment card next to the action on wide screens, a bottom sheet on phones. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  gap: 0.5rem;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--ink);
+  box-shadow: var(--paper-drop);
+  color: var(--ink);
+  transform: translate(-50%, -50%);
+}
+
+/* Next to the action that opened it (positions set from the anchor). */
+.anchored {
+  top: var(--odds-top, auto);
+  bottom: var(--odds-bottom, auto);
+  left: var(--odds-left);
+  transform: none;
+}
+
+/* The Roll row comes first in the document (keyboard order) but shows at the bottom, as in the mockup. */
+.rollRow {
+  display: flex;
+  order: 99;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.rollRow > button {
+  margin-left: auto;
+}
+
+.dice {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* A d20 face: a dark hexagon with a gold rim. */
+.d20 {
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.75rem;
+  background: var(--gold);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  color: var(--paper);
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  position: relative;
+  isolation: isolate;
+}
+
+.d20::before {
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  background: var(--desk);
+  clip-path: inherit;
+  content: '';
+}
+
+/* The die that was not kept. */
+.faded {
+  opacity: 0.5;
+}
+
+.tumbling {
+  animation: tumble 0.5s linear infinite;
+}
+
+@keyframes tumble {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tumbling {
+    animation: none;
+  }
+}
+
+:global(:root[data-reduce-texture='true']) .tumbling {
+  animation: none;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+}
+
+.close {
+  padding: 0.2rem;
+}
+
+.subtitle,
+.breakdown {
+  margin: 0;
+  color: var(--ink-faded);
+  font-style: italic;
+}
+
+.chanceRow {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.chance {
+  display: grid;
+  margin: 0;
+  justify-items: center;
+}
+
+.percent {
+  color: var(--verdigris);
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.chanceLabel {
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.why {
+  display: grid;
+  flex: 1;
+  gap: 0.15rem;
+}
+
+.line {
+  margin: 0;
+}
+
+.bar {
+  height: 0.55rem;
+  overflow: hidden;
+  border: 1px solid var(--gold-dark);
+  border-radius: 2px;
+  background: var(--paper-aged);
+}
+
+.fill {
+  height: 100%;
+  background: var(--verdigris);
+}
+
+.reasons {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.good {
+  color: var(--verdigris);
+}
+
+.bad {
+  color: var(--wax-red);
+}
+
+.cancelled {
+  color: var(--ink-faded);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}
+
+.result:empty {
+  display: none;
+}
+
+.total,
+.verdict {
+  margin: 0;
+}
+
+.verdict {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+}
+
+.success {
+  color: var(--verdigris);
+}
+
+.failure {
+  color: var(--wax-red);
+}
+
+.error {
+  margin: 0;
+  color: var(--wax-red);
+}
+
+/* Phones: a bottom sheet over a dark scrim. */
+@media (max-width: 600px) {
+  .backdrop {
+    background: var(--scrim);
+  }
+
+  .card,
+  .anchored {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-height: 85vh;
+    border-radius: 0.6rem 0.6rem 0 0;
+    transform: none;
+  }
+}

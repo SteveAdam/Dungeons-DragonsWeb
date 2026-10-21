@@ -1,4 +1,4 @@
-import type { ElementType, HTMLAttributes, ReactNode } from 'react';
+import type { ElementType, HTMLAttributes, ReactNode, Ref } from 'react';
 import styles from './Paper.module.css';
 
 type PaperProps = {
@@ -12,6 +12,7 @@ type PaperProps = {
    */
   texture?: 'full' | 'flat';
   children?: ReactNode;
+  ref?: Ref<HTMLElement>;
 } & HTMLAttributes<HTMLElement>;
 
 /** A parchment surface. "Reduce texture" flattens every Paper, whatever its texture. */

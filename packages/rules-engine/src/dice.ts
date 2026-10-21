@@ -94,3 +94,29 @@ export function successChanceWithDice({
   final = Math.min(Math.max(final, 0), 1);
   return { final, withoutDice, delta: final - withoutDice, expectedBonus };
 }
+
+/** The lowest and highest total the bonus dice can add. */
+export function bonusDiceRange(dice: readonly BonusDie[]): { min: number; max: number } {
+  const { min, p } = distribution(dice);
+  return { min, max: min + p.length - 1 };
+}
+
+/**
+ * The verdict once the d20 is rolled but the bonus dice are not (the server rolls only the d20 in Phase 1).
+ * 'depends' means the bonus dice decide it: roll them and add them. Natural 20 and 1 settle an attack at once.
+ */
+export function settleWithBonusDice(input: {
+  kind: SuccessChanceInput['kind'];
+  kept: number;
+  total: number;
+  target: number | null;
+  bonusDice: readonly BonusDie[];
+}): 'success' | 'failure' | 'depends' | null {
+  if (input.target === null) return null;
+  if (input.kind === 'attack' && input.kept === 20) return 'success';
+  if (input.kind === 'attack' && input.kept === 1) return 'failure';
+  const { min, max } = bonusDiceRange(input.bonusDice);
+  if (input.total + min >= input.target) return 'success';
+  if (input.total + max < input.target) return 'failure';
+  return 'depends';
+}

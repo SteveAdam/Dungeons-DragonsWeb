@@ -16,6 +16,7 @@ import styles from './App.module.css';
 // /theme exists only in development: in a production build import.meta.env.DEV is false,
 // so the route and the page's code are dropped.
 const ThemePage = import.meta.env.DEV ? lazy(() => import('./pages/ThemePage')) : null;
+const OddsDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/OddsDevPage')) : null;
 // The map view brings Leaflet; load it only when a map is opened.
 const MapViewPage = lazy(() => import('./pages/map/MapViewPage').then(m => ({ default: m.MapViewPage })));
 
@@ -96,6 +97,16 @@ export function App() {
             element={
               <Suspense fallback={null}>
                 <ThemePage />
+              </Suspense>
+            }
+          />
+        )}
+        {OddsDevPage && (
+          <Route
+            path="/dev/odds"
+            element={
+              <Suspense fallback={null}>
+                <OddsDevPage />
               </Suspense>
             }
           />

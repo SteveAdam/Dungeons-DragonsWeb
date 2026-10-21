@@ -1,7 +1,10 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, Ref } from 'react';
 import styles from './Button.module.css';
 
-type ButtonProps = { variant?: 'primary' | 'ghost' } & ButtonHTMLAttributes<HTMLButtonElement>;
+type ButtonProps = {
+  variant?: 'primary' | 'ghost';
+  ref?: Ref<HTMLButtonElement>;
+} & ButtonHTMLAttributes<HTMLButtonElement>;
 
 /** Primary is a wax-red seal; ghost is an outlined ink button. */
 export function Button({ variant = 'primary', type = 'button', className, ...rest }: ButtonProps) {

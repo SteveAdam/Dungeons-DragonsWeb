@@ -147,3 +147,42 @@ describe('formatPercent', () => {
     expect(formatPercent(0.005)).toBe('1%');
   });
 });
+
+describe('formatPoints and rollOutcome', () => {
+  it('formats a change in chance as signed points', async () => {
+    const { formatPoints } = await import('./core');
+    expect(formatPoints(0.125)).toBe('+12 points'); // Bless: 'about 12 points'
+    expect(formatPoints(0.12)).toBe('+12 points');
+    expect(formatPoints(-0.125)).toBe('-12 points');
+    expect(formatPoints(0.29)).toBe('+29 points');
+    expect(formatPoints(0.01)).toBe('+1 point');
+    expect(formatPoints(0)).toBe('0 points');
+  });
+
+  it('follows the server rules: attack 20 crits, attack 1 fumbles, checks have no automatic result', async () => {
+    const { rollOutcome } = await import('./core');
+    expect(rollOutcome({ kind: 'check', mode: 'advantage', dice: [5, 17], bonus: 0, target: 10 })).toMatchObject({
+      kept: 17,
+    });
+    expect(rollOutcome({ kind: 'check', mode: 'disadvantage', dice: [5, 17], bonus: 0, target: 10 })).toMatchObject({
+      kept: 5,
+    });
+    expect(rollOutcome({ kind: 'attack', mode: 'normal', dice: [20], bonus: 0, target: 30 })).toEqual({
+      kept: 20,
+      total: 20,
+      success: true,
+      crit: true,
+      fumble: false,
+    });
+    expect(rollOutcome({ kind: 'attack', mode: 'normal', dice: [1], bonus: 30, target: 5 })).toEqual({
+      kept: 1,
+      total: 31,
+      success: false,
+      crit: false,
+      fumble: true,
+    });
+    expect(rollOutcome({ kind: 'check', mode: 'normal', dice: [20], bonus: 0, target: 25 }).success).toBe(false);
+    expect(rollOutcome({ kind: 'save', mode: 'normal', dice: [1], bonus: 10, target: 5 }).success).toBe(true);
+    expect(rollOutcome({ kind: 'check', mode: 'normal', dice: [12], bonus: 3, target: null }).success).toBeNull();
+  });
+});

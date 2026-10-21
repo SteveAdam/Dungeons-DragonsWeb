@@ -173,3 +173,47 @@ export function formatPercent(p: number): string {
   if (p > 0.995 && p < 1) return '>99%';
   return `${Math.round(p * 100)}%`;
 }
+
+/**
+ * A change in chance as whole percentage points, signed, rounded toward zero so a bonus is never overstated:
+ * 0.125 gives "+12 points", -0.125 "-12 points".
+ */
+export function formatPoints(delta: number): string {
+  // the tiny nudge keeps 0.29 * 100 = 28.999... from truncating to 28
+  const points = Math.trunc(delta * 100 + Math.sign(delta) * 1e-9);
+  const sign = points > 0 ? '+' : points < 0 ? '-' : '';
+  return `${sign}${Math.abs(points)} ${Math.abs(points) === 1 ? 'point' : 'points'}`;
+}
+
+export interface RollOutcomeInput {
+  kind: RollKind | 'damage' | 'initiative' | 'death_save' | 'other';
+  mode: RollMode;
+  /** The d20 results: one for a normal roll, two with advantage or disadvantage. */
+  dice: readonly number[];
+  bonus: number;
+  target: number | null;
+}
+
+export interface RollOutcome {
+  kept: number;
+  total: number;
+  /** null when there is no target. */
+  success: boolean | null;
+  crit: boolean;
+  fumble: boolean;
+}
+
+/**
+ * The verdict on rolled dice. The same rules as the server's roll_outcome (0004_rolls.sql): attack rolls hit on
+ * a natural 20 (a critical hit) and miss on a natural 1 (a fumble); every other roll succeeds only when the
+ * total meets the target.
+ */
+export function rollOutcome({ kind, mode, dice, bonus, target }: RollOutcomeInput): RollOutcome {
+  const kept =
+    mode === 'advantage' ? Math.max(dice[0], dice[1]) : mode === 'disadvantage' ? Math.min(dice[0], dice[1]) : dice[0];
+  const total = kept + bonus;
+  const crit = kind === 'attack' && kept === 20;
+  const fumble = kind === 'attack' && kept === 1;
+  const success = target === null ? null : crit ? true : fumble ? false : total >= target;
+  return { kept, total, success, crit, fumble };
+}
