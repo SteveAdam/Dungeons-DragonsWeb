@@ -12,8 +12,16 @@
   background: none;
   color: var(--gold);
   font: inherit;
-  text-decoration: underline;
   cursor: pointer;
+}
+
+/* the icon replaces the disclosure triangle */
+.display summary {
+  list-style: none;
+}
+
+.display summary::-webkit-details-marker {
+  display: none;
 }
 
 .display {

@@ -135,7 +135,7 @@ describe('member and map hooks', () => {
 
   it('useMaps passes includeHidden through and keeps the two answers apart', async () => {
     vi.mocked(mapsApi.listMaps).mockImplementation(async (_id, { includeHidden }) =>
-      includeHidden ? [{ id: 'h', name: 'Hidden', visibleToPlayers: false, createdAt: '' }] : [],
+      includeHidden ? [{ id: 'h', name: 'Hidden', imagePath: 'c1/h.png', visibleToPlayers: false, createdAt: '' }] : [],
     );
     const { result, rerender } = renderHook(({ hidden }) => useMaps('c1', hidden), {
       wrapper: setup().wrapper,

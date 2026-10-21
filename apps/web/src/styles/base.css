@@ -31,16 +31,11 @@ h4 {
   letter-spacing: 0.01em;
 }
 
-/* Links and redirects use the uncial interface face, everywhere. */
+/* Links use the uncial interface face and no underline: they carry an icon (IconLink) that swings on hover. */
 a {
   color: var(--wax-red); /* on parchment; links on the dark desk set var(--gold) */
   font-family: var(--font-ui);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.18em;
-}
-
-a:hover {
-  text-decoration-thickness: 2px;
+  text-decoration: none;
 }
 
 button,

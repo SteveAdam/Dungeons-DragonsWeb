@@ -62,15 +62,24 @@
 }
 
 /* Maps: the cartographer's chest */
+.chestHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
 .chestTitle {
-  margin: 0 0 0.75rem;
+  margin: 0;
   color: var(--ink);
   font-size: 1.15rem;
 }
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
   gap: 0.9rem;
   margin: 0;
   padding: 0;
@@ -78,6 +87,7 @@
 }
 
 .card {
+  min-width: 0;
   display: grid;
   align-content: start;
   gap: 0.4rem;
@@ -93,8 +103,21 @@
   border: 2px dashed var(--wax-red);
 }
 
+.cardLink {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--ink);
+}
+
+.cardLink:hover .thumb {
+  filter: brightness(1.06);
+}
+
 .thumb {
+  display: block;
+  width: 100%;
   aspect-ratio: 4 / 3;
+  object-fit: cover;
   border: 1px solid var(--gold-dark);
   background: var(--paper);
   box-shadow: inset 0 0 1.25rem var(--ink-wash-strong);
@@ -175,4 +198,41 @@
 .status {
   color: var(--ink-faded);
   font-style: italic;
+}
+
+/* Map upload (DMs) */
+.uploadForm {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--gold-dark);
+}
+
+.uploadTitle {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+.fileInput {
+  padding: 0.4rem 0;
+  font-family: var(--font-ui);
+}
+
+.offer {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 2px dashed var(--gold-dark);
+  border-radius: 0.25rem;
+}
+
+.offerText {
+  margin: 0;
+}
+
+.offerButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }

@@ -1,0 +1,77 @@
+.map {
+  width: 100%;
+  height: 100%;
+  background: var(--paper-aged);
+  font-family: var(--font-ui);
+}
+
+.placing {
+  cursor: crosshair;
+}
+
+/* Leaflet's own marker wrapper: no square background. */
+.sealHost {
+  border: none;
+  background: none;
+}
+
+/* A wax seal: a round blob in the pin's colour with a pressed rim and the type icon embossed in it. */
+.seal {
+  display: grid;
+  place-items: center;
+  width: var(--seal-size);
+  height: var(--seal-size);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, var(--paper) 30%, var(--seal-color)),
+    var(--seal-color) 60%,
+    color-mix(in srgb, var(--iron) 25%, var(--seal-color))
+  );
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--iron) 35%, var(--seal-color)),
+    0 0.2rem 0.4rem var(--shadow);
+  color: var(--paper);
+  transition: transform 0.15s;
+}
+
+.sealHost:hover .seal,
+.sealHost:focus-visible .seal {
+  transform: scale(1.12);
+}
+
+.sealHost:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 50%;
+}
+
+/* Hidden from players: dashed and faded (DM mode only; players never receive these pins). */
+.sealHidden {
+  border: 2px dashed var(--paper);
+  opacity: 0.6;
+}
+
+/* Selected: a gold ring around the seal. */
+.sealSelected {
+  box-shadow:
+    0 0 0 3px var(--gold),
+    0 0 0 5px var(--iron),
+    0 0.2rem 0.4rem var(--shadow);
+}
+
+/* Pin names under the seals. */
+.label {
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  box-shadow: none;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}
+
+.label::before {
+  display: none;
+}

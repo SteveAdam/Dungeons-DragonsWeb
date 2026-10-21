@@ -1,6 +1,7 @@
 // Plain stand-ins for the P0-3 components, with the props P0-7 uses. The page tests swap them in with vi.mock so
 // they test P0-7's logic whatever the real components render.
 import type { ButtonHTMLAttributes, ElementType, HTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
+import { NavLink, type NavLinkProps } from 'react-router-dom';
 
 export function Paper({
   variant,
@@ -75,3 +76,14 @@ export function RibbonTabs({
     </div>
   );
 }
+
+export function IconLink({
+  icon: _icon,
+  children,
+  ...rest
+}: { icon: unknown; children: ReactNode } & Omit<NavLinkProps, 'children'>) {
+  void _icon; // the real one draws an icon
+  return <NavLink {...rest}>{children}</NavLink>;
+}
+export const iconClasses = { host: 'icon-host', icon: 'icon' };
+export const ICON_PROPS = { size: '1em', strokeWidth: 2, 'aria-hidden': true } as const;

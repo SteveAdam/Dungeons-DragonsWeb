@@ -1,6 +1,7 @@
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Feather, Map as MapIcon, Users, Waypoints } from 'lucide-react';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../components/ErrorNotice';
-import { Paper, RibbonTabs, Toggle } from '../components/ui';
+import { IconLink, Paper, RibbonTabs, Toggle } from '../components/ui';
 import { toDataError } from '../data/errors';
 import { useCampaign, useInviteCode } from '../hooks/useCampaigns';
 import { useDmMode } from '../hooks/useDmMode';
@@ -13,10 +14,10 @@ import { PeopleTab } from './hub/PeopleTab';
 import { SealedInviteCard } from './hub/SealedInviteCard';
 
 const TABS = [
-  { id: 'maps', label: 'Maps' },
-  { id: 'notes', label: 'Notes' },
-  { id: 'web', label: 'Web' },
-  { id: 'people', label: 'People' },
+  { id: 'maps', label: 'Maps', icon: MapIcon },
+  { id: 'notes', label: 'Notes', icon: Feather },
+  { id: 'web', label: 'Web', icon: Waypoints },
+  { id: 'people', label: 'People', icon: Users },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 const isTab = (value: string | undefined): value is TabId => TABS.some(t => t.id === value);
@@ -43,9 +44,9 @@ export function CampaignHubPage() {
   if (campaign.isError) {
     return (
       <main className={styles.page}>
-        <Link to="/campaigns" className={styles.back}>
-          ← All campaigns
-        </Link>
+        <IconLink to="/campaigns" end icon={ArrowLeft} className={styles.back}>
+          All campaigns
+        </IconLink>
         <ErrorNotice
           error={campaign.error}
           onRetry={toDataError(campaign.error).kind === 'not-found' ? undefined : () => campaign.refetch()}
@@ -64,9 +65,9 @@ export function CampaignHubPage() {
   return (
     <>
       <main className={styles.page}>
-        <Link to="/campaigns" className={styles.back}>
-          ← All campaigns
-        </Link>
+        <IconLink to="/campaigns" end icon={ArrowLeft} className={styles.back}>
+          All campaigns
+        </IconLink>
 
         {/* The scroll: parchment between two wooden rods. */}
         <Paper as="header" className={styles.scroll}>

@@ -29,12 +29,10 @@
   filter: brightness(1.12);
 }
 
-/* Selected: the ribbon hangs lower, turns wax-red and its label is underlined. */
+/* Selected: the ribbon hangs lower and turns wax-red; the length marks it, not only the colour. */
 .selected {
   padding-bottom: 1.6rem;
   background: var(--wax-red);
-  text-decoration: underline;
-  text-underline-offset: 0.25em;
 }
 
 /* clip-path would cut off an outline, so focus is shown inside the ribbon. */

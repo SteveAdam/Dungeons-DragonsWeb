@@ -1,0 +1,47 @@
+/*
+ * Icon + label, used by links, tabs and menu buttons. No underline: the icon marks the control, and on hover
+ * or keyboard focus the icon swings like a hung sign. Reduced-motion users get no animation (base.css).
+ */
+.host {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  text-decoration: none;
+}
+
+.icon {
+  flex: none;
+  transform-origin: 50% 15%;
+}
+
+.host:hover .icon,
+.host:focus-visible .icon {
+  animation: swing 0.6s ease-in-out;
+}
+
+/* The page you are on: a rule under the label, so the state does not rely on colour. */
+.host[aria-current='page'] {
+  box-shadow: 0 2px 0 currentColor;
+}
+
+@keyframes swing {
+  0% {
+    transform: rotate(0) scale(1);
+  }
+
+  25% {
+    transform: rotate(-14deg) scale(1.15);
+  }
+
+  55% {
+    transform: rotate(10deg) scale(1.15);
+  }
+
+  80% {
+    transform: rotate(-4deg) scale(1.05);
+  }
+
+  100% {
+    transform: rotate(0) scale(1);
+  }
+}

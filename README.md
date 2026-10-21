@@ -125,3 +125,19 @@ Cloudflare R2) means writing one new `MapImageStore` implementation.
 - DMs can read every file in their campaign's folder. Players can read an image only when they can read the map
   that uses it.
 - `createFakeMapImageStore()` is an in-memory version for tests.
+
+## Map view (P0-8)
+
+`/campaigns/<id>/maps/<map id>`: a Leaflet map (`react-leaflet`, CRS.Simple) with the image from a signed URL.
+
+- Pins are stored in image pixels with y from the top. `src/lib/mapCoordinates.ts` is the only place that converts
+  to Leaflet coordinates.
+- Pins are wax seals with an icon per type (location, character, faction, lore). Hidden pins are dashed and faded,
+  and only reach the browser in DM mode. Markers can be focused with Tab and opened with Enter or Space.
+- DMs upload maps on the hub's Maps tab, add pins ("Add pin", then click the map; new pins start hidden), and edit
+  them in the side panel (a bottom sheet on phones). DM notes are read and written only through `pin_secrets`, and
+  only in DM mode.
+- With DM mode off, a DM's requests are the same as a player's: no hidden map, no hidden pin, no DM notes.
+
+Licences: `react-leaflet` uses the Hippocratic License 2.1 (an ethical-use licence, not OSI open source); Leaflet is
+BSD-2-Clause; icons are lucide (ISC).

@@ -31,8 +31,6 @@
 .ghost {
   background: transparent;
   color: var(--ink);
-  text-decoration: underline;
-  text-decoration-color: var(--rule);
   text-underline-offset: 0.2em;
 }
 

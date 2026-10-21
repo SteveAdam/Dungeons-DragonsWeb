@@ -1,0 +1,246 @@
+.page {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  color: var(--paper);
+}
+
+.topBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-ui);
+  font-size: 1.1rem;
+}
+
+.breadcrumb a {
+  color: var(--gold);
+}
+
+.crumbSep {
+  color: var(--gold-dark);
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ghost buttons sit on the dark desk here */
+.tools > button[data-variant='ghost'] {
+  border-color: var(--gold);
+  color: var(--paper);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.layout:has(.panel) {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+}
+
+/* The map sits in a gold-ruled parchment frame, like the mockup. */
+.frame {
+  position: relative;
+  height: calc(100vh - 13rem);
+  min-height: 22rem;
+  padding: 0.5rem;
+  border: 2px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--paper-aged);
+  box-shadow: 0 0.5rem 1.5rem var(--shadow);
+}
+
+.status {
+  color: var(--paper-aged);
+  font-style: italic;
+}
+
+.frame .status {
+  margin: 1rem;
+  color: var(--ink-faded);
+}
+
+.alertOnDesk {
+  margin: 0;
+  color: var(--paper);
+  font-weight: 700;
+}
+
+/* Pin panel: right-hand column on wide screens, a bottom sheet on phones. */
+.panel {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  max-height: calc(100vh - 13rem);
+  overflow: auto;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--gold-dark);
+}
+
+.panelHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panelTitle {
+  flex: 1;
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.close {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.6rem;
+}
+
+.view,
+.form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.type {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-family: var(--font-ui);
+}
+
+.prose {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.fieldHeading {
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.field {
+  display: grid;
+  flex: 1 1 8rem;
+  gap: 0.25rem;
+}
+
+.colorRow {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.colorPicker {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0.15rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--paper);
+}
+
+.select,
+.textarea {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.select {
+  min-height: 2.75rem;
+}
+
+.textarea {
+  resize: vertical;
+}
+
+/* DM notes: marked as DM-only by a dashed wax-red border and the label text */
+.secret {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  padding: 0.6rem;
+  border: 2px dashed var(--wax-red);
+  border-radius: 0.25rem;
+}
+
+.error {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.saved {
+  margin: 0;
+  color: var(--verdigris);
+  font-weight: 700;
+}
+
+.actions,
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.confirm {
+  font-style: italic;
+}
+
+/* Phones and small tablets: the map takes the screen and the panel slides up as a bottom sheet. */
+@media (max-width: 48rem) {
+  .layout,
+  .layout:has(.panel) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .frame {
+    height: calc(100vh - 12rem);
+    padding: 0.25rem;
+  }
+
+  .panel {
+    position: fixed;
+    z-index: 1000;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-height: 60vh;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    border-radius: 0.75rem 0.75rem 0 0;
+    box-shadow: 0 -0.5rem 1.5rem var(--shadow);
+  }
+}

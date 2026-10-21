@@ -38,8 +38,14 @@ const members: Member[] = [
     avatarUrl: 'https://cdn.example/pia.png',
   },
 ];
-const hiddenMap = { id: 'm2', name: 'The drowned vault', visibleToPlayers: false, createdAt: '' };
-const openMap = { id: 'm1', name: 'Sword Coast', visibleToPlayers: true, createdAt: '' };
+const hiddenMap = {
+  id: 'm2',
+  name: 'The drowned vault',
+  imagePath: 'c1/vault.png',
+  visibleToPlayers: false,
+  createdAt: '',
+};
+const openMap = { id: 'm1', name: 'Sword Coast', imagePath: 'c1/coast.png', visibleToPlayers: true, createdAt: '' };
 
 function renderAt(path: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });

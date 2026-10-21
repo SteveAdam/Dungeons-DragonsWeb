@@ -1,11 +1,12 @@
 import { lazy, Suspense } from 'react';
+import { DoorOpen, ScrollText, SlidersHorizontal, Swords } from 'lucide-react';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useAuth } from './auth/authContext';
 import { LoginPage } from './auth/LoginPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { DisplaySettingsControls } from './components/DisplaySettingsControls';
 import { DmModeIndicator } from './components/DmModeIndicator';
-import { DeskFrame } from './components/ui';
+import { DeskFrame, ICON_PROPS, IconLink, iconClasses } from './components/ui';
 import { CampaignHubPage } from './pages/CampaignHubPage';
 import { CampaignListPage } from './pages/CampaignListPage';
 import { HomePage } from './pages/HomePage';
@@ -15,6 +16,8 @@ import styles from './App.module.css';
 // /theme exists only in development: in a production build import.meta.env.DEV is false,
 // so the route and the page's code are dropped.
 const ThemePage = import.meta.env.DEV ? lazy(() => import('./pages/ThemePage')) : null;
+// The map view brings Leaflet; load it only when a map is opened.
+const MapViewPage = lazy(() => import('./pages/map/MapViewPage').then(m => ({ default: m.MapViewPage })));
 
 function HeaderActions() {
   const { session, signOut } = useAuth();
@@ -22,10 +25,17 @@ function HeaderActions() {
   return (
     <nav aria-label="Main" className={styles.nav}>
       <DmModeIndicator />
-      <Link to="/campaigns">Campaigns</Link>
-      <Link to="/sheet">Character sheet</Link>
+      <IconLink to="/campaigns" icon={Swords}>
+        Campaigns
+      </IconLink>
+      <IconLink to="/sheet" icon={ScrollText}>
+        Character sheet
+      </IconLink>
       <details className={styles.display}>
-        <summary>Display</summary>
+        <summary className={iconClasses.host}>
+          <SlidersHorizontal {...ICON_PROPS} className={iconClasses.icon} />
+          Display
+        </summary>
         <div className={styles.displayMenu}>
           <DisplaySettingsControls />
         </div>
@@ -33,12 +43,13 @@ function HeaderActions() {
       {session && (
         <button
           type="button"
-          className={styles.signOut}
+          className={`${styles.signOut} ${iconClasses.host}`}
           onClick={async () => {
             await signOut();
             navigate('/login');
           }}
         >
+          <DoorOpen {...ICON_PROPS} className={iconClasses.icon} />
           Sign out
         </button>
       )}
@@ -65,6 +76,16 @@ export function App() {
           element={
             <ProtectedRoute>
               <CampaignHubPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/maps/:mapId"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<p className="auth-status">Unrolling the map…</p>}>
+                <MapViewPage />
+              </Suspense>
             </ProtectedRoute>
           }
         />
