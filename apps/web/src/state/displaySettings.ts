@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 export interface DisplaySettings {
   /** Flat surfaces: no paper textures, stains or shadows. */
   reduceTexture: boolean;
-  /** A plain readable font for body text instead of IM Fell English. */
+  /** A plain readable font for body and interface text instead of IM Fell English and Uncial Antiqua. */
   plainFont: boolean;
 }
 

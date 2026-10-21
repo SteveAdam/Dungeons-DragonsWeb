@@ -15,8 +15,10 @@
 
 .title {
   margin: 0;
-  font-size: clamp(2rem, 6vw, 3rem);
-  letter-spacing: 0.06em;
+  font-family: var(--font-title);
+  font-size: clamp(2.6rem, 8vw, 4rem);
+  font-weight: 700;
+  line-height: 1.05;
 }
 
 .lead {
@@ -26,7 +28,7 @@
 
 .cta {
   margin: 0.5rem 0;
-  font-family: var(--font-heading);
+  font-family: var(--font-ui);
   font-size: 1.2rem;
 }
 

@@ -5,8 +5,8 @@
   border-radius: 999px;
   background: var(--paper-aged);
   color: var(--ink);
-  font-family: var(--font-heading);
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  line-height: 1.3;
   white-space: nowrap;
 }

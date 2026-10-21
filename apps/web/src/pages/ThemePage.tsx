@@ -39,6 +39,24 @@ export default function ThemePage() {
         <DisplaySettingsControls />
       </section>
 
+      <section aria-labelledby="type">
+        <h2 id="type" className={styles.heading}>
+          Type
+        </h2>
+        <Paper as="div" className={styles.specimen}>
+          <p className={styles.specimenTitle}>DM Manager</p>
+          <p className={styles.specimenRole}>Title · the app&apos;s name</p>
+          <h3 className={styles.specimenHeading}>The Sunken Crown</h3>
+          <p className={styles.specimenRole}>Heading · D&amp;D headings and names</p>
+          <p className={styles.specimenUi}>
+            <a href="#type">All campaigns</a> · Maps · Notes · Sat 24 Oct · 10 gold pieces
+          </p>
+          <p className={styles.specimenRole}>Interface · links, tabs, buttons, tags, dates, resources</p>
+          <p>Body text reads like an old chronicle, in IM Fell English.</p>
+          <p className={styles.specimenRole}>Body · reading text</p>
+        </Paper>
+      </section>
+
       <section aria-labelledby="tokens">
         <h2 id="tokens" className={styles.heading}>
           Tokens

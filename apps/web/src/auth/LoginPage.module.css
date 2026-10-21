@@ -31,9 +31,8 @@
   gap: 0.75rem;
   margin: 0;
   color: var(--ink-faded);
-  font-family: var(--font-heading);
-  font-size: 0.8rem;
-  text-transform: uppercase;
+  font-family: var(--font-ui);
+  font-size: 1rem;
 }
 
 .divider::before,

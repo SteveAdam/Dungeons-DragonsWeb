@@ -17,9 +17,7 @@
   border-radius: 0.25rem;
   background: var(--paper);
   color: var(--wax-red);
-  font-family: var(--font-heading);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-family: var(--font-ui);
+  font-size: 1rem;
   white-space: nowrap;
 }

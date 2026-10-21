@@ -19,8 +19,8 @@
   background: color-mix(in srgb, var(--gold-dark) 45%, var(--iron));
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
   color: var(--paper);
-  font-family: var(--font-heading);
-  letter-spacing: 0.04em;
+  font-family: var(--font-ui);
+  font-size: 1.05rem;
   cursor: pointer;
   transition: padding 0.15s;
 }
@@ -33,7 +33,6 @@
 .selected {
   padding-bottom: 1.6rem;
   background: var(--wax-red);
-  font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 0.25em;
 }
@@ -56,6 +55,6 @@
     flex: 1 1 0;
     min-width: 0;
     padding-inline: 0.25rem;
-    font-size: 0.85rem;
+    font-size: 1rem;
   }
 }

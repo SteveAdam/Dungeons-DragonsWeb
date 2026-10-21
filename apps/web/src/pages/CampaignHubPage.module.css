@@ -40,10 +40,8 @@
 .kicker {
   margin: 0;
   color: var(--ink-faded);
-  font-family: var(--font-heading);
-  font-size: 0.8rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  font-family: var(--font-ui);
+  font-size: 1rem;
 }
 
 .name {
@@ -73,7 +71,7 @@
 .sub {
   margin: 0;
   color: var(--ink-faded);
-  font-style: italic;
+  font-family: var(--font-ui);
 }
 
 .dmRow {
@@ -108,11 +106,10 @@
 .motto {
   margin: 0.5rem 0 0;
   color: var(--gold);
-  font-family: var(--font-heading);
-  font-size: 0.8rem;
-  letter-spacing: 0.25em;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
   text-align: center;
-  text-transform: uppercase;
 }
 
 .status {

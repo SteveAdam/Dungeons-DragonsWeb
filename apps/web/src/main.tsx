@@ -2,10 +2,13 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
-// Self-hosted fonts (no CDN): Cinzel for headings and labels, IM Fell English for body text.
-import '@fontsource/cinzel/400.css';
-import '@fontsource/cinzel/600.css';
-import '@fontsource/cinzel/700.css';
+// Self-hosted fonts (no CDN), all OFL. Roles are set in styles/tokens.css:
+// UnifrakturCook for the app's name, Grenze for D&D headings, Uncial Antiqua for links, tabs and labels,
+// IM Fell English for body text.
+import '@fontsource/unifrakturcook/700.css';
+import '@fontsource/grenze/700.css';
+import '@fontsource/grenze/800.css';
+import '@fontsource/uncial-antiqua/400.css';
 import '@fontsource/im-fell-english/400.css';
 import '@fontsource/im-fell-english/400-italic.css';
 import './styles/tokens.css';

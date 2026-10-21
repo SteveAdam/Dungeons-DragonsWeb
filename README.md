@@ -94,7 +94,9 @@ Supabase also always adds `email`, which it needs to create the account.
 ## Theme
 
 Parchment and ink on a dark desk. All colours are CSS variables in `apps/web/src/styles/tokens.css`. Fonts are
-self-hosted through `@fontsource` (Cinzel for headings, IM Fell English for body text). In development, `/theme` shows
+self-hosted through `@fontsource`, all OFL, one per role: UnifrakturCook (blackletter) for the app's name, Grenze for D&D
+headings, Uncial Antiqua for links, tabs, buttons, tags, dates and labels, and IM Fell English for body text.
+The D&D logo itself is a Wizards of the Coast trademark and is not used. In development, `/theme` shows
 every component and both display settings ("Reduce texture" and "Plain font"). Both settings are also in the header's
 Display menu, are saved in localStorage and are applied as `data-` attributes on `<html>`.
 

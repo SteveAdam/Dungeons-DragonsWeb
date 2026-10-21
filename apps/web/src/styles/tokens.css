@@ -72,8 +72,17 @@
     color-mix(in srgb, var(--iron) 92%, transparent) 100%
   );
 
-  /* type */
-  --font-heading: 'Cinzel', Georgia, serif;
+  /*
+   * Type, by role. All OFL fonts, self-hosted with @fontsource:
+   *   title    the app's name ("DM Manager"): heavy Old-English blackletter
+   *   heading  D&D headings and content names: bold wedge-serif caps, in the spirit of the D&D wordmark
+   *   ui       links, navigation, tabs, buttons, tags, dates and resources: uncial, like a hand-lettered notice
+   *   body     reading text
+   * Keep uncial at 1rem or larger; "Plain font" swaps ui and body to a plain face.
+   */
+  --font-title: 'UnifrakturCook', 'Old English Text MT', Georgia, serif;
+  --font-heading: 'Grenze', Georgia, serif;
+  --font-ui: 'Uncial Antiqua', Georgia, serif;
   --font-body: 'IM Fell English', Georgia, serif;
   --font-plain: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
@@ -95,7 +104,8 @@
   --shadow: transparent;
 }
 
-/* Plain font: readable body text (headings keep Cinzel). */
+/* Plain font: readable body and interface text (the title and headings keep their faces). */
 :root[data-plain-font='true'] {
   --font-body: var(--font-plain);
+  --font-ui: var(--font-plain);
 }

@@ -21,11 +21,26 @@ body {
   line-height: 1.45;
 }
 
+/* D&D headings: bold wedge-serif caps (Grenze). The app's own name uses --font-title instead. */
 h1,
 h2,
 h3,
 h4 {
   font-family: var(--font-heading);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+/* Links and redirects use the uncial interface face, everywhere. */
+a {
+  color: var(--wax-red); /* on parchment; links on the dark desk set var(--gold) */
+  font-family: var(--font-ui);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
 }
 
 button,
