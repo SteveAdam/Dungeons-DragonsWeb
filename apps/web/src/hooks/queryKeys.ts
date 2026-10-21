@@ -11,6 +11,11 @@ export const queryKeys = {
   subMaps: (mapId: string, includeHidden: boolean, pinIds: string[]) =>
     ['maps', mapId, 'submaps', { includeHidden, pins: pinIds.join(',') }] as const,
   mapTrail: (mapId: string, includeHidden: boolean) => ['maps', mapId, 'trail', { includeHidden }] as const,
+  characters: (campaignId: string) => ['campaigns', campaignId, 'characters'] as const,
+  character: (characterId: string) => ['characters', characterId] as const,
+  characterEffects: (characterId: string) => ['characters', characterId, 'effects'] as const,
+  effectSecrets: (characterId: string, effectIds: string[]) =>
+    ['characters', characterId, 'effect-secrets', effectIds.join(',')] as const,
   pinNotes: (pinId: string) => ['pins', pinId, 'notes'] as const,
   mapImage: (path: string) => ['map-image', path] as const,
 };

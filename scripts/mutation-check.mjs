@@ -167,6 +167,42 @@ end $f$;`,
     fails: ['T22'],
   },
   {
+    name: 'characters readable by every member',
+    why: "players could read each other's character sheets",
+    sql: `drop policy "read characters" on characters;
+create policy "read characters" on characters for select using (is_member(campaign_id));`,
+    fails: ['T25'],
+  },
+  {
+    name: 'XP guard removed',
+    why: 'players could level themselves up by editing their XP',
+    sql: `create or replace function characters_guard() returns trigger language plpgsql as $f$ begin return new; end $f$;`,
+    fails: ['T26'],
+  },
+  {
+    name: 'effect secrets readable by the character owner',
+    why: "players would see the DM's hidden details about their effects",
+    sql: `create policy "owners read effect secrets" on effect_secrets for select using (owns_character((select character_id from effects where id = effect_id)));`,
+    fails: ['T27'],
+  },
+  {
+    name: 'roll_d20 lets anyone roll for any character',
+    why: "a player could roll in another player's name",
+    sql: `create or replace function roll_d20(p_campaign uuid, p_character uuid, p_kind text, p_label text, p_bonus int, p_target int, p_mode text, p_hidden boolean default false)
+returns rolls language plpgsql volatile security definer set search_path = public as $f$
+declare dice int[]; o record; result rolls;
+begin
+  if not is_member(p_campaign) then raise exception 'Only members of this campaign can roll here' using errcode = '42501'; end if;
+  dice := case when p_mode = 'normal' then array[d20()] else array[d20(), d20()] end;
+  o := roll_outcome(p_kind, p_mode, dice, p_bonus, p_target);
+  insert into rolls (campaign_id, character_id, rolled_by, kind, label, bonus, target, mode, dice, kept, total, success, crit, fumble, hidden)
+  values (p_campaign, p_character, auth.uid(), p_kind, p_label, p_bonus, p_target, p_mode, dice, o.kept, o.total, o.success, o.crit, o.fumble, coalesce(p_hidden, false))
+  returning * into result;
+  return result;
+end $f$;`,
+    fails: ['T28'],
+  },
+  {
     name: 'helper function opened to signed-out visitors',
     why: 'visitors could call is_dm over the REST API',
     sql: `grant execute on function is_dm(uuid) to anon;`,

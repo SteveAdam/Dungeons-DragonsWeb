@@ -3,7 +3,8 @@ import { ICON_PROPS, iconClasses, type LucideIcon } from './icons';
 import styles from './RibbonTabs.module.css';
 
 type RibbonTabsProps = {
-  tabs: { id: string; label: string; icon?: LucideIcon }[];
+  /** A disabled tab shows but cannot be chosen (e.g. "coming soon"); its title says why. */
+  tabs: { id: string; label: string; icon?: LucideIcon; disabled?: boolean; title?: string }[];
   value: string;
   onChange: (id: string) => void;
 } & Omit<HTMLAttributes<HTMLDivElement>, 'onChange'>;
@@ -17,7 +18,7 @@ export function RibbonTabs({ tabs, value, onChange, className, ...rest }: Ribbon
 
   function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, index: number) {
     const last = tabs.length - 1;
-    const next =
+    let next =
       e.key === 'ArrowRight'
         ? index === last
           ? 0
@@ -33,6 +34,10 @@ export function RibbonTabs({ tabs, value, onChange, className, ...rest }: Ribbon
               : -1;
     if (next < 0) return;
     e.preventDefault();
+    // skip disabled tabs, in the direction of travel
+    const step = e.key === 'ArrowLeft' || e.key === 'End' ? -1 : 1;
+    for (let n = 0; n < tabs.length && tabs[next].disabled; n++) next = (next + step + tabs.length) % tabs.length;
+    if (tabs[next].disabled) return;
     refs.current[next]?.focus();
     onChange(tabs[next].id);
   }
@@ -50,11 +55,18 @@ export function RibbonTabs({ tabs, value, onChange, className, ...rest }: Ribbon
             type="button"
             role="tab"
             aria-selected={selected}
+            aria-disabled={tab.disabled || undefined}
+            title={tab.title}
             tabIndex={selected ? 0 : -1}
-            className={[styles.tab, selected ? styles.selected : '', tab.icon ? iconClasses.host : '']
+            className={[
+              styles.tab,
+              selected ? styles.selected : '',
+              tab.disabled ? styles.disabled : '',
+              tab.icon ? iconClasses.host : '',
+            ]
               .filter(Boolean)
               .join(' ')}
-            onClick={() => onChange(tab.id)}
+            onClick={() => !tab.disabled && onChange(tab.id)}
             onKeyDown={e => onKeyDown(e, i)}
           >
             {tab.icon && <tab.icon {...ICON_PROPS} className={iconClasses.icon} />}

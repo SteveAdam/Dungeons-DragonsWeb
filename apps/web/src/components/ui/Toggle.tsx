@@ -4,19 +4,21 @@ interface ToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
+  disabled?: boolean;
 }
 
 /**
  * An on/off switch: a real checkbox underneath, so keyboard and screen readers just work.
  * The thumb position and the On/Off word show the state, never the colour alone.
  */
-export function Toggle({ checked, onChange, label }: ToggleProps) {
+export function Toggle({ checked, onChange, label, disabled }: ToggleProps) {
   return (
     <label className={styles.toggle}>
       <input
         type="checkbox"
         role="switch"
         checked={checked}
+        disabled={disabled}
         onChange={e => onChange(e.target.checked)}
         className={styles.input}
       />

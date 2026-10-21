@@ -11,5 +11,7 @@ export * from './core';
 export * from './dice';
 export * from './effects';
 export * from './environment';
+export * from './fixtures';
 export * from './legacy';
 export * from './requirements';
+export * from './sheet';

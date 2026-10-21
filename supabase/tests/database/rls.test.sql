@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T24) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T28) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(150);
+select plan(175);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -434,6 +434,84 @@ select is((select count(distinct face)::int from draws where face between 1 and 
 select is((select count(*)::int from draws where face not between 1 and 20), 0, 'T24: no value outside 1 to 20');
 select ok((select bool_and(n between 800 and 1200) from (select count(*) n from draws group by face) f), 'T24: every face is between 4.0% and 6.0% of 20,000 draws');
 select ok(exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'rolls'), 'T24: new rolls are published to realtime');
+
+-- T25 to T28: characters, effects and DM-only effect details (P1-7, 0005_characters.sql) ------
+-- fixture: Brannoc for the player, Sera for the second player (roller), one effect on Brannoc with a secret.
+-- `reset role` keeps the last user's claims, so clear them: this is the database owner seeding, with no user.
+select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+insert into characters (id, campaign_id, owner_id, name, sheet, xp) values
+  (tests.u('char:brannoc'), tests.u('campaign'), tests.u('user:player'), 'Brannoc', '{"className":"Fighter"}', 6900),
+  (tests.u('char:sera'),    tests.u('campaign'), tests.u('user:roller'), 'Sera',    '{"className":"Wizard"}', 900);
+insert into effects (id, character_id, name, stat, mode, value, duration) values
+  (tests.u('effect:potion'), tests.u('char:brannoc'), 'Potion of Hill Giant Strength', 'str', 'set_at_least', 21, '{"kind":"until","atSeconds":3600}');
+insert into effect_secrets (effect_id, hidden_detail) values (tests.u('effect:potion'), 'Brewed by a hag: it curses on the third sip');
+
+-- T25: players read only their own characters
+select tests.act_as('player');
+select is((select count(*)::int from characters where id = tests.u('char:brannoc')), 1, 'T25: a player reads their own character');
+select is((select count(*)::int from characters where id = tests.u('char:sera')), 0, 'T25: a player cannot read another player''s character');
+reset role;
+select tests.act_as('outsider');
+select is((select count(*)::int from characters), 0, 'T25: a non-member reads no characters');
+reset role;
+select tests.act_as('dm');
+select is((select count(*)::int from characters), 2, 'T25: the DM reads every character');
+reset role;
+
+-- T26: owners edit their own sheet, but only the DM changes XP
+select tests.act_as('player');
+select lives_ok($$ do $do$ begin
+    update characters set sheet = sheet || '{"inspiration":true}' where id = tests.u('char:brannoc');
+    if not found then raise exception 'update did not apply'; end if;
+  end $do$ $$, 'T26: a player edits their own sheet');
+select lives_ok($$ do $do$ begin
+    update characters set name = 'Stolen' where id = tests.u('char:sera');
+    if found then raise exception 'update applied'; end if;
+  end $do$ $$, 'T26: a player cannot edit another player''s character');
+select throws_ok($$ update characters set xp = 99999 where id = tests.u('char:brannoc') $$, 'P0001', 'Only the DM can change XP', 'T26: a player cannot change their own XP');
+select throws_ok($$ insert into characters (campaign_id, name, xp) values (tests.u('campaign'), 'Instant hero', 355000) $$, 'P0001', 'Only the DM can change XP', 'T26: a player cannot create a character with XP');
+select lives_ok($$ insert into characters (campaign_id, name) values (tests.u('campaign'), 'Fresh recruit') $$, 'T26: a player can create a character of their own at 0 XP');
+select throws_ok($$ insert into characters (campaign_id, owner_id, name) values (tests.u('campaign'), tests.u('user:roller'), 'Puppet') $$, '42501', null, 'T26: a player cannot create a character for someone else');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ do $do$ begin
+    update characters set xp = 14000 where id = tests.u('char:brannoc');
+    if not found then raise exception 'update did not apply'; end if;
+  end $do$ $$, 'T26: the DM can change XP');
+select throws_ok($$ insert into characters (campaign_id, owner_id, name) values (tests.u('campaign'), tests.u('user:outsider'), 'Gatecrasher') $$, 'P0001', 'A character''s owner must be a member of its campaign', 'T26: a character''s owner must be a member');
+select throws_ok($$ update characters set owner_id = tests.u('user:roller') where id = tests.u('char:brannoc') $$, 'P0001', 'A character keeps its owner and its campaign', 'T26: a character cannot be handed to someone else');
+reset role;
+
+-- T27: effects are read by the owner and the DM, written by the DM; their secrets are the DM's alone
+select tests.act_as('player');
+select is((select count(*)::int from effects where character_id = tests.u('char:brannoc')), 1, 'T27: a player reads the effects on their own character');
+select is((select count(*)::int from effect_secrets), 0, 'T27: a player cannot read effect secrets');
+select throws_ok($$ insert into effects (character_id, name, stat, mode, value) values (tests.u('char:brannoc'), 'Self-buff', 'str', 'add', 10) $$, '42501', null, 'T27: a player cannot give themself an effect');
+reset role;
+select tests.act_as('roller');
+select is((select count(*)::int from effects), 0, 'T27: a player cannot read the effects on another player''s character');
+reset role;
+select tests.act_as('dm');
+select is((select hidden_detail from effect_secrets where effect_id = tests.u('effect:potion')), 'Brewed by a hag: it curses on the third sip', 'T27: the DM reads effect secrets');
+select lives_ok($$ do $do$ begin
+    insert into effects (id, character_id, name, stat, mode, value) values (tests.u('effect:bless'), tests.u('char:sera'), 'Shield of Faith', 'ac', 'add', 2);
+    insert into effect_secrets (effect_id, hidden_detail) values (tests.u('effect:bless'), 'Ends early if she lies');
+    delete from effects where id = tests.u('effect:bless');
+    if not found then raise exception 'delete did not apply'; end if;
+  end $do$ $$, 'T27: the DM can add and remove effects and their secrets');
+reset role;
+
+-- T28: rolls name characters: your own, or any for the DM; deleting a character keeps its rolls
+select tests.act_as('player');
+select lives_ok($$ select roll_d20(tests.u('campaign'), tests.u('char:brannoc'), 'check', 'Athletics', 6, 15, 'normal') $$, 'T28: a player rolls for their own character');
+select throws_ok($$ select roll_d20(tests.u('campaign'), tests.u('char:sera'), 'check', 'Arcana', 5, 15, 'normal') $$, '42501', 'You can only roll for your own character', 'T28: a player cannot roll for another player''s character');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ select roll_d20(tests.u('campaign'), tests.u('char:sera'), 'save', 'Wisdom save', 3, 13, 'normal') $$, 'T28: the DM can roll for any character');
+select lives_ok($$ delete from characters where id = tests.u('char:sera') $$, 'T28: a character with rolls can still be deleted');
+reset role;
+select is((select count(*)::int from rolls where label = 'Wisdom save' and character_id is null), 1, 'T28: its rolls stay in the log, unlinked');
+select throws_ok($$ update rolls set character_id = null where label = 'Athletics' $$, 'P0001', 'The roll log is append-only: rolls cannot be changed or deleted', 'T28: unlinking a roll from a character that still exists is refused');
 
 select * from finish();
 rollback;

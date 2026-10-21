@@ -18,7 +18,8 @@
     "db:types": "supabase gen types typescript --local --schema public > apps/web/src/types/database.ts",
     "check:tokens": "node scripts/check-tokens.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:seed:dev": "node scripts/seed-dev.mjs"
   },
   "devDependencies": {
     "prettier": "^3.9.10",

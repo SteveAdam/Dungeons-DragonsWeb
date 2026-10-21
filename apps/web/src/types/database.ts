@@ -39,6 +39,66 @@ isOneToOne: true
                   Relationships: [
                     
                   ]
+                },"characters": {
+                  Row: {
+                    "campaign_id": string,"created_at": string,"id": string,"name": string,"owner_id": string,"sheet": NonNullable<Json>,"xp": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"created_at"?: string,"id"?: string,"name": string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
+                  }
+                  Update: {
+                    "campaign_id"?: string,"created_at"?: string,"id"?: string,"name"?: string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "characters_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"effect_secrets": {
+                  Row: {
+                    "effect_id": string,"hidden_detail": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "effect_id": string,"hidden_detail"?: string
+                  }
+                  Update: {
+                    "effect_id"?: string,"hidden_detail"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "effect_secrets_effect_id_fkey"
+      columns: ["effect_id"]
+isOneToOne: true
+      referencedRelation: "effects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"effects": {
+                  Row: {
+                    "character_id": string,"concentration": boolean,"created_at": string,"duration": NonNullable<Json>,"id": string,"mode": string,"name": string,"source": string,"stat": string,"value": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "character_id": string,"concentration"?: boolean,"created_at"?: string,"duration"?: NonNullable<Json>,"id"?: string,"mode": string,"name": string,"source"?: string,"stat": string,"value": number
+                  }
+                  Update: {
+                    "character_id"?: string,"concentration"?: boolean,"created_at"?: string,"duration"?: NonNullable<Json>,"id"?: string,"mode"?: string,"name"?: string,"source"?: string,"stat"?: string,"value"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "effects_character_id_fkey"
+      columns: ["character_id"]
+isOneToOne: false
+      referencedRelation: "characters"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"folders": {
                   Row: {
                     "campaign_id": string,"created_at": string,"id": string,"name": string,"parent_id": string | null
@@ -261,6 +321,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "campaigns"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "rolls_character_fk"
+      columns: ["character_id"]
+isOneToOne: false
+      referencedRelation: "characters"
+      referencedColumns: ["id"]
     }
                   ]
                 }
@@ -271,6 +337,9 @@ isOneToOne: false
           Functions: {
             "can_read_map_image":
 { Args: { "object_name": string }; Returns: boolean
+                           },
+"character_campaign":
+{ Args: { "c": string }; Returns: string
                            },
 "d20":
 { Args: Record<PropertyKey, never>; Returns: number
@@ -292,6 +361,9 @@ isOneToOne: false
                            },
 "map_is_revealed":
 { Args: { "m": string }; Returns: boolean
+                           },
+"owns_character":
+{ Args: { "c": string }; Returns: boolean
                            },
 "pin_campaign":
 { Args: { "p": string }; Returns: string

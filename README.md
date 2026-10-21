@@ -15,7 +15,7 @@ apps/web/                 React + TypeScript + Vite app
   src/types/database.ts   generated from the schema (pnpm db:types)
 packages/rules-engine/    D&D 2024 rules (P1): core odds, bonus dice, effects, item requirements, terrain
 supabase/
-  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls
+  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters
   tests/database/         pgTAP suite for every policy
 scripts/                  mutation check (RLS suite) and token check (CSS)
 docs/                     design notes, including the P0-5 schema review
@@ -42,8 +42,9 @@ pnpm dev                                # http://localhost:5173
 | `pnpm check:tokens`                          | Fails if a CSS file other than `tokens.css` contains a hex colour  |
 | `pnpm db:start` / `db:stop`                  | Starts or stops the local Supabase stack                           |
 | `pnpm db:reset`                              | Rebuilds the local database from `migrations/` and `seed.sql`      |
-| `pnpm db:test`                               | pgTAP row level security suite (150 assertions)                    |
-| `pnpm db:test:mutations`                     | Removes each protection in turn; all 22 must be caught             |
+| `pnpm db:test`                               | pgTAP row level security suite (175 assertions)                    |
+| `pnpm db:test:mutations`                     | Removes each protection in turn; all 26 must be caught             |
+| `pnpm db:seed:dev <email>`                   | Gives that local player account Brannoc (P1-7 golden fixture)      |
 | `pnpm db:types`                              | Regenerates `apps/web/src/types/database.ts` from the local schema |
 | `pnpm db:push`                               | Applies new migrations to the linked hosted project                |
 
@@ -177,6 +178,23 @@ attacks, and the server roll with the kept die highlighted. Every number comes f
 to the button on wide screens and a bottom sheet under 600 px; Escape closes it and focus returns where it was. The
 server rolls only the d20 in Phase 1, so with bonus dice the result may say "roll Bless and add it". In development,
 `/dev/odds` tries it with a pretend roll or a real one through `roll_d20` (choose a campaign; the roll log updates).
+
+## Characters and the Sheet tab (P1-7)
+
+`/campaigns/<id>/characters/<character id>` (or the hub's Characters tab) shows the read-only Sheet tab. Every
+number comes from `computeSheet` in the rules engine; a test (`apps/web/src/noRulesMaths.test.ts`) fails if a component
+or page computes a modifier, proficiency bonus or odds itself. Tapping a save, skill or attack opens the odds popup
+with the DC or armour class typed above the lists ("Ask your DM"; empty means DC 15 or AC 13) and rolls on the server
+for that character.
+
+- Players read only their own characters and effects; the DM reads all. Owners edit their sheet, but only the DM
+  changes XP, so level-ups are the DM's call. Effects are applied by the DM, and `effect_secrets` (hidden details)
+  never reach players.
+- The sheet is stored as JSON and validated with zod in `apps/web/src/data/characterSchema.ts` (the rules engine stays
+  free of dependencies).
+- Game time is real time in Phase 1: a one-hour potion lasts a real hour.
+- Development: `pnpm db:seed:dev <player email>` gives a local player Brannoc; a DM in DM mode can switch the Potion of
+  Hill Giant Strength on from the sheet to watch Strength become 21 and the greatsword unlock.
 
 ## Rules content licence
 

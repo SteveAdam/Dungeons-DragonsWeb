@@ -1,0 +1,328 @@
+// P1-7: the computed character sheet. Every number a sheet shows is worked out here, from the stored sheet,
+// the active effects and the game clock, so the screens never do rules maths themselves.
+import { CONDITION_INFO, type CharacterState } from './conditions';
+import { abilityModifier, ABILITY_KEYS, levelFromXp, proficiencyBonus, XP_THRESHOLDS, type Ability } from './core';
+import { effectiveStat, isActive, type Effect, type GameClock } from './effects';
+import { checkRequirements, type AbilityScores, type Requirement, type RequirementResult } from './requirements';
+
+export type SkillKey =
+  | 'acrobatics'
+  | 'animalHandling'
+  | 'arcana'
+  | 'athletics'
+  | 'deception'
+  | 'history'
+  | 'insight'
+  | 'intimidation'
+  | 'investigation'
+  | 'medicine'
+  | 'nature'
+  | 'perception'
+  | 'performance'
+  | 'persuasion'
+  | 'religion'
+  | 'sleightOfHand'
+  | 'stealth'
+  | 'survival';
+
+/** The 18 skills and their abilities (2024 rules), in the usual alphabetical order. */
+export const SKILLS: Record<SkillKey, { label: string; ability: Ability }> = {
+  acrobatics: { label: 'Acrobatics', ability: 'dex' },
+  animalHandling: { label: 'Animal Handling', ability: 'wis' },
+  arcana: { label: 'Arcana', ability: 'int' },
+  athletics: { label: 'Athletics', ability: 'str' },
+  deception: { label: 'Deception', ability: 'cha' },
+  history: { label: 'History', ability: 'int' },
+  insight: { label: 'Insight', ability: 'wis' },
+  intimidation: { label: 'Intimidation', ability: 'cha' },
+  investigation: { label: 'Investigation', ability: 'int' },
+  medicine: { label: 'Medicine', ability: 'wis' },
+  nature: { label: 'Nature', ability: 'int' },
+  perception: { label: 'Perception', ability: 'wis' },
+  performance: { label: 'Performance', ability: 'cha' },
+  persuasion: { label: 'Persuasion', ability: 'cha' },
+  religion: { label: 'Religion', ability: 'int' },
+  sleightOfHand: { label: 'Sleight of Hand', ability: 'dex' },
+  stealth: { label: 'Stealth', ability: 'dex' },
+  survival: { label: 'Survival', ability: 'wis' },
+};
+export const SKILL_KEYS = Object.keys(SKILLS) as SkillKey[];
+
+export const ABILITY_LABELS: Record<Ability, { label: string; short: string }> = {
+  str: { label: 'Strength', short: 'STR' },
+  dex: { label: 'Dexterity', short: 'DEX' },
+  con: { label: 'Constitution', short: 'CON' },
+  int: { label: 'Intelligence', short: 'INT' },
+  wis: { label: 'Wisdom', short: 'WIS' },
+  cha: { label: 'Charisma', short: 'CHA' },
+};
+
+export interface SheetWeapon {
+  id: string;
+  name: string;
+  /** 'finesse' uses the higher of Strength and Dexterity. */
+  ability: 'str' | 'dex' | 'finesse';
+  proficient: boolean;
+  magicBonus: number;
+  /** Damage dice, e.g. '1d8'. */
+  damage: string;
+  damageType: string;
+  mastery?: string;
+  requirements?: Requirement[];
+}
+
+export interface SheetArmor {
+  name: string;
+  base: number;
+  /** The most Dexterity modifier the armour allows: null for light armour, 2 for medium, 0 for heavy. */
+  dexCap: number | null;
+  /** Heavy armour: below this Strength, speed drops by 10 feet. */
+  strReq?: number;
+}
+
+/** A character as stored (the sheet jsonb, plus xp). Level is never stored: it comes from XP. */
+export interface CharacterSheet {
+  name: string;
+  species: string;
+  className: string;
+  background: string;
+  alignment: string;
+  xp: number;
+  abilityScores: AbilityScores;
+  skillProficiencies: SkillKey[];
+  expertise: SkillKey[];
+  saveProficiencies: Ability[];
+  hp: { max: number; current: number; temp: number };
+  hitDice: { die: string; total: number; spent: number };
+  /** Base walking speed in feet, as entered (species-driven speed comes with the creation wizard in Phase 2). */
+  speed: number;
+  armor: SheetArmor | null;
+  shield: boolean;
+  weapons: SheetWeapon[];
+  equipment: string[];
+  inspiration: boolean;
+}
+
+export interface ComputedAbility {
+  ability: Ability;
+  label: string;
+  short: string;
+  base: number;
+  score: number;
+  modifier: number;
+  /** Effects that changed the score. */
+  applied: Effect[];
+}
+
+export interface ComputedRoll {
+  bonus: number;
+  proficient: boolean;
+  /** Bonus parts for the odds popup, e.g. Strength +3, Proficiency +3. */
+  breakdown: { label: string; value: number }[];
+}
+
+export interface ComputedSkill extends ComputedRoll {
+  key: SkillKey;
+  label: string;
+  ability: Ability;
+  expertise: boolean;
+}
+
+export interface ComputedSave extends ComputedRoll {
+  ability: Ability;
+  label: string;
+}
+
+export interface ComputedAttack extends ComputedRoll {
+  id: string;
+  name: string;
+  /** The ability actually used (finesse resolved). */
+  ability: Ability;
+  /** e.g. '1d8+4'. */
+  damage: string;
+  damageType: string;
+  mastery?: string;
+  usable: boolean;
+  /** Unmet requirements, e.g. "Strength 17 needed, you have 16". */
+  lockReasons: string[];
+  /** Set when an effect is what makes the weapon usable, with when it ends. */
+  unlockedBy?: { id: string; name: string; expiresAtSeconds?: number };
+  requirements: RequirementResult[];
+}
+
+export interface ComputedSheet {
+  name: string;
+  level: number;
+  proficiencyBonus: number;
+  abilities: Record<Ability, ComputedAbility>;
+  saves: ComputedSave[];
+  skills: ComputedSkill[];
+  initiative: ComputedRoll;
+  passivePerception: number;
+  speed: { value: number; base: number; armorPenaltyFt: number; applied: Effect[] };
+  armorClass: { value: number; parts: { label: string; value: number }[]; applied: Effect[] };
+  hp: CharacterSheet['hp'];
+  hitDice: CharacterSheet['hitDice'] & { remaining: number };
+  attacks: ComputedAttack[];
+  xp: {
+    total: number;
+    level: number;
+    levelStartsAt: number;
+    nextLevelAt: number | null;
+    intoLevel: number;
+    toNext: number;
+  };
+  /** Effects active now. */
+  activeEffects: Effect[];
+  /** One line per condition (conditions do not change the sheet's numbers; they change individual rolls). */
+  conditionNotes: string[];
+}
+
+const signedPart = (label: string, value: number) => ({ label, value });
+
+function lockReason(r: RequirementResult): string {
+  return `${ABILITY_LABELS[r.stat].label} ${r.required} needed, you have ${r.actual}`;
+}
+
+/** Works out every number on the sheet. Pure: the inputs are never changed. */
+export function computeSheet(
+  sheet: CharacterSheet,
+  effects: readonly Effect[],
+  clock: GameClock,
+  state: CharacterState = { conditions: [], exhaustion: 0 },
+): ComputedSheet {
+  const level = levelFromXp(sheet.xp);
+  const pb = proficiencyBonus(level);
+
+  const abilities = Object.fromEntries(
+    ABILITY_KEYS.map(ability => {
+      const stat = effectiveStat(sheet.abilityScores[ability], ability, effects, clock);
+      const result: ComputedAbility = {
+        ability,
+        ...ABILITY_LABELS[ability],
+        base: sheet.abilityScores[ability],
+        score: stat.value,
+        modifier: abilityModifier(stat.value),
+        applied: stat.applied,
+      };
+      return [ability, result];
+    }),
+  ) as Record<Ability, ComputedAbility>;
+  const mod = (a: Ability) => abilities[a].modifier;
+
+  const saves: ComputedSave[] = ABILITY_KEYS.map(ability => {
+    const proficient = sheet.saveProficiencies.includes(ability);
+    const breakdown = [signedPart(ABILITY_LABELS[ability].label, mod(ability))];
+    if (proficient) breakdown.push(signedPart('Proficiency', pb));
+    return {
+      ability,
+      label: ABILITY_LABELS[ability].label,
+      proficient,
+      bonus: mod(ability) + (proficient ? pb : 0),
+      breakdown,
+    };
+  });
+
+  const skills: ComputedSkill[] = SKILL_KEYS.map(key => {
+    const { label, ability } = SKILLS[key];
+    const expertise = sheet.expertise.includes(key);
+    const proficient = expertise || sheet.skillProficiencies.includes(key);
+    // Expertise doubles the proficiency bonus
+    const prof = expertise ? 2 * pb : proficient ? pb : 0;
+    const breakdown = [signedPart(ABILITY_LABELS[ability].label, mod(ability))];
+    if (prof) breakdown.push(signedPart(expertise ? 'Expertise' : 'Proficiency', prof));
+    return { key, label, ability, proficient, expertise, bonus: mod(ability) + prof, breakdown };
+  });
+  const perception = skills.find(s => s.key === 'perception')!;
+
+  // armour class: armour base + Dexterity (up to the armour's cap), or 10 + Dexterity unarmoured; +2 for a shield
+  const dex = mod('dex');
+  const acParts = sheet.armor
+    ? [
+        signedPart(sheet.armor.name, sheet.armor.base),
+        signedPart('Dexterity', sheet.armor.dexCap === null ? dex : Math.min(dex, sheet.armor.dexCap)),
+      ]
+    : [signedPart('Unarmoured', 10), signedPart('Dexterity', dex)];
+  if (sheet.shield) acParts.push(signedPart('Shield', 2));
+  const acBase = acParts.reduce((sum, p) => sum + p.value, 0);
+  const ac = effectiveStat(acBase, 'ac', effects, clock);
+
+  // speed: effects first, then heavy armour without the Strength for it costs 10 feet
+  const armorPenaltyFt = sheet.armor?.strReq
+    ? checkRequirements(
+        {
+          id: 'armor',
+          name: sheet.armor.name,
+          requirements: [{ stat: 'str', min: sheet.armor.strReq, onUnmet: 'speed_penalty', penaltyFt: 10 }],
+        },
+        sheet.abilityScores,
+        effects,
+        clock,
+      ).speedPenaltyFt
+    : 0;
+  const speedStat = effectiveStat(sheet.speed, 'speed', effects, clock);
+
+  const attacks: ComputedAttack[] = sheet.weapons.map(w => {
+    const ability: Ability = w.ability === 'finesse' ? (mod('dex') > mod('str') ? 'dex' : 'str') : w.ability;
+    const breakdown = [signedPart(ABILITY_LABELS[ability].label, mod(ability))];
+    if (w.proficient) breakdown.push(signedPart('Proficiency', pb));
+    if (w.magicBonus) breakdown.push(signedPart('Magic', w.magicBonus));
+    const damageBonus = mod(ability) + w.magicBonus;
+    const check = checkRequirements(
+      { id: w.id, name: w.name, requirements: w.requirements ?? [] },
+      sheet.abilityScores,
+      effects,
+      clock,
+    );
+    const unlocked = check.results.find(r => r.metByEffect)?.metByEffect;
+    return {
+      id: w.id,
+      name: w.name,
+      ability,
+      proficient: w.proficient,
+      bonus: mod(ability) + (w.proficient ? pb : 0) + w.magicBonus,
+      breakdown,
+      damage: damageBonus === 0 ? w.damage : `${w.damage}${damageBonus > 0 ? '+' : '-'}${Math.abs(damageBonus)}`,
+      damageType: w.damageType,
+      mastery: w.mastery,
+      usable: check.usable,
+      lockReasons: check.results.filter(r => !r.met).map(lockReason),
+      ...(unlocked ? { unlockedBy: unlocked } : {}),
+      requirements: check.results,
+    };
+  });
+
+  const levelStartsAt = XP_THRESHOLDS[level - 1];
+  const nextLevelAt = level === 20 ? null : XP_THRESHOLDS[level];
+
+  return {
+    name: sheet.name,
+    level,
+    proficiencyBonus: pb,
+    abilities,
+    saves,
+    skills,
+    initiative: { bonus: dex, proficient: false, breakdown: [signedPart('Dexterity', dex)] },
+    passivePerception: 10 + perception.bonus,
+    speed: {
+      value: Math.max(0, speedStat.value - armorPenaltyFt),
+      base: sheet.speed,
+      armorPenaltyFt,
+      applied: speedStat.applied,
+    },
+    armorClass: { value: ac.value, parts: acParts, applied: ac.applied },
+    hp: { ...sheet.hp },
+    hitDice: { ...sheet.hitDice, remaining: Math.max(0, sheet.hitDice.total - sheet.hitDice.spent) },
+    attacks,
+    xp: {
+      total: sheet.xp,
+      level,
+      levelStartsAt,
+      nextLevelAt,
+      intoLevel: sheet.xp - levelStartsAt,
+      toNext: nextLevelAt === null ? 0 : nextLevelAt - sheet.xp,
+    },
+    activeEffects: effects.filter(e => isActive(e, clock)),
+    conditionNotes: [...new Set(state.conditions)].map(c => `${c[0].toUpperCase()}${c.slice(1)}: ${CONDITION_INFO[c]}`),
+  };
+}

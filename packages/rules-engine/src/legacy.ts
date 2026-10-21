@@ -1,28 +1,9 @@
 // The early prototype behind the demo character sheet (/sheet). P1-7 replaces it with computeSheet; until then it
 // is kept here, built on the P1-1 core, so the demo keeps working. New code should not use it.
 import { abilityModifier, levelFromXp, proficiencyBonus, type Ability } from './core';
+import { SKILLS, type SkillKey } from './sheet';
 
 export type AbilityName = Ability;
-export type SkillKey =
-  | 'acrobatics'
-  | 'animalHandling'
-  | 'arcana'
-  | 'athletics'
-  | 'deception'
-  | 'history'
-  | 'insight'
-  | 'intimidation'
-  | 'investigation'
-  | 'medicine'
-  | 'nature'
-  | 'perception'
-  | 'performance'
-  | 'persuasion'
-  | 'religion'
-  | 'sleightOfHand'
-  | 'stealth'
-  | 'survival';
-
 export type AbilityScoreMap = Record<AbilityName, number>;
 
 export const ABILITIES: Array<{ key: AbilityName; label: string; short: string }> = [
@@ -33,28 +14,6 @@ export const ABILITIES: Array<{ key: AbilityName; label: string; short: string }
   { key: 'wis', label: 'Wisdom', short: 'WIS' },
   { key: 'cha', label: 'Charisma', short: 'CHA' },
 ];
-
-/** The 18 skills and their abilities (2024 rules). */
-export const SKILLS: Record<SkillKey, { label: string; ability: AbilityName }> = {
-  acrobatics: { label: 'Acrobatics', ability: 'dex' },
-  animalHandling: { label: 'Animal Handling', ability: 'wis' },
-  arcana: { label: 'Arcana', ability: 'int' },
-  athletics: { label: 'Athletics', ability: 'str' },
-  deception: { label: 'Deception', ability: 'cha' },
-  history: { label: 'History', ability: 'int' },
-  insight: { label: 'Insight', ability: 'wis' },
-  intimidation: { label: 'Intimidation', ability: 'cha' },
-  investigation: { label: 'Investigation', ability: 'int' },
-  medicine: { label: 'Medicine', ability: 'wis' },
-  nature: { label: 'Nature', ability: 'int' },
-  perception: { label: 'Perception', ability: 'wis' },
-  performance: { label: 'Performance', ability: 'cha' },
-  persuasion: { label: 'Persuasion', ability: 'cha' },
-  religion: { label: 'Religion', ability: 'int' },
-  sleightOfHand: { label: 'Sleight of Hand', ability: 'dex' },
-  stealth: { label: 'Stealth', ability: 'dex' },
-  survival: { label: 'Survival', ability: 'wis' },
-};
 
 export type CharacterLike = {
   name: string;

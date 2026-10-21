@@ -19,6 +19,9 @@ const ThemePage = import.meta.env.DEV ? lazy(() => import('./pages/ThemePage')) 
 const OddsDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/OddsDevPage')) : null;
 // The map view brings Leaflet; load it only when a map is opened.
 const MapViewPage = lazy(() => import('./pages/map/MapViewPage').then(m => ({ default: m.MapViewPage })));
+const CharacterSheetPage = lazy(() =>
+  import('./pages/characters/CharacterSheetPage').then(m => ({ default: m.CharacterSheetPage })),
+);
 
 function HeaderActions() {
   const { session, signOut } = useAuth();
@@ -86,6 +89,16 @@ export function App() {
             <ProtectedRoute>
               <Suspense fallback={<p className="auth-status">Unrolling the map…</p>}>
                 <MapViewPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/characters/:characterId"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<p className="auth-status">Unfolding the sheet…</p>}>
+                <CharacterSheetPage />
               </Suspense>
             </ProtectedRoute>
           }

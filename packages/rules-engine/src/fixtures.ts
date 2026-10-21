@@ -1,0 +1,70 @@
+// P1-7 golden fixtures: Brannoc exactly as the ticket gives him, and the potion that unlocks his greatsword.
+// Used by the engine tests, the web tests and the development seed.
+import type { Effect } from './effects';
+import type { CharacterSheet } from './sheet';
+
+export const BRANNOC: CharacterSheet = {
+  name: 'Brannoc',
+  species: 'Human',
+  className: 'Fighter',
+  background: 'Soldier',
+  alignment: 'Lawful neutral',
+  xp: 6900,
+  abilityScores: { str: 16, dex: 12, con: 15, int: 9, wis: 11, cha: 10 },
+  skillProficiencies: ['athletics', 'intimidation', 'perception', 'survival'],
+  expertise: [],
+  saveProficiencies: ['str', 'con'],
+  hp: { max: 50, current: 39, temp: 0 },
+  hitDice: { die: 'd10', total: 5, spent: 1 },
+  speed: 25,
+  armor: { name: 'Chain mail', base: 16, dexCap: 0, strReq: 13 },
+  shield: true,
+  weapons: [
+    {
+      id: 'longsword',
+      name: 'Longsword +1',
+      ability: 'str',
+      proficient: true,
+      magicBonus: 1,
+      damage: '1d8',
+      damageType: 'slashing',
+      mastery: 'Sap',
+    },
+    {
+      id: 'handaxe',
+      name: 'Handaxe',
+      ability: 'str',
+      proficient: true,
+      magicBonus: 0,
+      damage: '1d6',
+      damageType: 'slashing',
+      mastery: 'Vex',
+    },
+    {
+      id: 'greatsword-drowned',
+      name: 'Greatsword of the Drowned',
+      ability: 'str',
+      proficient: true,
+      magicBonus: 1,
+      damage: '2d6',
+      damageType: 'slashing',
+      mastery: 'Graze',
+      requirements: [{ stat: 'str', min: 17, onUnmet: 'lock' }],
+    },
+  ],
+  equipment: ['Chain mail', 'Shield', "Explorer's pack", 'Potion of Hill Giant Strength'],
+  inspiration: false,
+};
+
+/** Potion of Hill Giant Strength, drunk at `startSeconds`: Strength becomes 21 (if lower) for one hour. */
+export function hillGiantStrength(startSeconds: number, id = 'hill-giant-strength'): Effect {
+  return {
+    id,
+    name: 'Potion of Hill Giant Strength',
+    source: 'Potion',
+    stat: 'str',
+    mode: 'set_at_least',
+    value: 21,
+    duration: { kind: 'until', atSeconds: startSeconds + 3600 },
+  };
+}
