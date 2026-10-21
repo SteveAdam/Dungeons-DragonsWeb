@@ -1,0 +1,25 @@
+/* The top rule spans the whole window, above everything. */
+.rule {
+  position: fixed;
+  z-index: 100;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: var(--wax-red);
+  pointer-events: none;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border: 2px dashed var(--wax-red);
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--wax-red);
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}

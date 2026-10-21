@@ -1,10 +1,21 @@
-import styles from './ui.module.css';
+import styles from './DmBanner.module.css';
 
-/** The strip across the top that says hidden things are showing. */
+/**
+ * DM mode, always visible: a wax-red rule across the very top of the window and a dashed "DM mode" badge
+ * (placed in the header). Render it only while DM mode is on.
+ */
 export function DmBanner() {
   return (
-    <div role="note" className={styles.dmBanner}>
-      <strong>DM mode</strong> <span>Hidden maps, pins and notes are visible to you.</span>
-    </div>
+    <>
+      <span aria-hidden="true" className={styles.rule} />
+      <span
+        role="note"
+        aria-label="DM mode is on"
+        title="Hidden maps, pins and notes are visible to you"
+        className={styles.badge}
+      >
+        DM mode
+      </span>
+    </>
   );
 }

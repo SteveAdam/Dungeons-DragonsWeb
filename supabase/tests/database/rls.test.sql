@@ -6,7 +6,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(91);
+select plan(101);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -139,6 +139,7 @@ select throws_ok($$ insert into links (campaign_id, from_pin_id, to_pin_id) valu
 select is_empty($$ update links set label = 'Hacked' where id = tests.u('link:control') returning id $$, 'T7: player cannot update a link');
 select is_empty($$ delete from links where id = tests.u('link:control') returning id $$, 'T7: player cannot delete a link');
 select throws_ok($$ insert into folders (campaign_id, name) values (tests.u('campaign'), 'Planted') $$, '42501', null, 'T7: player cannot insert a folder');
+select is_empty($$ select * from folders $$, 'T7: player cannot read folders (they are the DM''s filing system)');
 select is_empty($$ update folders set name = 'Hacked' where id = tests.u('folder') returning id $$, 'T7: player cannot update a folder');
 select is_empty($$ delete from folders where id = tests.u('folder') returning id $$, 'T7: player cannot delete a folder');
 reset role;
@@ -152,6 +153,7 @@ select is((select name from folders where id = tests.u('folder')), 'A folder', '
 select tests.act_as('player');
 select throws_ok($$ insert into members (campaign_id, user_id, role) values (tests.u('campaign'), tests.u('user:player'), 'dm') $$, '42501', null, 'T8: a member cannot insert themselves as dm');
 select is_empty($$ update members set role = 'dm' where user_id = tests.u('user:player') returning user_id $$, 'T8: a member cannot change their own role');
+select is_empty($$ delete from members where user_id = tests.u('user:dm') returning user_id $$, 'T8: a player cannot remove a member');
 reset role;
 select is((select role from members where campaign_id = tests.u('campaign') and user_id = tests.u('user:player')), 'player', 'T8: the member is still a player');
 select tests.act_as('outsider');
@@ -225,6 +227,14 @@ reset role;
 select tests.act_as('dm');
 select is((select count(*)::int from storage.objects where bucket_id = 'maps' and name = tests.u('campaign') || '/hidden.png'), 1, 'T11: DM can read the image of the hidden map');
 reset role;
+-- an image uploaded but not yet used by any map (the moment between upload and creating the map)
+insert into storage.objects (bucket_id, name) values ('maps', tests.u('campaign') || '/draft.png');
+select tests.act_as('dm');
+select is((select count(*)::int from storage.objects where name = tests.u('campaign') || '/draft.png'), 1, 'T11: DM can read a fresh upload that no map uses yet');
+reset role;
+select tests.act_as('player');
+select is((select count(*)::int from storage.objects where name = tests.u('campaign') || '/draft.png'), 0, 'T11: a player cannot read an image that no map uses');
+reset role;
 
 -- T12: a player reads profiles of people in the same campaign, not of strangers ---------
 select tests.act_as('player');
@@ -292,10 +302,23 @@ reset role;
 -- T16: the last DM stays, ownership is fixed, and helpers are closed to visitors ---------
 select tests.act_as('dm');
 select throws_ok($$ delete from members where campaign_id = tests.u('campaign') and user_id = tests.u('user:dm') $$, 'P0001', 'A campaign must keep at least one DM', 'T16: the only DM cannot leave');
+select lives_ok($$ do $do$ begin
+    delete from members where campaign_id = tests.u('campaign') and user_id = tests.u('user:joiner');
+    if not found then raise exception 'delete did not apply'; end if;
+  end $do$ $$, 'T16: a DM can remove a player (CAM-2)');
 select throws_ok($$ update campaigns set owner_id = tests.u('user:player') where id = tests.u('campaign') $$, 'P0001', 'The campaign owner cannot be changed', 'T16: the owner cannot be reassigned');
 reset role;
 select tests.act_as_anon();
 select throws_ok($$ select is_dm(tests.u('campaign')) $$, '42501', null, 'T16: a signed-out visitor cannot call the policy helper functions');
+reset role;
+
+-- T17: column rules from the P0-5 draft ---------------------------------------------
+select tests.act_as('dm');
+select throws_ok($$ insert into pins (map_id, title, x, y, color) values (tests.u('map:visible'), 'Bad colour', 1, 1, 'red') $$, '23514', null, 'T17: a pin colour must be #rrggbb');
+select throws_ok($$ insert into pins (map_id, title, x, y, size) values (tests.u('map:visible'), 'Too big', 1, 1, 81) $$, '23514', null, 'T17: a pin size must be 16 to 80');
+select throws_ok($$ insert into pins (map_id, title, x, y, music_url) values (tests.u('map:visible'), 'Plain http', 1, 1, 'http://example.com/a.mp3') $$, '23514', null, 'T17: a music link must be https');
+select throws_ok($$ insert into links (campaign_id, from_pin_id, to_pin_id) values (tests.u('campaign'), tests.u('pin:visible'), tests.u('pin:control')) $$, '23505', null, 'T17: the same two pins cannot be linked twice');
+select throws_ok($$ update maps set fog_mode = 'everyone' where id = tests.u('map:visible') $$, '23514', null, 'T17: fog mode is shared or per_group');
 reset role;
 
 select * from finish();

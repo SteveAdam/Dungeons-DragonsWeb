@@ -19,8 +19,8 @@ create table public.campaigns (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name text not null check (char_length(name) between 1 and 120),
-  system text not null default '5e',
   rules_edition text not null default '2024' check (rules_edition in ('2014', '2024')),
+  settings jsonb not null default '{}'::jsonb,
   next_session_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -48,7 +48,9 @@ create table public.maps (
   image_path text not null,
   width integer not null check (width > 0),
   height integer not null check (height > 0),
+  -- hidden until the DM reveals it (the draft defaulted to visible)
   visible_to_players boolean not null default false,
+  fog_mode text not null default 'shared' check (fog_mode in ('shared', 'per_group')),
   created_at timestamptz not null default now(),
   -- the image must live in the campaign's own folder of the "maps" bucket
   constraint maps_image_in_campaign_folder check (image_path like campaign_id::text || '/%')
@@ -64,14 +66,14 @@ create table public.pins (
   x double precision not null,
   y double precision not null,
   icon text not null default 'pin',
-  color text not null default '#c0392b',
-  size integer not null default 32 check (size between 8 and 256),
+  color text not null default '#8E2A22' check (color ~* '^#[0-9a-f]{6}$'),
+  size integer not null default 32 check (size between 16 and 80),
   visible_to_players boolean not null default false,
   description text not null default '',
   history text not null default '',
   traits text[] not null default '{}',
   tags text[] not null default '{}',
-  music_url text,
+  music_url text check (music_url ~ '^https://'),
   created_at timestamptz not null default now()
 );
 create index pins_map_idx on public.pins (map_id);
@@ -94,6 +96,7 @@ create table public.folders (
   check (parent_id is distinct from id)
 );
 create index folders_campaign_idx on public.folders (campaign_id);
+create index folders_parent_idx on public.folders (parent_id);
 
 create table public.pages (
   id uuid primary key default gen_random_uuid(),
@@ -111,6 +114,7 @@ create table public.pages (
   updated_at timestamptz not null default now()
 );
 create index pages_campaign_idx on public.pages (campaign_id);
+create index pages_folder_idx on public.pages (folder_id);
 
 create table public.links (
   id uuid primary key default gen_random_uuid(),
@@ -119,9 +123,11 @@ create table public.links (
   to_pin_id uuid not null references public.pins (id) on delete cascade,
   label text not null default '' check (char_length(label) <= 120),
   created_at timestamptz not null default now(),
-  check (from_pin_id <> to_pin_id)
+  check (from_pin_id <> to_pin_id),
+  unique (from_pin_id, to_pin_id)
 );
 create index links_campaign_idx on public.links (campaign_id);
+create index links_to_pin_idx on public.links (to_pin_id);  -- from_pin_id is covered by the unique index
 
 -- HELPER FUNCTIONS -------------------------------------------------------
 -- security definer so they can look at members and parent rows without tripping the
@@ -375,9 +381,8 @@ create policy "dm writes pins" on public.pins for all to authenticated
 create policy "dm only pin secrets" on public.pin_secrets for all to authenticated
   using (is_dm(pin_campaign(pin_id))) with check (is_dm(pin_campaign(pin_id)));
 
-create policy "read folders" on public.folders for select to authenticated
-  using (is_member(campaign_id));
-create policy "dm writes folders" on public.folders for all to authenticated
+-- Folders are the DM's filing system: players never see them (they see visible pages only).
+create policy "dm only folders" on public.folders for all to authenticated
   using (is_dm(campaign_id)) with check (is_dm(campaign_id));
 
 create policy "read pages" on public.pages for select to authenticated
@@ -399,8 +404,10 @@ create policy "read profiles of fellow members" on public.profiles for select to
 insert into storage.buckets (id, name, public) values ('maps', 'maps', false)
 on conflict (id) do nothing;
 
+-- DMs read every file in their campaign's folder (including a just-uploaded image that no map uses yet);
+-- players read an image only when they can read the map that uses it.
 create policy "maps: read what the map policy lets you read" on storage.objects for select to authenticated
-  using (bucket_id = 'maps' and can_read_map_image(name));
+  using (bucket_id = 'maps' and (is_dm(folder_campaign(name)) or can_read_map_image(name)));
 create policy "maps: DMs upload into their campaign folder" on storage.objects for insert to authenticated
   with check (bucket_id = 'maps' and is_dm(folder_campaign(name)));
 create policy "maps: DMs update files in their campaign folder" on storage.objects for update to authenticated

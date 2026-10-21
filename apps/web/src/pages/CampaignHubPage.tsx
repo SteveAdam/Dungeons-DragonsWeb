@@ -1,10 +1,11 @@
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../components/ErrorNotice';
-import { DmBanner, Paper, RibbonTabs, Toggle } from '../components/ui';
+import { Paper, RibbonTabs, Toggle } from '../components/ui';
 import { toDataError } from '../data/errors';
 import { useCampaign, useInviteCode } from '../hooks/useCampaigns';
 import { useDmMode } from '../hooks/useDmMode';
 import { useMembers } from '../hooks/useMembers';
+import { useShowDmIndicator } from '../state/dmIndicator';
 import styles from './CampaignHubPage.module.css';
 import { ComingSoonTab } from './hub/ComingSoonTab';
 import { MapsTab } from './hub/MapsTab';
@@ -27,42 +28,69 @@ export function CampaignHubPage() {
   const members = useMembers(campaignId);
   const { isDm, dmMode, setDmMode } = useDmMode(campaignId);
   const invite = useInviteCode(campaignId, dmMode);
+  useShowDmIndicator(dmMode);
 
   if (!campaignId) return <Navigate to="/campaigns" replace />;
   if (tab !== undefined && !isTab(tab)) return <Navigate to={`/campaigns/${campaignId}/maps`} replace />;
   const activeTab: TabId = isTab(tab) ? tab : 'maps';
 
-  if (campaign.isPending) return <p role="status" className={styles.status}>Unrolling the chronicle…</p>;
+  if (campaign.isPending)
+    return (
+      <p role="status" className={styles.status}>
+        Unrolling the chronicle…
+      </p>
+    );
   if (campaign.isError) {
     return (
       <main className={styles.page}>
-        <Link to="/campaigns" className={styles.back}>← All campaigns</Link>
-        <ErrorNotice error={campaign.error} onRetry={toDataError(campaign.error).kind === 'not-found' ? undefined : () => campaign.refetch()} />
+        <Link to="/campaigns" className={styles.back}>
+          ← All campaigns
+        </Link>
+        <ErrorNotice
+          error={campaign.error}
+          onRetry={toDataError(campaign.error).kind === 'not-found' ? undefined : () => campaign.refetch()}
+        />
       </main>
     );
   }
 
   const memberLabel = members.isSuccess
     ? `${members.data.length} ${members.data.length === 1 ? 'member' : 'members'}`
-    : members.isError ? 'members unavailable' : 'counting members…';
+    : members.isError
+      ? 'members unavailable'
+      : 'counting members…';
   const tabLabel = TABS.find(t => t.id === activeTab)?.label ?? '';
 
   return (
     <>
-      {dmMode && <DmBanner />}
       <main className={styles.page}>
-        <Link to="/campaigns" className={styles.back}>← All campaigns</Link>
+        <Link to="/campaigns" className={styles.back}>
+          ← All campaigns
+        </Link>
 
-        <Paper as="header" variant="torn" className={styles.banner}>
-          <div>
-            <p className={styles.kicker}>The chronicle of</p>
-            <h1 className={styles.name}>{campaign.data.name}</h1>
-            <p className={styles.sub}>{`D&D 5e · ${campaign.data.rulesEdition} rules · ${memberLabel}`}</p>
-          </div>
-          {isDm && <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />}
+        {/* The scroll: parchment between two wooden rods. */}
+        <Paper as="header" className={styles.scroll}>
+          <p className={styles.kicker}>The chronicle of</p>
+          <h1 className={styles.name}>{campaign.data.name}</h1>
+          <p aria-hidden="true" className={styles.ornament}>
+            <span>✦</span>
+          </p>
+          <p className={styles.sub}>{`D&D 5e · ${campaign.data.rulesEdition} rules · ${memberLabel}`}</p>
         </Paper>
 
-        {dmMode && <SealedInviteCard code={invite.data ?? null} loading={invite.isPending} error={invite.error} />}
+        {(isDm || dmMode) && (
+          <div className={styles.dmRow}>
+            {dmMode && <SealedInviteCard code={invite.data ?? null} loading={invite.isPending} error={invite.error} />}
+            {isDm && (
+              <div className={styles.dmSwitch}>
+                <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />
+                <p className={styles.dmHint}>
+                  {dmMode ? 'Switch off to see exactly what players see.' : 'You are previewing the player view.'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <RibbonTabs
           aria-label="Campaign sections"
@@ -71,12 +99,15 @@ export function CampaignHubPage() {
           onChange={id => navigate(`/campaigns/${campaignId}/${id}`)}
         />
 
-        <section role="tabpanel" aria-label={tabLabel} className={styles.panel}>
+        <Paper as="section" texture="flat" role="tabpanel" aria-label={tabLabel} className={styles.panel}>
           {activeTab === 'maps' && <MapsTab campaignId={campaignId} includeHidden={dmMode} />}
-          {activeTab === 'people' && <PeopleTab campaignId={campaignId} />}
+          {activeTab === 'people' && <PeopleTab campaignId={campaignId} canManage={dmMode} />}
           {activeTab === 'notes' && <ComingSoonTab name="Notes" />}
           {activeTab === 'web' && <ComingSoonTab name="Web" />}
-        </section>
+        </Paper>
+        <p aria-hidden="true" className={styles.motto}>
+          What is hidden shall be found
+        </p>
       </main>
     </>
   );

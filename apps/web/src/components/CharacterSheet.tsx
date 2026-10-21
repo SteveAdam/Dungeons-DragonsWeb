@@ -1,18 +1,18 @@
-import { derive, type SkillKey } from '../rules'
-import { brannoc } from '../sample'
+import { derive, type SkillKey } from '@dnd-manager/rules-engine';
+import { brannoc } from '../sample';
 
 type CharacterSheetProps = {
-  potionActive?: boolean
-  onRoll: (title: string, dc: number, bonus: number, advantage?: boolean, disadvantage?: boolean) => void
-}
+  potionActive?: boolean;
+  onRoll: (title: string, dc: number, bonus: number, advantage?: boolean, disadvantage?: boolean) => void;
+};
 
 export function CharacterSheet({ potionActive = false, onRoll }: CharacterSheetProps) {
   const character = derive({
     ...brannoc,
     activeEffects: potionActive ? ['potion-of-heroism'] : [],
-  })
+  });
 
-  const effectLabel = potionActive ? 'Potion of Heroism is active' : 'Potion of Heroism is inactive'
+  const effectLabel = potionActive ? 'Potion of Heroism is active' : 'Potion of Heroism is inactive';
 
   return (
     <main className="sheet-shell">
@@ -89,7 +89,7 @@ export function CharacterSheet({ potionActive = false, onRoll }: CharacterSheetP
 
         <article className="panel">
           <h2>Attacks</h2>
-          {character.attacks.map((attack) => (
+          {character.attacks.map(attack => (
             <button
               key={attack.label}
               type="button"
@@ -114,7 +114,7 @@ export function CharacterSheet({ potionActive = false, onRoll }: CharacterSheetP
         </article>
       </section>
     </main>
-  )
+  );
 }
 
-export default CharacterSheet
+export default CharacterSheet;

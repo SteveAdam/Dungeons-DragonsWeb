@@ -1,0 +1,12 @@
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 999px;
+  background: var(--paper-aged);
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}

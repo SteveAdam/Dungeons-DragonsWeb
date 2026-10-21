@@ -7,7 +7,12 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <p role="status" className="auth-status">Checking your seal…</p>;
-  if (!session) return <Navigate to="/sign-in" replace state={{ from: location.pathname }} />;
+  if (loading)
+    return (
+      <p role="status" className="auth-status">
+        Checking your seal…
+      </p>
+    );
+  if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return <>{children}</>;
 }

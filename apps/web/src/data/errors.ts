@@ -2,7 +2,7 @@
 // without knowing anything about Supabase.
 
 export type DataErrorKind =
-  | 'invalid-code' | 'network' | 'not-found' | 'forbidden' | 'validation' | 'signed-out' | 'unknown';
+  'invalid-code' | 'network' | 'not-found' | 'forbidden' | 'validation' | 'signed-out' | 'unknown';
 
 const MESSAGES: Record<DataErrorKind, string> = {
   'invalid-code': 'That invite code does not match any campaign. Check it with your DM and try again.',

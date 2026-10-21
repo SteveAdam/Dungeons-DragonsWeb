@@ -1,4 +1,4 @@
-import type { CharacterLike } from './rules'
+import type { CharacterLike } from '@dnd-manager/rules-engine';
 
 export const brannoc: CharacterLike = {
   name: 'Brannoc',
@@ -22,6 +22,6 @@ export const brannoc: CharacterLike = {
   activeEffects: [],
   weapon: 'Longsword',
   weaponDamage: '1d8 + 4',
-}
+};
 
-export default brannoc
+export default brannoc;

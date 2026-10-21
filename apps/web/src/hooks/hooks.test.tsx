@@ -19,11 +19,19 @@ vi.mock('../data/campaigns');
 vi.mock('../data/members');
 vi.mock('../data/maps');
 
-const campaign: Campaign = { id: 'c1', name: 'The Sunken Crown', rulesEdition: '2024', nextSessionAt: null, createdAt: '2026-10-18T10:00:00Z' };
+const campaign: Campaign = {
+  id: 'c1',
+  name: 'The Sunken Crown',
+  rulesEdition: '2024',
+  nextSessionAt: null,
+  createdAt: '2026-10-18T10:00:00Z',
+};
 
 function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
   return { client, wrapper };
 }
 
@@ -56,7 +64,9 @@ describe('campaign hooks', () => {
   it('useCreateCampaign creates the campaign and refreshes the list', async () => {
     vi.mocked(campaignsApi.listCampaigns).mockResolvedValue([]);
     vi.mocked(campaignsApi.createCampaign).mockResolvedValue(campaign);
-    const { result } = renderHook(() => ({ list: useCampaigns(), create: useCreateCampaign() }), { wrapper: setup().wrapper });
+    const { result } = renderHook(() => ({ list: useCampaigns(), create: useCreateCampaign() }), {
+      wrapper: setup().wrapper,
+    });
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
 
     vi.mocked(campaignsApi.listCampaigns).mockResolvedValue([campaign]);
@@ -70,11 +80,15 @@ describe('campaign hooks', () => {
   it('useJoinCampaign returns the campaign id and refreshes the list', async () => {
     vi.mocked(campaignsApi.listCampaigns).mockResolvedValue([]);
     vi.mocked(campaignsApi.joinCampaign).mockResolvedValue('c1');
-    const { result } = renderHook(() => ({ list: useCampaigns(), join: useJoinCampaign() }), { wrapper: setup().wrapper });
+    const { result } = renderHook(() => ({ list: useCampaigns(), join: useJoinCampaign() }), {
+      wrapper: setup().wrapper,
+    });
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
 
     let joined: string | undefined;
-    await act(async () => { joined = await result.current.join.mutateAsync('7F3A9C21'); });
+    await act(async () => {
+      joined = await result.current.join.mutateAsync('7F3A9C21');
+    });
     expect(joined).toBe('c1');
     expect(campaignsApi.joinCampaign).toHaveBeenCalledWith('7F3A9C21');
     await waitFor(() => expect(campaignsApi.listCampaigns).toHaveBeenCalledTimes(2));
@@ -83,7 +97,9 @@ describe('campaign hooks', () => {
   it('useJoinCampaign exposes a wrong code and does not refresh the list', async () => {
     vi.mocked(campaignsApi.listCampaigns).mockResolvedValue([]);
     vi.mocked(campaignsApi.joinCampaign).mockRejectedValue(new DataError('invalid-code'));
-    const { result } = renderHook(() => ({ list: useCampaigns(), join: useJoinCampaign() }), { wrapper: setup().wrapper });
+    const { result } = renderHook(() => ({ list: useCampaigns(), join: useJoinCampaign() }), {
+      wrapper: setup().wrapper,
+    });
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
 
     act(() => result.current.join.mutate('WRONG'));
@@ -119,8 +135,12 @@ describe('member and map hooks', () => {
 
   it('useMaps passes includeHidden through and keeps the two answers apart', async () => {
     vi.mocked(mapsApi.listMaps).mockImplementation(async (_id, { includeHidden }) =>
-      includeHidden ? [{ id: 'h', name: 'Hidden', visibleToPlayers: false, createdAt: '' }] : []);
-    const { result, rerender } = renderHook(({ hidden }) => useMaps('c1', hidden), { wrapper: setup().wrapper, initialProps: { hidden: false } });
+      includeHidden ? [{ id: 'h', name: 'Hidden', visibleToPlayers: false, createdAt: '' }] : [],
+    );
+    const { result, rerender } = renderHook(({ hidden }) => useMaps('c1', hidden), {
+      wrapper: setup().wrapper,
+      initialProps: { hidden: false },
+    });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mapsApi.listMaps).toHaveBeenLastCalledWith('c1', { includeHidden: false });
     expect(result.current.data).toEqual([]);

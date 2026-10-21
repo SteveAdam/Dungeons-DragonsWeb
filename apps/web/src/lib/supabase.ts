@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '../types/database';
 
 // Values come from apps/web/.env (copy .env.example). Without them the app talks to the local
 // stack from `pnpm db:start`, so a fresh checkout still starts. The publishable key (sb_publishable_…)
@@ -12,4 +13,4 @@ if (env.DEV && !key && env.MODE !== 'test') {
 }
 
 /** The one Supabase client. Only src/data, src/lib and src/auth may import it (enforced by ESLint). */
-export const supabase = createClient(url, key ?? 'missing-key');
+export const supabase = createClient<Database>(url, key ?? 'missing-key');

@@ -9,7 +9,10 @@ describe('toDataError', () => {
     expect(e.kind).toBe('invalid-code');
     expect(e.message).toMatch(/does not match any campaign/);
   });
-  it.each([['Sign in first', undefined], ['anything', 401]])('recognises a signed-out user (%s, %s)', (message, status) => {
+  it.each([
+    ['Sign in first', undefined],
+    ['anything', 401],
+  ])('recognises a signed-out user (%s, %s)', (message, status) => {
     expect(toDataError({ message, status }).kind).toBe('signed-out');
   });
   it('maps database codes', () => {
@@ -17,8 +20,12 @@ describe('toDataError', () => {
     expect(toDataError({ code: 'PGRST116', message: 'x' }).kind).toBe('not-found');
     expect(toDataError({ code: '23514', message: 'x' }).kind).toBe('validation');
   });
-  it.each(['TypeError: Failed to fetch', 'Load failed', 'NetworkError when attempting to fetch resource.', 'fetch failed'])(
-    'recognises a network failure: %s', message => expect(toDataError({ message }).kind).toBe('network'));
+  it.each([
+    'TypeError: Failed to fetch',
+    'Load failed',
+    'NetworkError when attempting to fetch resource.',
+    'fetch failed',
+  ])('recognises a network failure: %s', message => expect(toDataError({ message }).kind).toBe('network'));
   it('treats an unknown error as a network problem when the browser is offline', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     expect(toDataError({ message: 'something odd' }).kind).toBe('network');

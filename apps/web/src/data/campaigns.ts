@@ -64,7 +64,10 @@ export async function joinCampaign(code: string): Promise<string> {
 /** The invite code. Only DMs can read it: for everyone else this returns null. */
 export async function getInviteCode(campaignId: string): Promise<string | null> {
   const { data, error } = await supabase
-    .from('campaign_secrets').select('invite_code').eq('campaign_id', campaignId).maybeSingle();
+    .from('campaign_secrets')
+    .select('invite_code')
+    .eq('campaign_id', campaignId)
+    .maybeSingle();
   if (error) throw toDataError(error);
   return (data as { invite_code: string } | null)?.invite_code ?? null;
 }

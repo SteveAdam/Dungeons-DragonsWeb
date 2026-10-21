@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '../lib/supabase';
 import { fakeQuery } from '../test/fakeQuery';
-import { getMyRole, listMembers } from './members';
+import { getMyRole, listMembers, removeMember } from './members';
 
 vi.mock('../lib/supabase', () => ({ supabase: { from: vi.fn(), rpc: vi.fn(), auth: { getSession: vi.fn() } } }));
 
@@ -28,7 +28,11 @@ describe('listMembers', () => {
     const profileQuery = from({ data: profiles, error: null });
     const members = await listMembers('c1');
     expect(members.map(m => m.userId)).toEqual(['u-dm', 'u-player1', 'u-player2']);
-    expect(members[0]).toMatchObject({ role: 'dm', displayName: 'Dungeon Dan', avatarUrl: 'https://cdn.example/dan.png' });
+    expect(members[0]).toMatchObject({
+      role: 'dm',
+      displayName: 'Dungeon Dan',
+      avatarUrl: 'https://cdn.example/dan.png',
+    });
     expect(profileQuery.in).toHaveBeenCalledWith('id', ['u-player2', 'u-dm', 'u-player1']);
   });
   it('falls back to "Adventurer" when there is no usable name', async () => {
@@ -53,7 +57,8 @@ describe('listMembers', () => {
 });
 
 describe('getMyRole', () => {
-  const signedIn = () => vi.mocked(supabase.auth.getSession).mockResolvedValue({ data: { session: { user: { id: 'u1' } } } } as never);
+  const signedIn = () =>
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({ data: { session: { user: { id: 'u1' } } } } as never);
 
   it('returns my role', async () => {
     signedIn();
@@ -69,5 +74,27 @@ describe('getMyRole', () => {
   it('fails clearly when signed out', async () => {
     vi.mocked(supabase.auth.getSession).mockResolvedValue({ data: { session: null } } as never);
     await expect(getMyRole('c1')).rejects.toMatchObject({ kind: 'signed-out' });
+  });
+});
+
+describe('removeMember', () => {
+  it('deletes the membership row and checks one row went', async () => {
+    const q = from({ data: [{ user_id: 'u-pia' }], error: null });
+    await removeMember('c1', 'u-pia');
+    expect(supabase.from).toHaveBeenCalledWith('members');
+    expect(q.delete).toHaveBeenCalled();
+    expect(q.eq).toHaveBeenCalledWith('campaign_id', 'c1');
+    expect(q.eq).toHaveBeenCalledWith('user_id', 'u-pia');
+  });
+  it('treats "nothing deleted" as not allowed (row level security hides rows)', async () => {
+    from({ data: [], error: null });
+    await expect(removeMember('c1', 'u-pia')).rejects.toMatchObject({ kind: 'forbidden' });
+  });
+  it('explains the last-DM rule in plain words', async () => {
+    from({ data: null, error: { code: 'P0001', message: 'A campaign must keep at least one DM' } });
+    await expect(removeMember('c1', 'u-dm')).rejects.toMatchObject({
+      kind: 'validation',
+      message: 'A campaign must keep at least one DM.',
+    });
   });
 });

@@ -1,0 +1,92 @@
+/*
+ * The parchment is painted on a ::before layer behind the content. That layer gets the worn-edge SVG filter
+ * (defined in index.html), so the outline is rough and uneven while the text on top stays crisp.
+ * Components must not put their own ::before on a worn Paper (use ::after instead).
+ */
+.paper {
+  position: relative;
+  isolation: isolate;
+  color: var(--ink);
+}
+
+.worn::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: 3px;
+  background:
+    var(--texture-noise), var(--texture-stain-1), var(--texture-stain-2), var(--paper-edge-burn), var(--paper);
+  box-shadow: var(--paper-inset);
+  content: '';
+  filter: var(--paper-edge-filter) drop-shadow(0 0.6rem 0.9rem var(--shadow));
+  /* own compositor layer: the filtered edge is drawn once and moved, not re-filtered on every scroll */
+  will-change: transform;
+}
+
+/* Torn: a coarser, deeper ragged edge, as if ripped from a book. */
+.torn {
+  padding-block: 1.5rem;
+}
+
+.torn::before {
+  inset: 0.15rem;
+  filter: var(--paper-torn-filter) drop-shadow(0 0.6rem 0.9rem var(--shadow));
+}
+
+/* Flat: plain parchment for forms and dense panels, where legibility matters more than texture. */
+.plain {
+  border-radius: 3px;
+  background: var(--paper);
+  box-shadow: var(--paper-drop);
+}
+
+/*
+ * Framed: an illuminated-manuscript border, a double gold rule with wax-and-gold bosses at the corners.
+ * Drawn on ::after (above the parchment, below nothing interactive), so a framed Paper has no ::after to spare.
+ */
+.framed {
+  padding: 2.25rem 2rem;
+}
+
+.framed::after {
+  position: absolute;
+  inset: 0.65rem;
+  border: 2px solid var(--gold-dark);
+  outline: 1px solid var(--rule);
+  outline-offset: 0.25rem;
+  background:
+    radial-gradient(
+        circle,
+        var(--wax-red) 0 0.38rem,
+        var(--gold) 0.38rem 0.55rem,
+        var(--gold-dark) 0.55rem 0.62rem,
+        transparent 0.65rem
+      )
+      top left / 1.4rem 1.4rem no-repeat,
+    radial-gradient(
+        circle,
+        var(--wax-red) 0 0.38rem,
+        var(--gold) 0.38rem 0.55rem,
+        var(--gold-dark) 0.55rem 0.62rem,
+        transparent 0.65rem
+      )
+      top right / 1.4rem 1.4rem no-repeat,
+    radial-gradient(
+        circle,
+        var(--wax-red) 0 0.38rem,
+        var(--gold) 0.38rem 0.55rem,
+        var(--gold-dark) 0.55rem 0.62rem,
+        transparent 0.65rem
+      )
+      bottom left / 1.4rem 1.4rem no-repeat,
+    radial-gradient(
+        circle,
+        var(--wax-red) 0 0.38rem,
+        var(--gold) 0.38rem 0.55rem,
+        var(--gold-dark) 0.55rem 0.62rem,
+        transparent 0.65rem
+      )
+      bottom right / 1.4rem 1.4rem no-repeat;
+  content: '';
+  pointer-events: none;
+}

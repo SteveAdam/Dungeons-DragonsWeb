@@ -1,27 +1,45 @@
+/* Sealed invitation card: a wax seal beside the code. */
 .sealed {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem 1.5rem;
-  padding: 1rem 1.25rem;
-  border: 2px dashed var(--wax-red);
-  border-radius: 0.25rem;
+  gap: 1.25rem;
+  padding-inline: 1.5rem;
   color: var(--ink);
+}
+
+.seal {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, var(--paper) 25%, var(--wax-red)),
+    var(--wax-red) 55%
+  );
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--wax-red) 70%, var(--iron)),
+    0 0.2rem 0.5rem var(--shadow);
+  color: var(--paper);
+}
+
+.sealedBody {
+  display: grid;
+  gap: 0.15rem;
 }
 
 .label {
   margin: 0;
   color: var(--ink-faded);
-  font-family: Cinzel, serif;
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.85rem;
+  font-style: italic;
 }
 
 .code {
-  margin: 0.15rem 0 0;
-  font-family: Cinzel, serif;
+  margin: 0;
+  font-family: var(--font-heading);
   font-size: 1.6rem;
   letter-spacing: 0.15em;
   user-select: all;
@@ -29,12 +47,12 @@
 
 .copyRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
 }
 
 .copyStatus {
-  min-height: 1.25rem;
   color: var(--verdigris);
   font-weight: 700;
 }
@@ -43,6 +61,54 @@
   color: var(--wax-red);
 }
 
+/* Maps: the cartographer's chest */
+.chestTitle {
+  margin: 0 0 0.75rem;
+  color: var(--ink);
+  font-size: 1.15rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--paper-aged);
+  color: var(--ink);
+}
+
+/* Hidden from players: a dashed wax-red outline, plus the tag, so the state never depends on colour. */
+.hidden {
+  border: 2px dashed var(--wax-red);
+}
+
+.thumb {
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--gold-dark);
+  background: var(--paper);
+  box-shadow: inset 0 0 1.25rem var(--ink-wash-strong);
+}
+
+.hidden .thumb {
+  opacity: 0.65;
+}
+
+.cardName {
+  font-family: var(--font-heading);
+}
+
+/* People */
 .list {
   display: grid;
   gap: 0.5rem;
@@ -53,18 +119,19 @@
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--gold-dark);
   border-radius: 0.25rem;
-  background: var(--paper-aged);
+  background: var(--paper);
   color: var(--ink);
 }
 
 .rowName {
   flex: 1;
-  font-family: Cinzel, serif;
+  font-family: var(--font-heading);
 }
 
 .avatar,
@@ -82,7 +149,21 @@
 .initial {
   background: var(--wax-red);
   color: var(--paper);
-  font-family: Cinzel, serif;
+  font-family: var(--font-heading);
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-style: italic;
+}
+
+.alert {
+  margin: 0 0 0.75rem;
+  color: var(--wax-red);
+  font-weight: 700;
 }
 
 .muted {
@@ -92,6 +173,6 @@
 }
 
 .status {
-  color: var(--paper-aged);
+  color: var(--ink-faded);
   font-style: italic;
 }

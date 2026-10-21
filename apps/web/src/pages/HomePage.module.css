@@ -1,0 +1,43 @@
+.page {
+  display: grid;
+  place-items: center;
+  min-height: 70vh;
+  padding: 1.5rem 1rem;
+}
+
+.card {
+  display: grid;
+  gap: 0.75rem;
+  width: min(34rem, 100%);
+  padding: 2rem;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3rem);
+  letter-spacing: 0.06em;
+}
+
+.lead {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.cta {
+  margin: 0.5rem 0;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+}
+
+.cta a {
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.small {
+  margin: 0;
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+  font-style: italic;
+}

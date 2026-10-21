@@ -1,15 +1,15 @@
-import { useEffect } from 'react'
-import { successChance } from '../rules'
+import { useEffect } from 'react';
+import { successChance } from '@dnd-manager/rules-engine';
 
 type OddsPopupProps = {
-  isOpen: boolean
-  title: string
-  dc: number
-  bonus: number
-  advantage?: boolean
-  disadvantage?: boolean
-  onClose: () => void
-}
+  isOpen: boolean;
+  title: string;
+  dc: number;
+  bonus: number;
+  advantage?: boolean;
+  disadvantage?: boolean;
+  onClose: () => void;
+};
 
 export function OddsPopup({
   isOpen,
@@ -22,25 +22,25 @@ export function OddsPopup({
 }: OddsPopupProps) {
   useEffect(() => {
     if (!isOpen) {
-      return undefined
+      return undefined;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose()
+        onClose();
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) {
-    return null
+    return null;
   }
 
-  const chance = successChance(dc, bonus, advantage, disadvantage)
-  const chancePercent = `${(chance * 100).toFixed(1)}%`
+  const chance = successChance(dc, bonus, advantage, disadvantage);
+  const chancePercent = `${(chance * 100).toFixed(1)}%`;
 
   return (
     <div className="odds-overlay" role="presentation" onClick={onClose}>
@@ -49,7 +49,7 @@ export function OddsPopup({
         role="dialog"
         aria-modal="true"
         aria-labelledby="odds-title"
-        onClick={(event) => event.stopPropagation()}
+        onClick={event => event.stopPropagation()}
       >
         <button type="button" className="close-button" onClick={onClose} aria-label="Close odds panel">
           ×
@@ -66,9 +66,7 @@ export function OddsPopup({
           </div>
           <div>
             <span>Condition</span>
-            <strong>
-              {advantage ? 'Advantage' : disadvantage ? 'Disadvantage' : 'Normal'}
-            </strong>
+            <strong>{advantage ? 'Advantage' : disadvantage ? 'Disadvantage' : 'Normal'}</strong>
           </div>
           <div>
             <span>Success chance</span>
@@ -81,7 +79,7 @@ export function OddsPopup({
             {chance >= 0.5 ? ' often enough to be worth the risk.' : ' only when the dice favor you.'}
           </p>
           <div className="dice-row" aria-label="d20 dice preview">
-            {[1, 10, 20].map((die) => (
+            {[1, 10, 20].map(die => (
               <div key={die} className="die-face">
                 {die}
               </div>
@@ -90,7 +88,7 @@ export function OddsPopup({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default OddsPopup
+export default OddsPopup;

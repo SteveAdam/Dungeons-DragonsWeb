@@ -3,43 +3,71 @@
   gap: 1rem;
   max-width: 62rem;
   margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  padding: 1.5rem 1rem 2rem;
   color: var(--paper);
 }
 
 .back {
   justify-self: start;
-  color: var(--gold-soft);
+  color: var(--gold);
 }
 
-.back:focus-visible {
-  outline: 3px solid var(--gold-soft);
-  outline-offset: 2px;
+/* The scroll banner: parchment rolled between two wooden rods. */
+.scroll {
+  position: relative;
+  justify-self: center;
+  width: min(36rem, calc(100% - 2.5rem));
+  padding: 1.25rem 2.5rem 1.1rem;
+  text-align: center;
 }
 
-.banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.5rem 2rem;
-  color: var(--ink);
+/* Both rods on one ::after (Paper paints the parchment on ::before): two 1rem bars at the outer edges. */
+.scroll::after {
+  position: absolute;
+  z-index: 1;
+  top: -0.6rem;
+  right: -0.75rem;
+  bottom: -0.6rem;
+  left: -0.75rem;
+  background:
+    linear-gradient(90deg, var(--gold-dark), var(--gold) 45%, var(--gold-dark)) left / 1rem 100% no-repeat,
+    linear-gradient(90deg, var(--gold-dark), var(--gold) 45%, var(--gold-dark)) right / 1rem 100% no-repeat;
+  content: '';
+  filter: drop-shadow(0 0.2rem 0.3rem var(--shadow));
+  pointer-events: none;
 }
 
 .kicker {
   margin: 0;
   color: var(--ink-faded);
-  font-family: Cinzel, serif;
+  font-family: var(--font-heading);
   font-size: 0.8rem;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .name {
-  margin: 0.1rem 0;
+  margin: 0.15rem 0 0;
   color: var(--ink);
-  font-size: 2rem;
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  letter-spacing: 0.04em;
+}
+
+/* A rule with a small mark in the middle. */
+.ornament {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.35rem auto;
+  width: min(24rem, 90%);
+  color: var(--gold-dark);
+}
+
+.ornament::before,
+.ornament::after {
+  flex: 1;
+  border-top: 1px solid var(--gold-dark);
+  content: '';
 }
 
 .sub {
@@ -48,12 +76,53 @@
   font-style: italic;
 }
 
+.dmRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+
+.dmRow > section {
+  flex: 1 1 18rem;
+}
+
+.dmSwitch {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.dmHint {
+  margin: 0;
+  color: var(--paper-aged);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
 .panel {
-  min-height: 6rem;
+  min-height: 8rem;
+  padding: 1.25rem;
+  border-top: 3px solid var(--gold-dark);
+}
+
+.motto {
+  margin: 0.5rem 0 0;
+  color: var(--gold);
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  letter-spacing: 0.25em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .status {
   color: var(--paper-aged);
   font-style: italic;
   text-align: center;
+}
+
+@media (max-width: 30rem) {
+  .scroll {
+    padding-inline: 1.5rem;
+  }
 }

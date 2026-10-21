@@ -1,0 +1,22 @@
+{
+  "name": "@dnd-manager/rules-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "D&D 5e rules: modifiers, proficiency, odds, derived character stats.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
+  }
+}

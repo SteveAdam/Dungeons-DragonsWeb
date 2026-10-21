@@ -1,0 +1,61 @@
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-height: 3.75rem;
+  padding: 0 0.75rem;
+  border-top: 3px solid var(--gold-dark);
+}
+
+/* A bookmark ribbon: hangs from the rule, with a V notch cut into its tail. */
+.tab {
+  position: relative;
+  min-width: 5.5rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.9rem 1.1rem;
+  border: none;
+  /* dark leather, so paper-coloured text keeps a 9:1 contrast */
+  background: color-mix(in srgb, var(--gold-dark) 45%, var(--iron));
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+  color: var(--paper);
+  font-family: var(--font-heading);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: padding 0.15s;
+}
+
+.tab:hover {
+  filter: brightness(1.12);
+}
+
+/* Selected: the ribbon hangs lower, turns wax-red and its label is underlined. */
+.selected {
+  padding-bottom: 1.6rem;
+  background: var(--wax-red);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* clip-path would cut off an outline, so focus is shown inside the ribbon. */
+.tab:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--gold);
+}
+
+/* Phones: the ribbons share the row instead of wrapping. */
+@media (max-width: 30rem) {
+  .tabs {
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    padding: 0 0.25rem;
+  }
+
+  .tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.25rem;
+    font-size: 0.85rem;
+  }
+}

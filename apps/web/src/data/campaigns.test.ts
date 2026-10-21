@@ -6,7 +6,13 @@ import { DataError } from './errors';
 
 vi.mock('../lib/supabase', () => ({ supabase: { from: vi.fn(), rpc: vi.fn(), auth: { getSession: vi.fn() } } }));
 
-const row = { id: 'c1', name: 'The Sunken Crown', rules_edition: '2024', next_session_at: null, created_at: '2026-10-18T10:00:00Z' };
+const row = {
+  id: 'c1',
+  name: 'The Sunken Crown',
+  rules_edition: '2024',
+  next_session_at: null,
+  created_at: '2026-10-18T10:00:00Z',
+};
 const from = (result: { data: unknown; error: unknown }) => {
   const q = fakeQuery(result);
   vi.mocked(supabase.from).mockReturnValueOnce(q as never);
@@ -19,8 +25,20 @@ describe('listCampaigns', () => {
   it('maps rows to campaigns', async () => {
     from({ data: [row, { ...row, id: 'c2', rules_edition: '2014' }], error: null });
     expect(await listCampaigns()).toEqual([
-      { id: 'c1', name: 'The Sunken Crown', rulesEdition: '2024', nextSessionAt: null, createdAt: '2026-10-18T10:00:00Z' },
-      { id: 'c2', name: 'The Sunken Crown', rulesEdition: '2014', nextSessionAt: null, createdAt: '2026-10-18T10:00:00Z' },
+      {
+        id: 'c1',
+        name: 'The Sunken Crown',
+        rulesEdition: '2024',
+        nextSessionAt: null,
+        createdAt: '2026-10-18T10:00:00Z',
+      },
+      {
+        id: 'c2',
+        name: 'The Sunken Crown',
+        rulesEdition: '2014',
+        nextSessionAt: null,
+        createdAt: '2026-10-18T10:00:00Z',
+      },
     ]);
     expect(supabase.from).toHaveBeenCalledWith('campaigns');
   });
@@ -64,7 +82,10 @@ describe('joinCampaign', () => {
     expect(supabase.rpc).toHaveBeenCalledWith('join_campaign', { code: '7F3A9C21' });
   });
   it('maps a wrong code to a friendly error', async () => {
-    vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: { code: 'P0001', message: 'Invalid invite code' } } as never);
+    vi.mocked(supabase.rpc).mockResolvedValueOnce({
+      data: null,
+      error: { code: 'P0001', message: 'Invalid invite code' },
+    } as never);
     const error = await joinCampaign('WRONG').catch((e: unknown) => e);
     expect(error).toBeInstanceOf(DataError);
     expect(error).toMatchObject({ kind: 'invalid-code' });

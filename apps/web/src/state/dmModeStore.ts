@@ -9,8 +9,8 @@ interface DmModeState {
 
 /** The one global store for DM mode. Persisted in localStorage. DMs start with it on. */
 export const useDmModeStore = create<DmModeState>()(
-  persist(
-    set => ({ dmMode: true, setDmMode: dmMode => set({ dmMode }) }),
-    { name: 'dm-manager:dm-mode', partialize: state => ({ dmMode: state.dmMode }) },
-  ),
+  persist(set => ({ dmMode: true, setDmMode: dmMode => set({ dmMode }) }), {
+    name: 'dm-manager:dm-mode',
+    partialize: state => ({ dmMode: state.dmMode }),
+  }),
 );

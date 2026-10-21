@@ -1,0 +1,60 @@
+.desk {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* a dim stone wall, lit from the top centre; "Reduce texture" leaves only the plain desk colour */
+  background: var(--wall-vignette), var(--texture-grain), var(--texture-brick), var(--desk);
+  color: var(--paper);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 3px solid var(--gold);
+  background: var(--texture-grain), var(--iron);
+  box-shadow: 0 0.25rem 1rem var(--shadow);
+}
+
+.brand {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.brand a {
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  font-family: var(--font-heading);
+}
+
+.actions a {
+  color: var(--gold);
+}
+
+.content {
+  flex: 1;
+}
+
+@media (max-width: 30rem) {
+  .bar {
+    gap: 0.4rem 1rem;
+    padding: 0.6rem 1rem;
+  }
+
+  .actions {
+    gap: 0.4rem 0.9rem;
+    font-size: 0.9rem;
+  }
+}

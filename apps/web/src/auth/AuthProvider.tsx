@@ -28,11 +28,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [queryClient]);
 
-  const value = useMemo(() => ({
-    session,
-    loading,
-    signOut: async () => { await supabase.auth.signOut(); },
-  }), [session, loading]);
+  const value = useMemo(
+    () => ({
+      session,
+      loading,
+      signOut: async () => {
+        await supabase.auth.signOut();
+      },
+    }),
+    [session, loading],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

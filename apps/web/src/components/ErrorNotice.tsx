@@ -7,9 +7,13 @@ export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () =
   const { kind, message } = toDataError(error);
   const canRetry = !!onRetry && (kind === 'network' || kind === 'unknown');
   return (
-    <Paper as="div" role="alert" className={styles.notice}>
+    <Paper as="div" texture="flat" role="alert" className={styles.notice}>
       <p className={styles.message}>{message}</p>
-      {canRetry && <Button variant="ghost" onClick={onRetry}>Try again</Button>}
+      {canRetry && (
+        <Button variant="ghost" onClick={onRetry}>
+          Try again
+        </Button>
+      )}
     </Paper>
   );
 }

@@ -11,7 +11,7 @@
 
 .sectionTitle {
   margin: 0 0 0.75rem;
-  color: var(--gold-soft);
+  color: var(--gold);
   font-size: 1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -48,12 +48,12 @@
 }
 
 .card:focus-visible {
-  outline: 3px solid var(--gold-soft);
+  outline: 3px solid var(--gold);
   outline-offset: 2px;
 }
 
 .name {
-  font-family: Cinzel, serif;
+  font-family: var(--font-heading);
   font-size: 1.1rem;
 }
 

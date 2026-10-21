@@ -9,6 +9,7 @@ import { DataError } from '../data/errors';
 import * as mapsApi from '../data/maps';
 import type { Member } from '../data/members';
 import * as membersApi from '../data/members';
+import { DmModeIndicator } from '../components/DmModeIndicator';
 import { useDmModeStore } from '../state/dmModeStore';
 import { CampaignHubPage } from './CampaignHubPage';
 import { CampaignListPage } from './CampaignListPage';
@@ -20,10 +21,22 @@ vi.mock('../data/campaigns');
 vi.mock('../data/members');
 vi.mock('../data/maps');
 
-const campaign: Campaign = { id: 'c1', name: 'The Sunken Crown', rulesEdition: '2024', nextSessionAt: null, createdAt: '2026-10-18T10:00:00Z' };
+const campaign: Campaign = {
+  id: 'c1',
+  name: 'The Sunken Crown',
+  rulesEdition: '2024',
+  nextSessionAt: null,
+  createdAt: '2026-10-18T10:00:00Z',
+};
 const members: Member[] = [
   { userId: 'u-dm', role: 'dm', joinedAt: '2026-10-18T10:00:00Z', displayName: 'Dungeon Dan', avatarUrl: null },
-  { userId: 'u-pia', role: 'player', joinedAt: '2026-10-18T11:00:00Z', displayName: 'Pia', avatarUrl: 'https://cdn.example/pia.png' },
+  {
+    userId: 'u-pia',
+    role: 'player',
+    joinedAt: '2026-10-18T11:00:00Z',
+    displayName: 'Pia',
+    avatarUrl: 'https://cdn.example/pia.png',
+  },
 ];
 const hiddenMap = { id: 'm2', name: 'The drowned vault', visibleToPlayers: false, createdAt: '' };
 const openMap = { id: 'm1', name: 'Sword Coast', visibleToPlayers: true, createdAt: '' };
@@ -33,6 +46,8 @@ function renderAt(path: string) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
+        {/* the slot from the app header where the DM badge appears */}
+        <DmModeIndicator />
         <Routes>
           <Route path="/campaigns" element={<CampaignListPage />} />
           <Route path="/campaigns/:campaignId/:tab?" element={<CampaignHubPage />} />
@@ -49,7 +64,9 @@ function signInAs(role: 'dm' | 'player') {
   vi.mocked(membersApi.getMyRole).mockResolvedValue(role);
   vi.mocked(membersApi.listMembers).mockResolvedValue(members);
   vi.mocked(campaignsApi.getInviteCode).mockResolvedValue(role === 'dm' ? '7F3A9C21' : null);
-  vi.mocked(mapsApi.listMaps).mockImplementation(async (_id, { includeHidden }) => (includeHidden ? [openMap, hiddenMap] : [openMap]));
+  vi.mocked(mapsApi.listMaps).mockImplementation(async (_id, { includeHidden }) =>
+    includeHidden ? [openMap, hiddenMap] : [openMap],
+  );
 }
 
 beforeEach(() => {
@@ -93,7 +110,9 @@ describe('campaign list', () => {
 
   it('shows a create error in plain words', async () => {
     vi.mocked(campaignsApi.listCampaigns).mockResolvedValue([]);
-    vi.mocked(campaignsApi.createCampaign).mockRejectedValue(new DataError('validation', 'Give your campaign a name of 1 to 120 characters.'));
+    vi.mocked(campaignsApi.createCampaign).mockRejectedValue(
+      new DataError('validation', 'Give your campaign a name of 1 to 120 characters.'),
+    );
     const user = userEvent.setup();
     renderAt('/campaigns');
     await user.type(await screen.findByRole('textbox', { name: 'Campaign name' }), 'x');
@@ -168,6 +187,63 @@ describe('campaign hub as a player (acceptance 2)', () => {
     const pia = screen.getByText('Pia').closest('li') as HTMLElement;
     expect(within(dan).getByText('DM')).toBeInTheDocument();
     expect(within(pia).getByText('Player')).toBeInTheDocument();
+  });
+
+  it('cannot remove anyone', async () => {
+    signInAs('player');
+    renderAt('/campaigns/c1/people');
+    await screen.findByText('Dungeon Dan');
+    expect(screen.queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('removing members (CAM-2)', () => {
+  it('a DM removes a player after confirming, and the list refreshes', async () => {
+    signInAs('dm');
+    vi.mocked(membersApi.removeMember).mockResolvedValue();
+    const user = userEvent.setup();
+    renderAt('/campaigns/c1/people');
+
+    const dan = (await screen.findByText('Dungeon Dan')).closest('li') as HTMLElement;
+    expect(within(dan).queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Remove Pia' }));
+    expect(membersApi.removeMember).not.toHaveBeenCalled();
+    expect(screen.getByText('Remove Pia?')).toBeInTheDocument();
+
+    vi.mocked(membersApi.listMembers).mockResolvedValue([members[0]]);
+    await user.click(screen.getByRole('button', { name: 'Yes, remove' }));
+    expect(membersApi.removeMember).toHaveBeenCalledWith('c1', 'u-pia');
+    await waitFor(() => expect(screen.queryByText('Pia')).not.toBeInTheDocument());
+  });
+
+  it('Keep cancels without removing', async () => {
+    signInAs('dm');
+    const user = userEvent.setup();
+    renderAt('/campaigns/c1/people');
+    await user.click(await screen.findByRole('button', { name: 'Remove Pia' }));
+    await user.click(screen.getByRole('button', { name: 'Keep' }));
+    expect(membersApi.removeMember).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Remove Pia' })).toBeInTheDocument();
+  });
+
+  it('shows a failure in plain words', async () => {
+    signInAs('dm');
+    vi.mocked(membersApi.removeMember).mockRejectedValue(new DataError('network'));
+    const user = userEvent.setup();
+    renderAt('/campaigns/c1/people');
+    await user.click(await screen.findByRole('button', { name: 'Remove Pia' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, remove' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the server');
+    expect(screen.getByText('Pia')).toBeInTheDocument();
+  });
+
+  it('is hidden while the DM previews the player view', async () => {
+    signInAs('dm');
+    useDmModeStore.setState({ dmMode: false });
+    renderAt('/campaigns/c1/people');
+    await screen.findByText('Pia');
+    expect(screen.queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument();
   });
 });
 

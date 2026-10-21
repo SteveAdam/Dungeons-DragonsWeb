@@ -5,17 +5,23 @@
   "packageManager": "pnpm@12.6.0",
   "scripts": {
     "dev": "pnpm -C apps/web dev",
-    "build": "pnpm -C apps/web build",
-    "lint": "pnpm -C apps/web lint",
-    "test": "pnpm -C apps/web test",
-    "typecheck": "pnpm -C apps/web typecheck",
+    "build": "pnpm -r --if-present build",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
-    "db:test:mutations": "node scripts/mutation-check.mjs"
+    "db:test:mutations": "node scripts/mutation-check.mjs",
+    "db:push": "supabase db push",
+    "db:types": "supabase gen types typescript --local --schema public > apps/web/src/types/database.ts",
+    "check:tokens": "node scripts/check-tokens.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "prettier": "^3.9.10",
     "supabase": "^2.0.0"
   }
 }
