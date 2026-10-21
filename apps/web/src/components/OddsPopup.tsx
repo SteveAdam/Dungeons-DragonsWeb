@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { successChance } from '@dnd-manager/rules-engine';
+import { resolveRollMode, successChance } from '@dnd-manager/rules-engine';
 
 type OddsPopupProps = {
   isOpen: boolean;
@@ -39,7 +39,11 @@ export function OddsPopup({
     return null;
   }
 
-  const chance = successChance(dc, bonus, advantage, disadvantage);
+  const { mode } = resolveRollMode({
+    advantage: advantage ? ['Advantage'] : [],
+    disadvantage: disadvantage ? ['Disadvantage'] : [],
+  });
+  const chance = successChance({ kind: 'check', bonus, target: dc, mode }).final;
   const chancePercent = `${(chance * 100).toFixed(1)}%`;
 
   return (

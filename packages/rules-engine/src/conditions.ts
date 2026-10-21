@@ -1,0 +1,261 @@
+// P1-4: conditions and exhaustion, following the Rules Glossary of the SRD 5.2.1.
+//
+// This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast
+// LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons
+// Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+//
+// The rules are encoded from the SRD; every description and reason string below is our own wording.
+// Advantage and disadvantage are only collected here: combining them is resolveRollMode's job (P1-1).
+import { resolveRollMode, type Ability, type ResolvedRollMode } from './core';
+
+export const CONDITIONS = [
+  'blinded',
+  'charmed',
+  'deafened',
+  'frightened',
+  'grappled',
+  'incapacitated',
+  'invisible',
+  'paralyzed',
+  'petrified',
+  'poisoned',
+  'prone',
+  'restrained',
+  'stunned',
+  'unconscious',
+] as const;
+export type Condition = (typeof CONDITIONS)[number];
+
+export interface CharacterState {
+  conditions: readonly Condition[];
+  /** 0 to 6. At 6 the character dies. */
+  exhaustion: number;
+}
+
+interface ContextBase {
+  kind: 'attack' | 'check' | 'save';
+  /** The ability of a check or save (Strength and Dexterity saves can fail automatically). */
+  ability?: Ability;
+}
+
+/** The affected creature is the one rolling. */
+export interface SelfContext extends ContextBase {
+  role: 'self';
+  /** A Dexterity check to roll Initiative: Incapacitated gives disadvantage, Invisible advantage. */
+  initiative?: boolean;
+  /** The check needs sight (Blinded fails it) or hearing (Deafened fails it). */
+  requiresSight?: boolean;
+  requiresHearing?: boolean;
+  /** Frightened applies only while the source of fear is in line of sight. Default true. */
+  fearSourceInSight?: boolean;
+  /** Grappled gives disadvantage on attacks against anyone but the grappler. Unknown target: a note only. */
+  targetIsGrappler?: boolean;
+  /** The target can see invisible creatures, so being Invisible gives no advantage against it. */
+  targetCanSeeYou?: boolean;
+}
+
+/** Someone is attacking the affected creature. */
+export interface AgainstContext extends ContextBase {
+  role: 'against';
+  attackerWithin5ft: boolean;
+  /** The attacker can see invisible creatures, so the target's Invisible gives no protection. */
+  attackerCanSeeYou?: boolean;
+}
+
+export type ConditionContext = SelfContext | AgainstContext;
+
+export interface ConditionEffects {
+  /** Reason strings, ready for resolveRollMode. */
+  advantage: string[];
+  disadvantage: string[];
+  autoFail: boolean;
+  autoFailReason?: string;
+  /** A hit on this creature is a critical hit (attacks within 5 feet of a Paralyzed or Unconscious creature). */
+  critOnHit: boolean;
+  /** Added to the d20 roll: -2 per Exhaustion level, on every D20 Test. */
+  d20Penalty: number;
+  /** 0 when a condition sets Speed to 0, otherwise 1. Multiply the speed by this. */
+  speedFactor: number;
+  /** Feet of speed lost to Exhaustion (5 per level). */
+  speedPenaltyFt: number;
+  /** No actions, Bonus Actions or Reactions (Incapacitated, or dead). */
+  cannotAct: boolean;
+  notes: string[];
+}
+
+/** One plain line per condition for players. Our own wording, not the SRD text. */
+export const CONDITION_INFO: Record<Condition, string> = {
+  blinded: 'You cannot see. Your attacks are at a disadvantage, and attacks against you are easier.',
+  charmed: 'You will not harm whoever charmed you, and they find it easier to sway you.',
+  deafened: 'You cannot hear, and anything that depends on hearing fails.',
+  frightened: 'While you can see what scares you, your attacks and checks suffer, and you will not move closer to it.',
+  grappled: 'You are held in place, and attacking anyone but your captor is harder.',
+  incapacitated: 'You can take no actions, bonus actions or reactions, cannot speak, and lose concentration.',
+  invisible: 'You cannot be seen: your attacks are easier and attacks against you harder, unless they can see you.',
+  paralyzed: 'You cannot move or act, you fail Strength and Dexterity saves, and close hits are critical.',
+  petrified: 'You are turned to stone: helpless, resistant to all damage, and immune to poison.',
+  poisoned: 'You feel sick: your attacks and ability checks are at a disadvantage.',
+  prone: 'You are on the ground: your attacks suffer, close attackers have the edge, distant ones do not.',
+  restrained: 'You are bound in place: your attacks and Dexterity saves suffer, and attacks against you are easier.',
+  stunned: 'You are reeling and cannot act, you fail Strength and Dexterity saves, and attacks against you are easier.',
+  unconscious: 'You are out cold and prone: you cannot act, and close hits against you are critical.',
+};
+
+const LABEL: Record<Condition, string> = {
+  blinded: 'Blinded',
+  charmed: 'Charmed',
+  deafened: 'Deafened',
+  frightened: 'Frightened',
+  grappled: 'Grappled',
+  incapacitated: 'Incapacitated',
+  invisible: 'Invisible',
+  paralyzed: 'Paralyzed',
+  petrified: 'Petrified',
+  poisoned: 'Poisoned',
+  prone: 'Prone',
+  restrained: 'Restrained',
+  stunned: 'Stunned',
+  unconscious: 'Unconscious',
+};
+
+/** Conditions that bring others with them (SRD: Paralyzed, Petrified, Stunned and Unconscious include Incapacitated). */
+function expand(conditions: readonly Condition[]): Set<Condition> {
+  const all = new Set(conditions);
+  for (const c of ['paralyzed', 'petrified', 'stunned', 'unconscious'] as const) {
+    if (all.has(c)) all.add('incapacitated');
+  }
+  if (all.has('unconscious')) all.add('prone');
+  // Petrified gives immunity to the Poisoned condition
+  if (all.has('petrified')) all.delete('poisoned');
+  return all;
+}
+
+const SPEED_ZERO: readonly Condition[] = ['grappled', 'paralyzed', 'petrified', 'restrained', 'unconscious'];
+const FAILS_STR_DEX_SAVES: readonly Condition[] = ['paralyzed', 'petrified', 'stunned', 'unconscious'];
+const ATTACKED_WITH_ADVANTAGE: readonly Condition[] = [
+  'blinded',
+  'paralyzed',
+  'petrified',
+  'restrained',
+  'stunned',
+  'unconscious',
+];
+
+/** What a creature's conditions and exhaustion do to one roll, and to its speed and actions. */
+export function conditionEffects(state: CharacterState, context: ConditionContext): ConditionEffects {
+  if (!Number.isInteger(state.exhaustion) || state.exhaustion < 0 || state.exhaustion > 6) {
+    throw new RangeError(`Exhaustion must be a whole number from 0 to 6, got ${state.exhaustion}`);
+  }
+  const has = expand(state.conditions);
+  const out: ConditionEffects = {
+    advantage: [],
+    disadvantage: [],
+    autoFail: false,
+    critOnHit: false,
+    d20Penalty: 0,
+    speedFactor: SPEED_ZERO.some(c => has.has(c)) ? 0 : 1,
+    speedPenaltyFt: 5 * state.exhaustion,
+    cannotAct: has.has('incapacitated'),
+    notes: [],
+  };
+  const fail = (reason: string) => {
+    if (!out.autoFail) {
+      out.autoFail = true;
+      out.autoFailReason = reason;
+    }
+  };
+
+  if (context.role === 'self') {
+    const { kind } = context;
+    // the creature is rolling: its exhaustion counts on every D20 Test
+    out.d20Penalty = -2 * state.exhaustion;
+
+    if (kind === 'attack') {
+      if (has.has('blinded')) out.disadvantage.push('Blinded: disadvantage on attack rolls');
+      if (has.has('frightened') && context.fearSourceInSight !== false) {
+        out.disadvantage.push('Frightened: disadvantage on attack rolls while the source of fear is in sight');
+      }
+      if (has.has('poisoned')) out.disadvantage.push('Poisoned: disadvantage on attack rolls');
+      if (has.has('prone')) out.disadvantage.push('Prone: disadvantage on attack rolls');
+      if (has.has('restrained')) out.disadvantage.push('Restrained: disadvantage on attack rolls');
+      if (has.has('grappled')) {
+        if (context.targetIsGrappler === false) {
+          out.disadvantage.push('Grappled: disadvantage on attacks against anyone but the grappler');
+        } else if (context.targetIsGrappler === undefined) {
+          out.notes.push('Grappled: attacks against anyone but the grappler have disadvantage');
+        }
+      }
+      if (has.has('invisible') && !context.targetCanSeeYou) {
+        out.advantage.push('Invisible: advantage on attack rolls');
+      }
+    }
+
+    if (kind === 'check') {
+      if (has.has('frightened') && context.fearSourceInSight !== false) {
+        out.disadvantage.push('Frightened: disadvantage on ability checks while the source of fear is in sight');
+      }
+      if (has.has('poisoned')) out.disadvantage.push('Poisoned: disadvantage on ability checks');
+      if (context.initiative && has.has('incapacitated')) {
+        out.disadvantage.push('Incapacitated: disadvantage on Initiative');
+      }
+      if (context.initiative && has.has('invisible')) out.advantage.push('Invisible: advantage on Initiative');
+      if (context.requiresSight && has.has('blinded')) fail('Blinded: a check that needs sight fails');
+      if (context.requiresHearing && has.has('deafened')) fail('Deafened: a check that needs hearing fails');
+    }
+
+    if (kind === 'save') {
+      const strOrDex = context.ability === 'str' || context.ability === 'dex';
+      const failing = FAILS_STR_DEX_SAVES.find(c => has.has(c));
+      if (strOrDex && failing) fail(`${LABEL[failing]}: Strength and Dexterity saving throws fail automatically`);
+      if (context.ability === 'dex' && has.has('restrained')) {
+        out.disadvantage.push('Restrained: disadvantage on Dexterity saving throws');
+      }
+    }
+  } else if (context.kind === 'attack') {
+    // someone attacks the affected creature
+    for (const c of ATTACKED_WITH_ADVANTAGE) {
+      if (has.has(c)) out.advantage.push(`${LABEL[c]}: attacks against it have advantage`);
+    }
+    if (has.has('prone')) {
+      if (context.attackerWithin5ft) out.advantage.push('Prone: advantage for an attacker within 5 feet');
+      else out.disadvantage.push('Prone: disadvantage for an attacker more than 5 feet away');
+    }
+    if (has.has('invisible') && !context.attackerCanSeeYou) {
+      out.disadvantage.push('Invisible: attacks against it have disadvantage');
+    }
+    if (context.attackerWithin5ft && (has.has('paralyzed') || has.has('unconscious'))) {
+      out.critOnHit = true;
+    }
+  }
+
+  // notes for what the d20 maths does not cover
+  if (has.has('charmed')) out.notes.push('Charmed: cannot attack the charmer, who has advantage on social checks');
+  if (has.has('deafened') && !out.autoFail) out.notes.push('Deafened: checks that need hearing fail');
+  if (has.has('blinded') && !out.autoFail) out.notes.push('Blinded: checks that need sight fail');
+  if (has.has('incapacitated'))
+    out.notes.push('Incapacitated: no actions, bonus actions or reactions; concentration ends');
+  if (has.has('prone') && out.speedFactor > 0) out.notes.push('Prone: crawl, or spend half your speed to stand up');
+  if (has.has('petrified')) out.notes.push('Petrified: resistance to all damage, immune to poison');
+  if (state.exhaustion === 6) {
+    out.notes.push('dead');
+    out.cannotAct = true;
+  }
+  return out;
+}
+
+/** The final roll mode: conditions plus any other sources (spells, help, high ground), through resolveRollMode. */
+export function combineWithEffects(
+  result: Pick<ConditionEffects, 'advantage' | 'disadvantage'>,
+  extraAdvantage: readonly string[] = [],
+  extraDisadvantage: readonly string[] = [],
+): ResolvedRollMode {
+  return resolveRollMode({
+    advantage: [...result.advantage, ...extraAdvantage],
+    disadvantage: [...result.disadvantage, ...extraDisadvantage],
+  });
+}
+
+/** Exhaustion after a Long Rest: one level less, never below 0. */
+export function exhaustionAfterLongRest(level: number): number {
+  return Math.max(0, level - 1);
+}

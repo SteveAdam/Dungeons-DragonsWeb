@@ -2,7 +2,15 @@
 // without knowing anything about Supabase.
 
 export type DataErrorKind =
-  'invalid-code' | 'network' | 'not-found' | 'forbidden' | 'validation' | 'signed-out' | 'schema-outdated' | 'unknown';
+  | 'invalid-code'
+  | 'network'
+  | 'not-found'
+  | 'forbidden'
+  | 'validation'
+  | 'signed-out'
+  | 'schema-outdated'
+  | 'rate-limited'
+  | 'unknown';
 
 const MESSAGES: Record<DataErrorKind, string> = {
   'invalid-code': 'That invite code does not match any campaign. Check it with your DM and try again.',
@@ -13,6 +21,7 @@ const MESSAGES: Record<DataErrorKind, string> = {
   'signed-out': 'Your session has ended. Please sign in again.',
   'schema-outdated':
     'The database is missing part of this feature. Its newest migration has not been applied yet (pnpm db:push).',
+  'rate-limited': 'Too many rolls in the last minute. Wait a moment and roll again.',
   unknown: 'Something went wrong. Please try again.',
 };
 
@@ -35,6 +44,7 @@ export function toDataError(error: unknown): DataError {
 
   if (message === 'Invalid invite code') return new DataError('invalid-code');
   if (message === 'Sign in first' || e.status === 401) return new DataError('signed-out');
+  if (e.code === 'PT429' || e.status === 429) return new DataError('rate-limited');
   if (e.code === '42501' || e.status === 403) return new DataError('forbidden');
   if (e.code === 'PGRST116') return new DataError('not-found'); // .single() matched no rows
   if (e.code === '23514' || e.code === '22001') return new DataError('validation');

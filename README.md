@@ -13,9 +13,9 @@ apps/web/                 React + TypeScript + Vite app
   src/lib/storage         the only code that touches map images (P0-9; enforced by ESLint)
   src/hooks               TanStack Query hooks over src/data
   src/types/database.ts   generated from the schema (pnpm db:types)
-packages/rules-engine/    D&D 5e rules: modifiers, proficiency, odds, derived stats
+packages/rules-engine/    D&D 2024 rules (P1): core odds, bonus dice, effects, item requirements, terrain
 supabase/
-  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions
+  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls
   tests/database/         pgTAP suite for every policy
 scripts/                  mutation check (RLS suite) and token check (CSS)
 docs/                     design notes, including the P0-5 schema review
@@ -42,8 +42,8 @@ pnpm dev                                # http://localhost:5173
 | `pnpm check:tokens`                          | Fails if a CSS file other than `tokens.css` contains a hex colour  |
 | `pnpm db:start` / `db:stop`                  | Starts or stops the local Supabase stack                           |
 | `pnpm db:reset`                              | Rebuilds the local database from `migrations/` and `seed.sql`      |
-| `pnpm db:test`                               | pgTAP row level security suite (113 assertions)                    |
-| `pnpm db:test:mutations`                     | Removes each protection in turn; all 19 must be caught             |
+| `pnpm db:test`                               | pgTAP row level security suite (150 assertions)                    |
+| `pnpm db:test:mutations`                     | Removes each protection in turn; all 22 must be caught             |
 | `pnpm db:types`                              | Regenerates `apps/web/src/types/database.ts` from the local schema |
 | `pnpm db:push`                               | Applies new migrations to the linked hosted project                |
 
@@ -158,3 +158,22 @@ Cloudflare R2) means writing one new `MapImageStore` implementation.
 
 Licences: `react-leaflet` uses the Hippocratic License 2.1 (an ethical-use licence, not OSI open source); Leaflet is
 BSD-2-Clause; icons are lucide (ISC).
+
+## Dice and the roll log (P1-5)
+
+Every d20 is rolled on the server by `roll_d20` (`0004_rolls.sql`), with pgcrypto's `gen_random_bytes` and rejection
+sampling, never `random()`. In Phase 1 the bonus and target come from the client and are stored with the roll, so
+the DM can see them. The log is append-only: there are no write policies, and a trigger refuses any update, delete
+or truncate, even by the database owner (deleting a whole campaign still removes its rolls). Hidden rolls are for
+the DM only, each person can roll at most 30 times a minute (the API answers 429), and new rolls arrive live
+through Supabase realtime. The client side is `apps/web/src/data/rolls.ts` (`rollD20`, `listRecentRolls`,
+`subscribeToRolls`).
+
+## Rules content licence
+
+This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,
+available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0
+International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+The conditions in `packages/rules-engine/src/conditions.ts` follow the SRD 5.2.1 Rules Glossary; their
+descriptions are our own wording.

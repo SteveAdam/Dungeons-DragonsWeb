@@ -142,6 +142,31 @@ create policy "dm writes regions" on regions for all using (is_member(map_campai
     fails: ['T18'],
   },
   {
+    name: 'hidden-roll filter removed',
+    why: "players would see the DM's secret rolls",
+    sql: `drop policy "read rolls" on rolls;
+create policy "read rolls" on rolls for select using (is_dm(campaign_id) or is_member(campaign_id));`,
+    fails: ['T21'],
+  },
+  {
+    name: 'append-only trigger removed from the roll log',
+    why: 'rolls could be edited or deleted after the fact',
+    sql: `drop trigger rolls_append_only_trg on rolls;`,
+    fails: ['T20'],
+  },
+  {
+    name: 'checks succeed automatically on a natural 20',
+    why: 'the 2024 rules give automatic success only to attack rolls',
+    sql: `create or replace function roll_outcome(p_kind text, p_mode text, p_dice int[], p_bonus int, p_target int,
+  out kept int, out total int, out success boolean, out crit boolean, out fumble boolean) language plpgsql immutable as $f$
+begin
+  kept := case p_mode when 'advantage' then greatest(p_dice[1], p_dice[2]) when 'disadvantage' then least(p_dice[1], p_dice[2]) else p_dice[1] end;
+  total := kept + p_bonus; crit := p_kind = 'attack' and kept = 20; fumble := p_kind = 'attack' and kept = 1;
+  success := case when p_target is null then null when kept = 20 then true when kept = 1 then false else total >= p_target end;
+end $f$;`,
+    fails: ['T22'],
+  },
+  {
     name: 'helper function opened to signed-out visitors',
     why: 'visitors could call is_dm over the REST API',
     sql: `grant execute on function is_dm(uuid) to anon;`,

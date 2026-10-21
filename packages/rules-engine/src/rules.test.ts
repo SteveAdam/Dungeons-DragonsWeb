@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { abilityModifier, derive, proficiencyBonus, rulesEngineInfo, successChance, type CharacterLike } from './index';
+import pkg from '../package.json' with { type: 'json' };
+import { derive, rulesEngineInfo, type CharacterLike } from './index';
 
-// A level 5 fighter (the same one the web app's demo sheet uses).
+// The prototype character behind the demo sheet (replaced by computeSheet in P1-7).
 const brannoc: CharacterLike = {
   name: 'Brannoc',
   className: 'Fighter',
@@ -13,34 +14,22 @@ const brannoc: CharacterLike = {
   hp: 34,
   tempHp: 0,
   shield: 2,
-  equipment: ['Longsword', 'Shield', 'Shortbow', 'Explorer’s pack'],
-  activeEffects: [],
-  weapon: 'Longsword',
-  weaponDamage: '1d8 + 4',
 };
 
-describe('rules', () => {
+describe('package', () => {
   it('describes itself (P0-1 placeholder)', () => {
     expect(rulesEngineInfo()).toEqual({ name: '@dnd-manager/rules-engine', editions: ['2014', '2024'] });
   });
 
-  it('calculates modifiers and proficiency', () => {
-    expect(abilityModifier(16)).toBe(3);
-    expect(abilityModifier(14)).toBe(2);
-    expect(proficiencyBonus(5)).toBe(3);
-  });
-
-  it('calculates success chance for normal and advantage conditions', () => {
-    expect(successChance(15, 6)).toBeCloseTo(0.6, 3);
-    expect(successChance(15, 6, true)).toBeGreaterThan(successChance(15, 6));
-    expect(successChance(15, 6, false, true)).toBeLessThan(successChance(15, 6));
-  });
-
-  it('derives the sample character from raw scores', () => {
+  it('still derives the demo sheet character (legacy prototype)', () => {
     const result = derive(brannoc);
     expect(result.proficiencyBonus).toBe(3);
     expect(result.abilityModifiers.str).toBe(4);
     expect(result.armorClass).toBe(14 + 2 + 2);
     expect(result.level).toBe(5);
+  });
+
+  it('has no runtime dependencies (P1-1 acceptance 2)', () => {
+    expect((pkg as { dependencies?: object }).dependencies ?? {}).toEqual({});
   });
 });

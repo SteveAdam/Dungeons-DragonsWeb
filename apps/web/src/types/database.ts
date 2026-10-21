@@ -243,6 +243,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"rolls": {
+                  Row: {
+                    "bonus": number,"campaign_id": string,"character_id": string | null,"created_at": string,"crit": boolean,"dice": (number)[],"fumble": boolean,"hidden": boolean,"id": string,"kept": number,"kind": string,"label": string,"mode": string,"rolled_by": string,"success": boolean | null,"target": number | null,"total": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bonus": number,"campaign_id": string,"character_id"?: string | null,"created_at"?: string,"crit"?: boolean,"dice": (number)[],"fumble"?: boolean,"hidden"?: boolean,"id"?: string,"kept": number,"kind": string,"label": string,"mode": string,"rolled_by"?: string,"success"?: boolean | null,"target"?: number | null,"total": number
+                  }
+                  Update: {
+                    "bonus"?: number,"campaign_id"?: string,"character_id"?: string | null,"created_at"?: string,"crit"?: boolean,"dice"?: (number)[],"fumble"?: boolean,"hidden"?: boolean,"id"?: string,"kept"?: number,"kind"?: string,"label"?: string,"mode"?: string,"rolled_by"?: string,"success"?: boolean | null,"target"?: number | null,"total"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "rolls_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -251,6 +271,9 @@ isOneToOne: false
           Functions: {
             "can_read_map_image":
 { Args: { "object_name": string }; Returns: boolean
+                           },
+"d20":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "folder_campaign":
 { Args: { "object_name": string }; Returns: string
@@ -275,6 +298,35 @@ isOneToOne: false
                            },
 "pin_is_revealed":
 { Args: { "p": string }; Returns: boolean
+                           },
+"roll_d20":
+{ Args: { "p_bonus": number,"p_campaign": string,"p_character": string,"p_hidden"?: boolean,"p_kind": string,"p_label": string,"p_mode": string,"p_target": number }; Returns: {
+              "bonus": number,
+"campaign_id": string,
+"character_id": string | null,
+"created_at": string,
+"crit": boolean,
+"dice": (number)[],
+"fumble": boolean,
+"hidden": boolean,
+"id": string,
+"kept": number,
+"kind": string,
+"label": string,
+"mode": string,
+"rolled_by": string,
+"success": boolean | null,
+"target": number | null,
+"total": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "rolls"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"roll_outcome":
+{ Args: { "p_bonus": number,"p_dice": (number)[],"p_kind": string,"p_mode": string,"p_target": number }; Returns: Record<string, unknown>
                            },
 "shares_campaign":
 { Args: { "other": string }; Returns: boolean

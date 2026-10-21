@@ -1,8 +1,11 @@
-import { rulesEngineInfo } from '@dnd-manager/rules-engine';
+import { formatPercent, rulesEngineInfo, successChance } from '@dnd-manager/rules-engine';
 import { DoorOpen, Swords } from 'lucide-react';
 import { useAuth } from '../auth/authContext';
 import { IconLink, Paper } from '../components/ui';
 import styles from './HomePage.module.css';
+
+// P1-1: proves the app uses the rules engine's odds (expected: 50%)
+const sampleOdds = successChance({ kind: 'check', bonus: 3, target: 14, mode: 'normal' });
 
 export function HomePage() {
   const { session } = useAuth();
@@ -27,6 +30,9 @@ export function HomePage() {
           )}
         </p>
         <p className={styles.small}>{`Rules: D&D 5e, ${rules.editions.join(' and ')} editions.`}</p>
+        <p
+          className={styles.small}
+        >{`Odds check: a +3 check against DC 14 succeeds ${formatPercent(sampleOdds.final)} of the time.`}</p>
       </Paper>
     </main>
   );

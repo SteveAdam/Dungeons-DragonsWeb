@@ -1,0 +1,96 @@
+// P1-9: bonus and penalty dice (Bless +1d4, Bane -1d4, Guidance...) in the odds, calculated exactly by
+// enumerating every total the dice can show. No sampling, no approximation.
+import { applyRollMode, singleDieChance, successChance, type SuccessChanceInput } from './core';
+
+export interface BonusDie {
+  /** How many dice, e.g. 2 for 2d4. */
+  count: number;
+  sides: number;
+  /** +1 adds the dice to the roll (Bless), -1 subtracts them (Bane). */
+  sign: 1 | -1;
+}
+
+/** A distribution as an array of probabilities, where index i stands for the total `min + i`. */
+interface Distribution {
+  min: number;
+  p: number[];
+}
+
+// Distributions are pure functions of the dice, and the same few (1d4, 1d6, 2d4...) come up again and again.
+const cache = new Map<string, Distribution>();
+
+function distribution(dice: readonly BonusDie[]): Distribution {
+  const key = dice.map(d => `${d.sign * d.count}d${d.sides}`).join(',');
+  const cached = cache.get(key);
+  if (cached) return cached;
+
+  let dist: Distribution = { min: 0, p: [1] };
+  for (const { count, sides, sign } of dice) {
+    if (!Number.isInteger(count) || count < 0 || !Number.isInteger(sides) || sides < 1) {
+      throw new RangeError(`A bonus die needs a whole count of 0 or more and at least 1 side, got ${count}d${sides}`);
+    }
+    for (let i = 0; i < count; i++) {
+      // convolve with one more die: every face is equally likely
+      const p = new Array<number>(dist.p.length + sides - 1).fill(0);
+      for (let j = 0; j < dist.p.length; j++) {
+        const share = dist.p[j] / sides;
+        for (let face = 1; face <= sides; face++) {
+          // a penalty die runs from -sides to -1: index 0 is the lowest total either way
+          p[j + (sign === 1 ? face - 1 : sides - face)] += share;
+        }
+      }
+      dist = { min: dist.min + (sign === 1 ? 1 : -sides), p };
+    }
+  }
+  if (cache.size > 500) cache.clear();
+  cache.set(key, dist);
+  return dist;
+}
+
+/** Probability of each total of the dice, as a map from total to probability. The probabilities sum to 1. */
+export function bonusDiceDistribution(dice: readonly BonusDie[]): Map<number, number> {
+  const { min, p } = distribution(dice);
+  return new Map(p.map((prob, i) => [min + i, prob]));
+}
+
+export interface SuccessChanceWithDiceInput extends SuccessChanceInput {
+  bonusDice: readonly BonusDie[];
+}
+
+export interface SuccessChanceWithDice {
+  /** The chance with the bonus dice and the roll mode. */
+  final: number;
+  /** The same roll without the bonus dice (successChance's final). */
+  withoutDice: number;
+  /** final - withoutDice: what the dice add (negative for penalty dice). Times 100 is "points". */
+  delta: number;
+  /** The average total of the bonus dice, e.g. 2.5 for +1d4. */
+  expectedBonus: number;
+}
+
+/**
+ * The exact chance of success with bonus or penalty dice. For each total e the dice can show, with probability
+ * P(e), the single-d20 chance is worked out with bonus + e (attacks stay within 5% to 95% for every e, since a
+ * natural 20 always hits and a natural 1 always misses), the roll mode is applied, and the results are weighted
+ * by P(e).
+ */
+export function successChanceWithDice({
+  kind,
+  bonus,
+  target,
+  mode,
+  bonusDice,
+}: SuccessChanceWithDiceInput): SuccessChanceWithDice {
+  const withoutDice = successChance({ kind, bonus, target, mode }).final;
+  let final = 0;
+  let expectedBonus = 0;
+  const { min, p } = distribution(bonusDice);
+  for (let i = 0; i < p.length; i++) {
+    const e = min + i;
+    final += p[i] * applyRollMode(singleDieChance(kind, bonus + e, target), mode);
+    expectedBonus += p[i] * e;
+  }
+  // floating-point sums can stray a hair outside [0, 1]
+  final = Math.min(Math.max(final, 0), 1);
+  return { final, withoutDice, delta: final - withoutDice, expectedBonus };
+}

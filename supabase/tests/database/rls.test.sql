@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T18) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T24) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(113);
+select plan(150);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -355,6 +355,85 @@ select throws_ok($$ insert into regions (map_id, name, cx, cy, radius) values (t
 select throws_ok($$ insert into regions (map_id, name, cx, cy, radius, terrain) values (tests.u('map:visible'), 'Odd', 1, 1, 5, 'lava_lamp') $$, '23514', null, 'T18: terrain must be a known kind');
 select throws_ok($$ insert into regions (map_id, name, cx, cy, radius, weather) values (tests.u('map:visible'), 'Odd', 1, 1, 5, 'frogs') $$, '23514', null, 'T18: weather must be a known kind');
 reset role;
+
+-- T19 to T24: server dice and the append-only roll log (P1-5, 0004_rolls.sql) ----------
+
+-- T19: members roll, strangers cannot, and nobody rolls for someone else's character
+select tests.act_as('player');
+select lives_ok($$ select roll_d20(tests.u('campaign'), null, 'check', 'Perception', 3, 14, 'normal') $$, 'T19: a member can roll');
+select is((select count(*)::int from rolls where label = 'Perception'), 1, 'T19: and sees the roll in the log');
+select throws_ok($$ select roll_d20(tests.u('campaign'), tests.u('someone-elses-character'), 'check', 'Stealth', 2, 12, 'normal') $$, '42501', 'You can only roll for your own character', 'T19: a player cannot roll for another character');
+reset role;
+select tests.act_as('outsider');
+select throws_ok($$ select roll_d20(tests.u('campaign'), null, 'check', 'Perception', 3, 14, 'normal') $$, '42501', 'Only members of this campaign can roll here', 'T19: a non-member cannot roll');
+select is((select count(*)::int from rolls), 0, 'T19: a non-member reads no rolls');
+reset role;
+
+-- T20: the log cannot be written directly, edited or deleted, by anyone
+select tests.act_as('player');
+select throws_ok($$ insert into rolls (campaign_id, kind, label, bonus, mode, dice, kept, total) values (tests.u('campaign'), 'check', 'Forged', 0, 'normal', '{20}', 20, 20) $$, '42501', null, 'T20: a player cannot insert a roll directly');
+select throws_ok($$ update rolls set total = 99 $$, '42501', null, 'T20: a player cannot update a roll');
+select throws_ok($$ delete from rolls $$, '42501', null, 'T20: a player cannot delete a roll');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ update rolls set total = 99 $$, '42501', null, 'T20: a DM cannot update a roll');
+select throws_ok($$ delete from rolls $$, '42501', null, 'T20: a DM cannot delete a roll');
+reset role;
+-- as the database owner, who bypasses row level security and grants: only the trigger stands in the way
+select throws_ok($$ update rolls set total = 99 $$, 'P0001', 'The roll log is append-only: rolls cannot be changed or deleted', 'T20: even the database owner cannot update a roll');
+select throws_ok($$ delete from rolls $$, 'P0001', 'The roll log is append-only: rolls cannot be changed or deleted', 'T20: even the database owner cannot delete a roll');
+select throws_ok($$ truncate rolls $$, 'P0001', 'The roll log is append-only: rolls cannot be changed or deleted', 'T20: even the database owner cannot truncate the log');
+insert into rolls (campaign_id, rolled_by, kind, label, bonus, mode, dice, kept, total)
+values (tests.u('campaign2'), tests.u('user:outsider'), 'check', 'Doomed', 0, 'normal', '{7}', 7, 7);
+select lives_ok($$ delete from campaigns where id = tests.u('campaign2') $$, 'T20: deleting a whole campaign still removes its rolls');
+
+-- T21: hidden rolls are for the DM alone
+select tests.act_as('player');
+select throws_ok($$ select roll_d20(tests.u('campaign'), null, 'check', 'Sneaky', 3, 14, 'normal', true) $$, '42501', 'Only the DM can make a hidden roll', 'T21: a player cannot make a hidden roll');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ select roll_d20(tests.u('campaign'), null, 'save', 'Secret save', 2, 15, 'normal', true) $$, 'T21: a DM can make a hidden roll');
+select is((select count(*)::int from rolls where hidden), 1, 'T21: the DM sees the hidden roll');
+reset role;
+select tests.act_as('player');
+select is((select count(*)::int from rolls where hidden), 0, 'T21: players do not see hidden rolls');
+select is((select count(*)::int from rolls), 1, 'T21: but still see the open ones');
+reset role;
+
+-- T22: the dice follow the roll mode, and the outcome follows the rules
+select tests.act_as('dm');
+select ok((select cardinality(dice) = 1 and kept = dice[1] from roll_d20(tests.u('campaign'), null, 'check', 'Normal', 0, null, 'normal')), 'T22: a normal roll has one die');
+select ok((select cardinality(dice) = 2 and kept = greatest(dice[1], dice[2]) from roll_d20(tests.u('campaign'), null, 'check', 'Advantage', 0, null, 'advantage')), 'T22: advantage keeps the higher of two dice');
+select ok((select cardinality(dice) = 2 and kept = least(dice[1], dice[2]) from roll_d20(tests.u('campaign'), null, 'check', 'Disadvantage', 0, null, 'disadvantage')), 'T22: disadvantage keeps the lower of two dice');
+select ok((select total = kept + 4 from roll_d20(tests.u('campaign'), null, 'check', 'Total', 4, null, 'normal')), 'T22: total is the kept die plus the bonus');
+select is((select kept from roll_outcome('check', 'advantage', '{5,17}', 0, 10)), 17, 'T22: advantage of 5 and 17 keeps 17');
+select is((select kept from roll_outcome('check', 'disadvantage', '{5,17}', 0, 10)), 5, 'T22: disadvantage of 5 and 17 keeps 5');
+select is((select (success, crit, fumble)::text from roll_outcome('attack', 'normal', '{20}', 0, 30)), '(t,t,f)', 'T22: an attack with a natural 20 is a critical hit, whatever the AC');
+select is((select (success, crit, fumble)::text from roll_outcome('attack', 'normal', '{1}', 30, 5)), '(f,f,t)', 'T22: an attack with a natural 1 is a fumble and misses, whatever the bonus');
+select is((select (success, crit, fumble)::text from roll_outcome('check', 'normal', '{20}', 0, 25)), '(f,f,f)', 'T22: a check with a 20 below the DC fails (no automatic success)');
+select is((select (success, crit, fumble)::text from roll_outcome('save', 'normal', '{1}', 10, 5)), '(t,f,f)', 'T22: a save with a 1 that meets the DC succeeds (no automatic failure)');
+select is((select success from roll_outcome('check', 'normal', '{12}', 3, null)), null, 'T22: with no target there is no verdict');
+reset role;
+
+-- T23: at most 30 rolls a minute per person
+insert into auth.users (id, email) values (tests.u('user:roller'), 'roller@test.local');
+insert into members (campaign_id, user_id, role) values (tests.u('campaign'), tests.u('user:roller'), 'player');
+select tests.act_as('roller');
+select lives_ok($$ do $do$ begin
+    for i in 1..30 loop perform roll_d20(tests.u('campaign'), null, 'other', 'Spam', 0, null, 'normal'); end loop;
+  end $do$ $$, 'T23: 30 rolls in a minute are fine');
+select throws_ok($$ select roll_d20(tests.u('campaign'), null, 'other', 'Spam', 0, null, 'normal') $$, 'PT429', 'Too many rolls in the last minute. Wait a moment and roll again.', 'T23: the 31st roll within a minute is refused');
+select throws_ok($$ select d20() $$, '42501', null, 'T23: the die itself cannot be called directly, only through roll_d20');
+reset role;
+
+-- T24: the die is fair: 20,000 draws give every face between 4% and 6% (expected 5%, 1,000 draws each).
+-- d20() is the die roll_d20 uses for every die. It is drawn here directly, as the owner, because 20,000 calls
+-- of roll_d20 would (rightly) hit the rate limit.
+create temp table draws as select d20() as face from generate_series(1, 20000);
+select is((select count(distinct face)::int from draws where face between 1 and 20), 20, 'T24: every face from 1 to 20 comes up, and nothing else');
+select is((select count(*)::int from draws where face not between 1 and 20), 0, 'T24: no value outside 1 to 20');
+select ok((select bool_and(n between 800 and 1200) from (select count(*) n from draws group by face) f), 'T24: every face is between 4.0% and 6.0% of 20,000 draws');
+select ok(exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'rolls'), 'T24: new rolls are published to realtime');
 
 select * from finish();
 rollback;
