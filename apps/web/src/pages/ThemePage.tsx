@@ -44,7 +44,7 @@ export default function ThemePage() {
           Type
         </h2>
         <Paper as="div" className={styles.specimen}>
-          <p className={styles.specimenTitle}>DM Manager</p>
+          <p className={styles.specimenTitle}>D&D Master</p>
           <p className={styles.specimenRole}>Title · the app&apos;s name</p>
           <h3 className={styles.specimenHeading}>The Sunken Crown</h3>
           <p className={styles.specimenRole}>Heading · D&amp;D headings and names</p>

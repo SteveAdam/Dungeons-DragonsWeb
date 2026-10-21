@@ -53,12 +53,20 @@
   grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
 }
 
-/* The map sits in a gold-ruled parchment frame, like the mockup. */
+/*
+ * The map sits in a gold-ruled frame that spans the whole column. Its height follows the image shape
+ * (--map-ratio, set from the map width / height) up to the screen height; the map then fills the frame
+ * (MapCanvas: "cover"), so no empty space shows on any side.
+ */
 .frame {
+  --frame-max-height: calc(100vh - 13rem);
   position: relative;
-  height: calc(100vh - 13rem);
-  min-height: 22rem;
-  padding: 0.5rem;
+  align-self: start;
+  width: 100%;
+  aspect-ratio: var(--map-ratio, 4 / 3);
+  max-height: var(--frame-max-height);
+  min-height: 16rem;
+  overflow: hidden;
   border: 2px solid var(--gold-dark);
   border-radius: 0.25rem;
   background: var(--paper-aged);
@@ -228,8 +236,7 @@
   }
 
   .frame {
-    height: calc(100vh - 12rem);
-    padding: 0.25rem;
+    --frame-max-height: calc(100vh - 12rem);
   }
 
   .panel {
@@ -243,4 +250,74 @@
     border-radius: 0.75rem 0.75rem 0 0;
     box-shadow: 0 -0.5rem 1.5rem var(--shadow);
   }
+}
+
+/* A pin's map beneath: the way in, made prominent. */
+.subMap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.enter {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--wax-red);
+  color: var(--paper);
+  font-size: 1.05rem;
+}
+
+.position {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.5rem 0.6rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.25rem;
+}
+
+.position legend {
+  padding: 0 0.25rem;
+  color: var(--ink-faded);
+  font-size: 0.95rem;
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Region panel: the terrain and weather rules for the table. */
+.conditions {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--gold-dark);
+  background: var(--ink-wash);
+}
+
+.travel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-style: italic;
+}
+
+.effects {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+/* Everyone: show or hide the region layer. */
+.viewBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
 }

@@ -1,18 +1,68 @@
-import { Music, Save, Trash2, X } from 'lucide-react';
+import { DoorOpen, ImagePlus, Music, Save, Trash2, X } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
-import { Button, ICON_PROPS, iconClasses, Input, Paper, Tag, Toggle } from '../../components/ui';
-import { friendlyMessage } from '../../data/errors';
+import { Button, ICON_PROPS, iconClasses, IconLink, Input, Paper, Tag, Toggle } from '../../components/ui';
+import { DataError, friendlyMessage } from '../../data/errors';
+import type { SubMap } from '../../data/maps';
 import { PIN_SIZE, PIN_TYPES, validatePinChanges, type Pin, type PinChanges, type PinType } from '../../data/pins';
 import { useDeletePin, usePinNotes, useSavePinNotes, useUpdatePin } from '../../hooks/useMapView';
+import type { ImageSize } from '../../lib/mapCoordinates';
+import { MapUploadForm } from '../hub/MapUploadForm';
 import { PIN_TYPE_ICONS, PIN_TYPE_LABELS } from './pinIcons';
 import styles from './MapView.module.css';
 
 interface Props {
   pin: Pin;
   mapId: string;
+  campaignId: string;
+  /** The map's size in pixels, for the position fields. */
+  mapSize: ImageSize;
+  /** The map beneath this pin, if it has one (and the viewer may see it). */
+  subMap?: SubMap;
   /** DM with DM mode on: the editor, with DM notes. Otherwise a read-only view without them. */
   canEdit: boolean;
   onClose: () => void;
+}
+
+/**
+ * The map beneath a pin: an "Enter" link for everyone who can see it, and for a DM on a location pin without
+ * one, a way to add it. It sits outside the pin editor because the upload is a form of its own.
+ */
+function SubMapSection({
+  pin,
+  type,
+  campaignId,
+  subMap,
+  canEdit,
+}: Pick<Props, 'pin' | 'campaignId' | 'subMap' | 'canEdit'> & {
+  /** The type chosen in the editor right now, which may not be saved yet. */
+  type: PinType;
+}) {
+  const [adding, setAdding] = useState(false);
+  if (subMap) {
+    return (
+      <div className={styles.subMap}>
+        <IconLink to={`/campaigns/${campaignId}/maps/${subMap.id}`} icon={DoorOpen} className={styles.enter}>
+          {`Enter ${subMap.name}`}
+        </IconLink>
+        {canEdit && !subMap.visibleToPlayers && <Tag>Map hidden from players</Tag>}
+      </div>
+    );
+  }
+  if (!canEdit || type !== 'location') return null;
+  return adding ? (
+    <MapUploadForm
+      campaignId={campaignId}
+      parentPinId={pin.id}
+      title={`A map beneath ${pin.title}`}
+      onCancel={() => setAdding(false)}
+      onUploaded={() => setAdding(false)}
+    />
+  ) : (
+    <Button variant="ghost" className={iconClasses.host} onClick={() => setAdding(true)}>
+      <ImagePlus {...ICON_PROPS} className={iconClasses.icon} />
+      Add a map beneath this pin
+    </Button>
+  );
 }
 
 const splitList = (text: string) =>
@@ -66,7 +116,14 @@ function PinView({ pin }: { pin: Pin }) {
   );
 }
 
-function PinEditor({ pin, mapId, onClose }: { pin: Pin; mapId: string; onClose: () => void }) {
+function PinEditor({
+  pin,
+  mapId,
+  mapSize,
+  subMap,
+  onClose,
+  onTypeChange,
+}: Pick<Props, 'pin' | 'mapId' | 'mapSize' | 'subMap' | 'onClose'> & { onTypeChange: (type: PinType) => void }) {
   const id = useId();
   const update = useUpdatePin(mapId);
   const remove = useDeletePin(mapId);
@@ -85,6 +142,9 @@ function PinEditor({ pin, mapId, onClose }: { pin: Pin; mapId: string; onClose: 
     musicUrl: pin.musicUrl ?? '',
   });
   const [notesDraft, setNotesDraft] = useState<string | null>(null);
+  // null until typed in, so a pin dragged on the map shows its new place here instead of a stale copy
+  const [position, setPosition] = useState<{ x: string; y: string } | null>(null);
+  const shownPosition = position ?? { x: String(Math.round(pin.x)), y: String(Math.round(pin.y)) };
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -99,7 +159,18 @@ function PinEditor({ pin, mapId, onClose }: { pin: Pin; mapId: string; onClose: 
     setError(null);
     let changes: PinChanges;
     try {
+      if (position) {
+        const x = Number(position.x);
+        const y = Number(position.y);
+        if (!(x >= 0 && x <= mapSize.width && y >= 0 && y <= mapSize.height)) {
+          throw new DataError(
+            'validation',
+            `The position must be on the map: X from 0 to ${mapSize.width}, Y from 0 to ${mapSize.height}.`,
+          );
+        }
+      }
       changes = validatePinChanges({
+        ...(position ? { x: Number(position.x), y: Number(position.y) } : {}),
         title: draft.title,
         type: draft.type,
         color: draft.color,
@@ -117,6 +188,7 @@ function PinEditor({ pin, mapId, onClose }: { pin: Pin; mapId: string; onClose: 
     }
     try {
       await update.mutateAsync({ pinId: pin.id, changes });
+      setPosition(null);
       if (notesDraft !== null && notesDraft !== (notes.data ?? '')) {
         await saveNotes.mutateAsync({ pinId: pin.id, notes: notesDraft });
         setNotesDraft(null);
@@ -128,7 +200,8 @@ function PinEditor({ pin, mapId, onClose }: { pin: Pin; mapId: string; onClose: 
   }
 
   return (
-    <form onSubmit={onSubmit} className={styles.form} aria-label="Edit pin">
+    // noValidate: every field is checked in onSubmit, with messages in the app's own words
+    <form onSubmit={onSubmit} className={styles.form} aria-label="Edit pin" noValidate>
       <label htmlFor={`${id}-title`}>Title</label>
       <Input
         id={`${id}-title`}
@@ -142,7 +215,10 @@ function PinEditor({ pin, mapId, onClose }: { pin: Pin; mapId: string; onClose: 
       <select
         id={`${id}-type`}
         value={draft.type}
-        onChange={e => set('type', e.target.value as PinType)}
+        onChange={e => {
+          set('type', e.target.value as PinType);
+          onTypeChange(e.target.value as PinType);
+        }}
         className={styles.select}
       >
         {PIN_TYPES.map(t => (
@@ -178,6 +254,40 @@ function PinEditor({ pin, mapId, onClose }: { pin: Pin; mapId: string; onClose: 
           />
         </div>
       </div>
+
+      <fieldset className={styles.position}>
+        <legend>Position in pixels (or drag the pin on the map)</legend>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor={`${id}-x`}>{`X, from the left (0–${mapSize.width})`}</label>
+            <Input
+              id={`${id}-x`}
+              type="number"
+              min={0}
+              max={mapSize.width}
+              value={shownPosition.x}
+              onChange={e => {
+                setPosition({ ...shownPosition, x: e.target.value });
+                setSaved(false);
+              }}
+            />
+          </div>
+          <div className={styles.field}>
+            <label htmlFor={`${id}-y`}>{`Y, from the top (0–${mapSize.height})`}</label>
+            <Input
+              id={`${id}-y`}
+              type="number"
+              min={0}
+              max={mapSize.height}
+              value={shownPosition.y}
+              onChange={e => {
+                setPosition({ ...shownPosition, y: e.target.value });
+                setSaved(false);
+              }}
+            />
+          </div>
+        </div>
+      </fieldset>
 
       <Toggle checked={draft.visibleToPlayers} onChange={v => set('visibleToPlayers', v)} label="Visible to players" />
 
@@ -251,7 +361,11 @@ function PinEditor({ pin, mapId, onClose }: { pin: Pin; mapId: string; onClose: 
         </Button>
         {confirmDelete ? (
           <span className={styles.confirm}>
-            <span>Delete this pin?</span>
+            <span>
+              {subMap
+                ? `Delete this pin? Its map beneath, ${subMap.name}, is kept as a separate hidden map.`
+                : 'Delete this pin?'}
+            </span>
             <Button
               disabled={remove.isPending}
               onClick={() =>
@@ -282,7 +396,10 @@ function PinEditor({ pin, mapId, onClose }: { pin: Pin; mapId: string; onClose: 
 }
 
 /** The right-hand panel (a bottom sheet on phones) for the selected pin. */
-export function PinPanel({ pin, mapId, canEdit, onClose }: Props) {
+export function PinPanel({ pin, mapId, campaignId, mapSize, subMap, canEdit, onClose }: Props) {
+  // the Type picked in the editor, remembered per pin, so "Add a map beneath" follows it before saving
+  const [typeInForm, setTypeInForm] = useState<{ pinId: string; type: PinType } | null>(null);
+  const type = typeInForm?.pinId === pin.id ? typeInForm.type : pin.type;
   return (
     <Paper as="aside" texture="flat" aria-label={`Pin: ${pin.title}`} className={styles.panel}>
       <header className={styles.panelHeader}>
@@ -292,8 +409,28 @@ export function PinPanel({ pin, mapId, canEdit, onClose }: Props) {
           <X {...ICON_PROPS} />
         </Button>
       </header>
+      <SubMapSection
+        key={`sub-${pin.id}`}
+        pin={pin}
+        type={type}
+        campaignId={campaignId}
+        subMap={subMap}
+        canEdit={canEdit}
+      />
       {/* key: a different pin starts a fresh form */}
-      {canEdit ? <PinEditor key={pin.id} pin={pin} mapId={mapId} onClose={onClose} /> : <PinView pin={pin} />}
+      {canEdit ? (
+        <PinEditor
+          key={pin.id}
+          pin={pin}
+          mapId={mapId}
+          mapSize={mapSize}
+          subMap={subMap}
+          onClose={onClose}
+          onTypeChange={t => setTypeInForm({ pinId: pin.id, type: t })}
+        />
+      ) : (
+        <PinView pin={pin} />
+      )}
     </Paper>
   );
 }

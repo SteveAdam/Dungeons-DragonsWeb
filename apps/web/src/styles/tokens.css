@@ -87,6 +87,43 @@
   --font-plain: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   --focus-ring: 3px solid var(--gold);
+
+  /* Terrain regions on maps: a ground colour and a mark colour per terrain. The marks are the hand-drawn
+     patterns in index.html (#terrain-*); "Reduce texture" keeps only the ground colour. */
+  --terrain-arctic: #dfeaf0;
+  --terrain-arctic-mark: #7d9db0;
+  --terrain-tundra: #c9cdb8;
+  --terrain-tundra-mark: #6f735c;
+  --terrain-boreal_forest: #2f4a3a;
+  --terrain-boreal_forest-mark: #b9d3c3;
+  --terrain-temperate_forest: #5c7a3d;
+  --terrain-temperate_forest-mark: #2c3d1c;
+  --terrain-jungle: #2e6b3a;
+  --terrain-jungle-mark: #9fd08a;
+  --terrain-grassland: #a7b762;
+  --terrain-grassland-mark: #55622a;
+  --terrain-farmland: #d1bc6c;
+  --terrain-farmland-mark: #7d6a2a;
+  --terrain-hills: #a8925f;
+  --terrain-hills-mark: #574628;
+  --terrain-mountains: #8a8274;
+  --terrain-mountains-mark: #f2efe8;
+  --terrain-desert: #e8c87c;
+  --terrain-desert-mark: #a87f34;
+  --terrain-badlands: #b5683e;
+  --terrain-badlands-mark: #5e2c14;
+  --terrain-swamp: #56663f;
+  --terrain-swamp-mark: #c3cf9a;
+  --terrain-coast: #dccb9c;
+  --terrain-coast-mark: #2f6f80;
+  --terrain-sea: #3d6a87;
+  --terrain-sea-mark: #b6d4e6;
+  --terrain-volcanic: #3a2a26;
+  --terrain-volcanic-mark: #e0602e;
+  --terrain-underdark: #3b3048;
+  --terrain-underdark-mark: #a990cc;
+  --terrain-urban: #9a9088;
+  --terrain-urban-mark: #3f3832;
 }
 
 /* Reduce texture: flat surfaces, no shadows. */

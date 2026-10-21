@@ -15,7 +15,7 @@ apps/web/                 React + TypeScript + Vite app
   src/types/database.ts   generated from the schema (pnpm db:types)
 packages/rules-engine/    D&D 5e rules: modifiers, proficiency, odds, derived stats
 supabase/
-  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security
+  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions
   tests/database/         pgTAP suite for every policy
 scripts/                  mutation check (RLS suite) and token check (CSS)
 docs/                     design notes, including the P0-5 schema review
@@ -42,8 +42,8 @@ pnpm dev                                # http://localhost:5173
 | `pnpm check:tokens`                          | Fails if a CSS file other than `tokens.css` contains a hex colour  |
 | `pnpm db:start` / `db:stop`                  | Starts or stops the local Supabase stack                           |
 | `pnpm db:reset`                              | Rebuilds the local database from `migrations/` and `seed.sql`      |
-| `pnpm db:test`                               | pgTAP row level security suite (101 assertions)                    |
-| `pnpm db:test:mutations`                     | Removes each protection in turn; all 17 must be caught             |
+| `pnpm db:test`                               | pgTAP row level security suite (113 assertions)                    |
+| `pnpm db:test:mutations`                     | Removes each protection in turn; all 19 must be caught             |
 | `pnpm db:types`                              | Regenerates `apps/web/src/types/database.ts` from the local schema |
 | `pnpm db:push`                               | Applies new migrations to the linked hosted project                |
 
@@ -81,7 +81,7 @@ Providers → Email).
 We ask Discord for the `identify` scope (name, avatar) and `guilds` (server list), and never for message access.
 Supabase also always adds `email`, which it needs to create the account.
 
-1. Go to https://discord.com/developers/applications, choose New Application, and name it "DM Manager".
+1. Go to https://discord.com/developers/applications, choose New Application, and name it "DnD Manager".
 2. Open OAuth2. Under Redirects add the Supabase auth callback URL:
    - hosted: `https://<project-ref>.supabase.co/auth/v1/callback` (one per hosted project)
    - local: `http://127.0.0.1:54321/auth/v1/callback`
@@ -138,6 +138,23 @@ Cloudflare R2) means writing one new `MapImageStore` implementation.
   them in the side panel (a bottom sheet on phones). DM notes are read and written only through `pin_secrets`, and
   only in DM mode.
 - With DM mode off, a DM's requests are the same as a player's: no hidden map, no hidden pin, no DM notes.
+- The map fills its frame edge to edge: the frame spans the full width, and the image covers it (anything
+  taller than the screen is a pan away; panning stops at the map's edges). It refills when the panel opens or the
+  window resizes, unless you have zoomed or dragged the map yourself. Zooming out stops at the whole map.
+- **Maps beneath pins.** A DM can add a map beneath a location pin ("Add a map beneath this pin" in its panel).
+  Such pins carry a layers badge. Their panel shows "Enter ‹map›", and a double-click on the pin enters directly.
+  The breadcrumb follows the nesting (campaign › world › kingdom › town). Hiding a pin hides everything beneath
+  it (enforced by row level security), and deleting it keeps its map as a separate hidden map.
+- **Moving pins.** In DM mode, drag a pin, or type its X and Y in the panel. The move shows at once and is
+  rolled back if saving fails.
+- **Regions (terrain and weather).** "Add region", then click the centre and the edge: a circle with its own
+  terrain (17 kinds, each with a hand-drawn fill from `index.html`) and its own weather today, so the desert can bake
+  while the boreal forest gets snow. Drag the weather token in the middle to move it, and the gold handle on the
+  edge to resize it. The panel shows the travel distance per day and the weather's game effects (from
+  `packages/rules-engine/src/environment.ts`, paraphrasing the SRD 5.2), and "Roll weather" picks weather the terrain
+  usually sees. New regions start hidden; players see revealed regions on maps they can see (table `regions`,
+  `0003_regions.sql`, tests T18). Everyone can hide the layer with "Show regions and weather". Circles are the first
+  shape; `shape` leaves room for the polygons of MAP-4.
 
 Licences: `react-leaflet` uses the Hippocratic License 2.1 (an ethical-use licence, not OSI open source); Leaflet is
 BSD-2-Clause; icons are lucide (ISC).

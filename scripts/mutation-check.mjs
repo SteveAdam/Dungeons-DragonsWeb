@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T16) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T18) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -126,6 +126,20 @@ create policy "read profiles of fellow members" on profiles for select to authen
     why: 'a campaign could be left with no DM',
     sql: `drop trigger members_keep_a_dm_trg on members;`,
     fails: ['T16'],
+  },
+  {
+    name: 'hidden-region filter removed',
+    why: 'players could read weather zones the DM has not revealed, or zones on hidden maps',
+    sql: `drop policy "read regions" on regions;
+create policy "read regions" on regions for select using (is_dm(map_campaign(map_id)) or is_member(map_campaign(map_id)));`,
+    fails: ['T18'],
+  },
+  {
+    name: 'any member can write regions',
+    why: 'players could add, change and delete weather zones',
+    sql: `drop policy "dm writes regions" on regions;
+create policy "dm writes regions" on regions for all using (is_member(map_campaign(map_id))) with check (is_member(map_campaign(map_id)));`,
+    fails: ['T18'],
   },
   {
     name: 'helper function opened to signed-out visitors',

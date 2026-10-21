@@ -75,3 +75,248 @@
 .label::before {
   display: none;
 }
+
+/* A pin with a map beneath it: a small layers badge on the seal's lower right. */
+.seal {
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  right: -0.2rem;
+  bottom: -0.2rem;
+  display: grid;
+  place-items: center;
+  width: max(0.9rem, 40%);
+  height: max(0.9rem, 40%);
+  padding: 0.1rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Draggable pins (DM mode) show the move cursor. */
+:global(.leaflet-marker-draggable) {
+  cursor: move;
+}
+
+/* REGIONS: terrain circles under the pins, each with a weather marker in the middle. */
+.region {
+  stroke: var(--ink);
+  stroke-opacity: 0.85;
+  transition: fill-opacity 0.15s;
+}
+
+.region:hover {
+  fill-opacity: 0.7;
+}
+
+.placing .region {
+  cursor: crosshair;
+}
+
+/* Hidden from players: a dashed edge, like hidden pins. */
+.regionHidden {
+  stroke-dasharray: 10 7;
+}
+
+.regionSelected {
+  stroke: var(--gold);
+  stroke-opacity: 1;
+}
+
+/* The circle being drawn. */
+.drawing {
+  fill: var(--paper);
+  stroke: var(--wax-red);
+  stroke-dasharray: 6 5;
+}
+
+/* The weather marker: a round paper token with the weather's icon. */
+.weather {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0.15rem 0.35rem var(--shadow);
+  color: var(--ink);
+  transition: transform 0.15s;
+}
+
+.sealHost:hover .weather,
+.sealHost:focus-visible .weather {
+  transform: scale(1.12);
+}
+
+.weather.sealHidden {
+  border: 2px dashed var(--ink);
+}
+
+/* Region names: italic, so they read differently from pin names. */
+.regionLabel {
+  padding: 0 0.35rem;
+  border: none;
+  border-radius: 0.2rem;
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
+  box-shadow: none;
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-style: italic;
+}
+
+.regionLabel::before {
+  display: none;
+}
+
+/* The resize handle on a selected region's edge. */
+.handle {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--iron);
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: ew-resize;
+}
+
+/* One hand-drawn fill per terrain (patterns in index.html); "Reduce texture" keeps just the ground colour. */
+.terrain_arctic {
+  fill: url(#terrain-arctic);
+}
+
+.terrain_tundra {
+  fill: url(#terrain-tundra);
+}
+
+.terrain_boreal_forest {
+  fill: url(#terrain-boreal_forest);
+}
+
+.terrain_temperate_forest {
+  fill: url(#terrain-temperate_forest);
+}
+
+.terrain_jungle {
+  fill: url(#terrain-jungle);
+}
+
+.terrain_grassland {
+  fill: url(#terrain-grassland);
+}
+
+.terrain_farmland {
+  fill: url(#terrain-farmland);
+}
+
+.terrain_hills {
+  fill: url(#terrain-hills);
+}
+
+.terrain_mountains {
+  fill: url(#terrain-mountains);
+}
+
+.terrain_desert {
+  fill: url(#terrain-desert);
+}
+
+.terrain_badlands {
+  fill: url(#terrain-badlands);
+}
+
+.terrain_swamp {
+  fill: url(#terrain-swamp);
+}
+
+.terrain_coast {
+  fill: url(#terrain-coast);
+}
+
+.terrain_sea {
+  fill: url(#terrain-sea);
+}
+
+.terrain_volcanic {
+  fill: url(#terrain-volcanic);
+}
+
+.terrain_underdark {
+  fill: url(#terrain-underdark);
+}
+
+.terrain_urban {
+  fill: url(#terrain-urban);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_arctic {
+  fill: var(--terrain-arctic);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_tundra {
+  fill: var(--terrain-tundra);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_boreal_forest {
+  fill: var(--terrain-boreal_forest);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_temperate_forest {
+  fill: var(--terrain-temperate_forest);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_jungle {
+  fill: var(--terrain-jungle);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_grassland {
+  fill: var(--terrain-grassland);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_farmland {
+  fill: var(--terrain-farmland);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_hills {
+  fill: var(--terrain-hills);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_mountains {
+  fill: var(--terrain-mountains);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_desert {
+  fill: var(--terrain-desert);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_badlands {
+  fill: var(--terrain-badlands);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_swamp {
+  fill: var(--terrain-swamp);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_coast {
+  fill: var(--terrain-coast);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_sea {
+  fill: var(--terrain-sea);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_volcanic {
+  fill: var(--terrain-volcanic);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_underdark {
+  fill: var(--terrain-underdark);
+}
+
+:global(:root[data-reduce-texture='true']) .terrain_urban {
+  fill: var(--terrain-urban);
+}

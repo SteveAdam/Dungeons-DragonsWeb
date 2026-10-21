@@ -88,6 +88,13 @@ export function validatePinChanges(changes: PinChanges): PinChanges {
   ) {
     throw new DataError('validation', `The size must be a whole number from ${PIN_SIZE.min} to ${PIN_SIZE.max}.`);
   }
+  for (const axis of ['x', 'y'] as const) {
+    const value = clean[axis];
+    if (value !== undefined && (!Number.isFinite(value) || value < 0)) {
+      throw new DataError('validation', 'The position must be a number of pixels from the left (X) and top (Y) edges.');
+    }
+    if (value !== undefined) clean[axis] = Math.round(value);
+  }
   if (clean.musicUrl !== undefined) {
     const url = clean.musicUrl?.trim() ?? '';
     if (url && !/^https:\/\/\S+$/i.test(url)) {

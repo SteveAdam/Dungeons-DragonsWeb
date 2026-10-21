@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DM Manager</title>
+    <title>D&D Master</title>
   </head>
   <body>
     <!--
@@ -19,6 +19,148 @@
         <feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="5" seed="3" result="noise" />
         <feDisplacementMap in="SourceGraphic" in2="noise" scale="16" xChannelSelector="R" yChannelSelector="G" />
       </filter>
+    </svg>
+    <!--
+      Terrain fills for map regions: one hand-drawn motif per terrain, in the colours from tokens.css
+      (--terrain-<name> and --terrain-<name>-mark). The map's region circles use them as fill: url(#terrain-<name>).
+    -->
+    <svg width="0" height="0" aria-hidden="true" focusable="false" style="position: absolute">
+      <defs>
+        <pattern id="terrain-arctic" width="40" height="40" patternUnits="userSpaceOnUse">
+          <rect width="40" height="40" style="fill: var(--terrain-arctic)" />
+          <path
+            d="M2 10 L14 16 L22 12 M14 16 L16 22 M24 30 L32 26 L39 33"
+            style="fill: none; stroke: var(--terrain-arctic-mark); stroke-width: 1.2"
+          />
+        </pattern>
+        <pattern id="terrain-tundra" width="24" height="24" patternUnits="userSpaceOnUse">
+          <rect width="24" height="24" style="fill: var(--terrain-tundra)" />
+          <path d="M3 8 h5 M15 18 h5 M12 4 h3" style="stroke: var(--terrain-tundra-mark); stroke-width: 1.2" />
+          <circle cx="6" cy="18" r="1.3" style="fill: var(--terrain-tundra-mark)" />
+          <circle cx="19" cy="9" r="1.3" style="fill: var(--terrain-tundra-mark)" />
+        </pattern>
+        <pattern id="terrain-boreal_forest" width="24" height="26" patternUnits="userSpaceOnUse">
+          <rect width="24" height="26" style="fill: var(--terrain-boreal_forest)" />
+          <path
+            d="M6 2 L10 8 L8 8 L11 13 L1 13 L4 8 L2 8 Z M18 14 L22 20 L20 20 L23 25 L13 25 L16 20 L14 20 Z"
+            style="fill: var(--terrain-boreal_forest-mark)"
+          />
+        </pattern>
+        <pattern id="terrain-temperate_forest" width="28" height="28" patternUnits="userSpaceOnUse">
+          <rect width="28" height="28" style="fill: var(--terrain-temperate_forest)" />
+          <circle cx="7" cy="8" r="4.5" style="fill: var(--terrain-temperate_forest-mark)" />
+          <circle cx="21" cy="21" r="4.5" style="fill: var(--terrain-temperate_forest-mark)" />
+          <path d="M7 12.5 v3 M21 25.5 v2.5" style="stroke: var(--terrain-temperate_forest-mark); stroke-width: 1.5" />
+        </pattern>
+        <pattern id="terrain-jungle" width="22" height="22" patternUnits="userSpaceOnUse">
+          <rect width="22" height="22" style="fill: var(--terrain-jungle)" />
+          <path
+            d="M2 9 Q6 1 11 7 Q6 11 2 9 Z M12 20 Q15 12 21 16 Q17 21 12 20 Z M13 5 Q17 1 21 4 Q17 8 13 5 Z"
+            style="fill: var(--terrain-jungle-mark)"
+          />
+        </pattern>
+        <pattern id="terrain-grassland" width="22" height="22" patternUnits="userSpaceOnUse">
+          <rect width="22" height="22" style="fill: var(--terrain-grassland)" />
+          <path
+            d="M3 10 l2 -6 M5 10 v-7 M7 10 l-2 -6 M14 20 l2 -6 M16 20 v-7 M18 20 l-2 -6"
+            style="fill: none; stroke: var(--terrain-grassland-mark); stroke-width: 1.1"
+          />
+        </pattern>
+        <pattern
+          id="terrain-farmland"
+          width="14"
+          height="14"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(30)"
+        >
+          <rect width="14" height="14" style="fill: var(--terrain-farmland)" />
+          <path d="M0 3.5 H14 M0 10.5 H14" style="stroke: var(--terrain-farmland-mark); stroke-width: 2" />
+        </pattern>
+        <pattern id="terrain-hills" width="34" height="22" patternUnits="userSpaceOnUse">
+          <rect width="34" height="22" style="fill: var(--terrain-hills)" />
+          <path
+            d="M2 18 Q9 6 16 18 M18 9 Q25 -2 32 9"
+            style="fill: none; stroke: var(--terrain-hills-mark); stroke-width: 1.4"
+          />
+        </pattern>
+        <pattern id="terrain-mountains" width="34" height="26" patternUnits="userSpaceOnUse">
+          <rect width="34" height="26" style="fill: var(--terrain-mountains)" />
+          <path
+            d="M2 22 L10 6 L18 22 M17 13 L24 2 L31 13"
+            style="fill: none; stroke: var(--terrain-mountains-mark); stroke-width: 1.6; stroke-linejoin: round"
+          />
+          <path
+            d="M8 10 L10 6 L12 10 M22 5 L24 2 L26 5"
+            style="fill: none; stroke: var(--terrain-mountains-mark); stroke-width: 2.4"
+          />
+        </pattern>
+        <pattern id="terrain-desert" width="40" height="22" patternUnits="userSpaceOnUse">
+          <rect width="40" height="22" style="fill: var(--terrain-desert)" />
+          <path
+            d="M0 9 Q10 2 20 9 T40 9 M10 19 Q20 13 30 19"
+            style="fill: none; stroke: var(--terrain-desert-mark); stroke-width: 1.2"
+          />
+          <circle cx="34" cy="17" r="0.9" style="fill: var(--terrain-desert-mark)" />
+          <circle cx="5" cy="16" r="0.9" style="fill: var(--terrain-desert-mark)" />
+        </pattern>
+        <pattern id="terrain-badlands" width="26" height="24" patternUnits="userSpaceOnUse">
+          <rect width="26" height="24" style="fill: var(--terrain-badlands)" />
+          <path
+            d="M0 19 H6 V13 H13 V19 H26 M0 7 H15 V2 H21 V7 H26"
+            style="fill: none; stroke: var(--terrain-badlands-mark); stroke-width: 1.3"
+          />
+        </pattern>
+        <pattern id="terrain-swamp" width="26" height="24" patternUnits="userSpaceOnUse">
+          <rect width="26" height="24" style="fill: var(--terrain-swamp)" />
+          <path
+            d="M5 20 V11 M8 20 V8 M11 20 V12 M3 20 H13"
+            style="fill: none; stroke: var(--terrain-swamp-mark); stroke-width: 1.2"
+          />
+          <ellipse
+            cx="20"
+            cy="7"
+            rx="4.5"
+            ry="1.6"
+            style="fill: none; stroke: var(--terrain-swamp-mark); stroke-width: 1"
+          />
+        </pattern>
+        <pattern id="terrain-coast" width="32" height="18" patternUnits="userSpaceOnUse">
+          <rect width="32" height="18" style="fill: var(--terrain-coast)" />
+          <path
+            d="M0 7 Q4 3 8 7 T16 7 T24 7 T32 7"
+            style="fill: none; stroke: var(--terrain-coast-mark); stroke-width: 1.3"
+          />
+          <circle cx="6" cy="14" r="0.9" style="fill: var(--terrain-coast-mark)" />
+          <circle cx="22" cy="15" r="0.9" style="fill: var(--terrain-coast-mark)" />
+        </pattern>
+        <pattern id="terrain-sea" width="32" height="18" patternUnits="userSpaceOnUse">
+          <rect width="32" height="18" style="fill: var(--terrain-sea)" />
+          <path
+            d="M0 5 Q4 1 8 5 T16 5 M16 14 Q20 10 24 14 T32 14"
+            style="fill: none; stroke: var(--terrain-sea-mark); stroke-width: 1.2"
+          />
+        </pattern>
+        <pattern id="terrain-volcanic" width="32" height="32" patternUnits="userSpaceOnUse">
+          <rect width="32" height="32" style="fill: var(--terrain-volcanic)" />
+          <path
+            d="M0 8 L10 14 L8 22 L16 31 M20 0 L23 9 L32 12 M10 14 L17 12"
+            style="fill: none; stroke: var(--terrain-volcanic-mark); stroke-width: 1.5"
+          />
+        </pattern>
+        <pattern id="terrain-underdark" width="22" height="22" patternUnits="userSpaceOnUse">
+          <rect width="22" height="22" style="fill: var(--terrain-underdark)" />
+          <path d="M3 0 L5 7 L7 0 Z M14 11 L15.5 16 L17 11 Z" style="fill: var(--terrain-underdark-mark)" />
+          <circle cx="18" cy="4" r="1" style="fill: var(--terrain-underdark-mark)" />
+          <circle cx="6" cy="17" r="1" style="fill: var(--terrain-underdark-mark)" />
+        </pattern>
+        <pattern id="terrain-urban" width="20" height="20" patternUnits="userSpaceOnUse">
+          <rect width="20" height="20" style="fill: var(--terrain-urban)" />
+          <rect x="2" y="2" width="7" height="7" style="fill: var(--terrain-urban-mark)" />
+          <rect x="11" y="2" width="7" height="4" style="fill: var(--terrain-urban-mark)" />
+          <rect x="11" y="11" width="7" height="7" style="fill: var(--terrain-urban-mark)" />
+          <rect x="2" y="12" width="4" height="6" style="fill: var(--terrain-urban-mark)" />
+        </pattern>
+      </defs>
     </svg>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

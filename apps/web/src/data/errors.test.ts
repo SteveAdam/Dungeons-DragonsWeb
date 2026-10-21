@@ -20,6 +20,12 @@ describe('toDataError', () => {
     expect(toDataError({ code: 'PGRST116', message: 'x' }).kind).toBe('not-found');
     expect(toDataError({ code: '23514', message: 'x' }).kind).toBe('validation');
   });
+  it('says plainly when the database has not had the newest migration', () => {
+    const missingTable = { code: 'PGRST205', message: "Could not find the table 'public.regions' in the schema cache" };
+    expect(toDataError(missingTable).kind).toBe('schema-outdated');
+    expect(toDataError(missingTable).message).toMatch(/pnpm db:push/);
+    expect(toDataError({ code: '42703', message: 'column does not exist' }).kind).toBe('schema-outdated');
+  });
   it.each([
     'TypeError: Failed to fetch',
     'Load failed',

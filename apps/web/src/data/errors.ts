@@ -2,7 +2,7 @@
 // without knowing anything about Supabase.
 
 export type DataErrorKind =
-  'invalid-code' | 'network' | 'not-found' | 'forbidden' | 'validation' | 'signed-out' | 'unknown';
+  'invalid-code' | 'network' | 'not-found' | 'forbidden' | 'validation' | 'signed-out' | 'schema-outdated' | 'unknown';
 
 const MESSAGES: Record<DataErrorKind, string> = {
   'invalid-code': 'That invite code does not match any campaign. Check it with your DM and try again.',
@@ -11,6 +11,8 @@ const MESSAGES: Record<DataErrorKind, string> = {
   forbidden: 'You are not allowed to do that.',
   validation: 'Please check what you entered and try again.',
   'signed-out': 'Your session has ended. Please sign in again.',
+  'schema-outdated':
+    'The database is missing part of this feature. Its newest migration has not been applied yet (pnpm db:push).',
   unknown: 'Something went wrong. Please try again.',
 };
 
@@ -36,6 +38,10 @@ export function toDataError(error: unknown): DataError {
   if (e.code === '42501' || e.status === 403) return new DataError('forbidden');
   if (e.code === 'PGRST116') return new DataError('not-found'); // .single() matched no rows
   if (e.code === '23514' || e.code === '22001') return new DataError('validation');
+  // a table or column the code expects is not in the database: the app is newer than its schema
+  if (e.code === 'PGRST205' || e.code === 'PGRST204' || e.code === '42P01' || e.code === '42703') {
+    return new DataError('schema-outdated');
+  }
   if (NETWORK_MESSAGE.test(message) || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
     return new DataError('network');
   }

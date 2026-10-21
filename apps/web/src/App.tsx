@@ -59,7 +59,7 @@ function HeaderActions() {
 
 export function App() {
   return (
-    <DeskFrame brand={<Link to="/">DM Manager</Link>} actions={<HeaderActions />}>
+    <DeskFrame brand={<Link to="/">D&D MANAGER</Link>} actions={<HeaderActions />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />

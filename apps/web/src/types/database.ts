@@ -223,6 +223,26 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"regions": {
+                  Row: {
+                    "created_at": string,"cx": number,"cy": number,"description": string,"id": string,"map_id": string,"name": string,"radius": number,"shape": string,"terrain": string,"visible_to_players": boolean,"weather": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"cx": number,"cy": number,"description"?: string,"id"?: string,"map_id": string,"name": string,"radius": number,"shape"?: string,"terrain"?: string,"visible_to_players"?: boolean,"weather"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"cx"?: number,"cy"?: number,"description"?: string,"id"?: string,"map_id"?: string,"name"?: string,"radius"?: number,"shape"?: string,"terrain"?: string,"visible_to_players"?: boolean,"weather"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "regions_map_id_fkey"
+      columns: ["map_id"]
+isOneToOne: false
+      referencedRelation: "maps"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampToImage, imageBounds, toImagePoint, toLatLng } from './mapCoordinates';
+import { clampToImage, containZoom, coverZoom, imageBounds, toImagePoint, toLatLng } from './mapCoordinates';
 
 const size = { width: 4000, height: 3000 };
 
@@ -42,5 +42,26 @@ describe('map coordinates', () => {
   it('keeps a point on the image and rounds it', () => {
     expect(clampToImage({ x: -5, y: 3100.6 }, size)).toEqual({ x: 0, y: 3000 });
     expect(clampToImage({ x: 1234.4, y: 10.5 }, size)).toEqual({ x: 1234, y: 11 });
+  });
+});
+
+describe('fitting zooms', () => {
+  const image = { width: 2000, height: 1500 }; // 4:3
+
+  it('are equal when the box has the image shape', () => {
+    expect(coverZoom({ width: 1000, height: 750 }, image)).toBeCloseTo(-1);
+    expect(containZoom({ width: 1000, height: 750 }, image)).toBeCloseTo(-1);
+  });
+
+  it('cover fills a wide box by width; contain fits it by height', () => {
+    const wide = { width: 1600, height: 600 };
+    expect(2 ** coverZoom(wide, image) * image.width).toBeCloseTo(1600); // full width, top and bottom cropped
+    expect(2 ** containZoom(wide, image) * image.height).toBeCloseTo(600); // whole image, gaps at the sides
+    expect(coverZoom(wide, image)).toBeGreaterThan(containZoom(wide, image));
+  });
+
+  it('cover fills a tall box by height', () => {
+    const tall = { width: 400, height: 900 };
+    expect(2 ** coverZoom(tall, image) * image.height).toBeCloseTo(900);
   });
 });

@@ -12,7 +12,7 @@ export function HomePage() {
     <main className={styles.page}>
       <Paper as="section" variant="framed" aria-labelledby="home-title" className={styles.card}>
         <h1 id="home-title" className={styles.title}>
-          DM Manager
+          Dungeons &amp; Dragons Manager.
         </h1>
         <p className={styles.lead}>Maps, pins and notes for your table. Players see only what the DM reveals.</p>
         <p className={styles.cta}>

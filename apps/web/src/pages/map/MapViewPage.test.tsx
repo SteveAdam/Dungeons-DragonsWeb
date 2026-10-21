@@ -12,6 +12,8 @@ import * as membersApi from '../../data/members';
 import * as notesApi from '../../data/pinSecrets';
 import type { Pin } from '../../data/pins';
 import * as pinsApi from '../../data/pins';
+import type { Region } from '../../data/regions';
+import * as regionsApi from '../../data/regions';
 import { useDmModeStore } from '../../state/dmModeStore';
 import type { MapCanvasProps } from './MapCanvas';
 import { MapViewPage } from './MapViewPage';
@@ -19,10 +21,39 @@ import { MapViewPage } from './MapViewPage';
 // Leaflet needs a real layout engine, so the canvas is replaced by buttons: one per pin it was given,
 // and one that "clicks the map" at (120, 80).
 vi.mock('./MapCanvas', () => ({
-  MapCanvas: ({ pins, onSelectPin, addMode, onPlace, imageUrl }: MapCanvasProps) => (
-    <div data-testid="map" data-image={imageUrl} data-adding={String(addMode)}>
+  MapCanvas: ({
+    pins,
+    onSelectPin,
+    addMode,
+    onPlace,
+    imageUrl,
+    canMovePins,
+    onMovePin,
+    subMapPinIds,
+    onEnterSubMap,
+    regions,
+    onSelectRegion,
+    drawMode,
+    onDrawRegion,
+    canEditRegions,
+    onChangeRegion,
+  }: MapCanvasProps) => (
+    <div data-testid="map" data-image={imageUrl} data-adding={String(addMode)} data-drawing={String(drawMode)}>
+      {regions.map(r => (
+        <span key={r.id}>
+          <button onClick={() => onSelectRegion(r.id)}>{`region: ${r.name}`}</button>
+          {canEditRegions && (
+            <button onClick={() => onChangeRegion(r.id, { cx: 500, cy: 400 })}>{`move region: ${r.name}`}</button>
+          )}
+        </span>
+      ))}
+      {drawMode && <button onClick={() => onDrawRegion({ cx: 600, cy: 500, radius: 150 })}>draw region</button>}
       {pins.map(p => (
-        <button key={p.id} onClick={() => onSelectPin(p.id)}>{`pin: ${p.title}`}</button>
+        <span key={p.id}>
+          <button data-pos={`${p.x},${p.y}`} onClick={() => onSelectPin(p.id)}>{`pin: ${p.title}`}</button>
+          {canMovePins && <button onClick={() => onMovePin(p.id, { x: 300, y: 200 })}>{`move: ${p.title}`}</button>}
+          {subMapPinIds.has(p.id) && <button onClick={() => onEnterSubMap(p.id)}>{`enter: ${p.title}`}</button>}
+        </span>
       ))}
       <button onClick={() => onPlace({ x: 120, y: 80 })}>map click</button>
     </div>
@@ -36,6 +67,13 @@ vi.mock('../../data/pins', async importOriginal => ({
   createPin: vi.fn(),
   updatePin: vi.fn(),
   deletePin: vi.fn(),
+}));
+vi.mock('../../data/regions', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/regions')>()),
+  listRegions: vi.fn(),
+  createRegion: vi.fn(),
+  updateRegion: vi.fn(),
+  deleteRegion: vi.fn(),
 }));
 vi.mock('../../data/pinSecrets');
 vi.mock('../../data/maps');
@@ -89,7 +127,34 @@ function signInAs(role: 'dm' | 'player') {
     role === 'dm' && includeHidden ? [tavern, lair] : [tavern],
   );
   vi.mocked(notesApi.getPinNotes).mockResolvedValue('The cave floods at high tide');
+  vi.mocked(mapsApi.listSubMaps).mockResolvedValue(new Map());
+  vi.mocked(mapsApi.getMapTrail).mockResolvedValue([]);
+  vi.mocked(regionsApi.listRegions).mockImplementation(async (_id, { includeHidden }) =>
+    role === 'dm' && includeHidden ? [sands, wraithwood] : [sands],
+  );
 }
+
+const region = (over: Partial<Region>): Region => ({
+  id: 'r',
+  mapId: 'm1',
+  name: 'Region',
+  cx: 100,
+  cy: 100,
+  radius: 50,
+  terrain: 'grassland',
+  weather: 'clear',
+  description: '',
+  visibleToPlayers: true,
+  ...over,
+});
+const sands = region({ id: 'r1', name: 'The Glass Sands', terrain: 'desert', weather: 'extreme_heat' });
+const wraithwood = region({
+  id: 'r2',
+  name: 'Wraithwood',
+  terrain: 'boreal_forest',
+  weather: 'snow',
+  visibleToPlayers: false,
+});
 
 function renderMap() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -278,5 +343,257 @@ describe('DM previewing as a player (acceptance 3)', () => {
     expect(screen.getByRole('complementary')).toBeInTheDocument();
     await user.click(screen.getByRole('switch', { name: /DM mode/ }));
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument());
+  });
+});
+
+describe('maps beneath pins', () => {
+  const kingdom = {
+    id: 'm-kingdom',
+    name: 'The Kingdom',
+    imagePath: 'c1/k.png',
+    visibleToPlayers: true,
+    createdAt: '',
+    parentPinId: 'p1',
+  };
+
+  it('a pin with a map beneath shows an Enter link, and entering opens that map', async () => {
+    signInAs('player');
+    vi.mocked(mapsApi.listSubMaps).mockResolvedValue(new Map([['p1', kingdom]]));
+    const user = userEvent.setup();
+    renderMap();
+
+    await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' }));
+    const enter = await screen.findByRole('link', { name: 'Enter The Kingdom' });
+    expect(enter).toHaveAttribute('href', '/campaigns/c1/maps/m-kingdom');
+    expect(mapsApi.listSubMaps).toHaveBeenCalledWith(['p1'], { includeHidden: false });
+
+    vi.mocked(mapsApi.getMap).mockResolvedValue({ ...map, id: 'm-kingdom', name: 'The Kingdom', parentPinId: 'p1' });
+    vi.mocked(mapsApi.getMapTrail).mockResolvedValue([{ mapId: 'm1', name: 'Port Vellum' }]);
+    await user.click(screen.getByRole('button', { name: 'enter: The Drowned Rat' })); // the double-click
+    const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    await waitFor(() => expect(within(crumbs).getByText('The Kingdom')).toHaveAttribute('aria-current', 'page'));
+    expect(within(crumbs).getByRole('link', { name: 'Port Vellum' })).toHaveAttribute('href', '/campaigns/c1/maps/m1');
+    expect(mapsApi.getMap).toHaveBeenLastCalledWith('m-kingdom', { includeHidden: false });
+  });
+
+  it('a DM can add a map beneath a location pin, but not beneath other types', async () => {
+    signInAs('dm');
+    const user = userEvent.setup();
+    renderMap();
+
+    await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' })); // location
+    await user.click(await screen.findByRole('button', { name: 'Add a map beneath this pin' }));
+    expect(screen.getByRole('form', { name: 'A map beneath The Drowned Rat' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'pin: Smugglers’ cave' })); // faction
+    await screen.findByRole('complementary', { name: /Smugglers/ });
+    expect(screen.queryByRole('button', { name: 'Add a map beneath this pin' })).not.toBeInTheDocument();
+  });
+
+  it('the option follows the Type picked in the editor, before saving', async () => {
+    signInAs('dm');
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' })); // location
+    const panel = await screen.findByRole('complementary', { name: /The Drowned Rat/ });
+    await within(panel).findByRole('button', { name: 'Add a map beneath this pin' });
+
+    await user.selectOptions(within(panel).getByRole('combobox', { name: 'Type' }), 'character');
+    expect(within(panel).queryByRole('button', { name: 'Add a map beneath this pin' })).not.toBeInTheDocument();
+    await user.selectOptions(within(panel).getByRole('combobox', { name: 'Type' }), 'location');
+    expect(within(panel).getByRole('button', { name: 'Add a map beneath this pin' })).toBeInTheDocument();
+
+    // the faction pin starts from its own saved type, not the one picked for the tavern
+    await user.click(screen.getByRole('button', { name: 'pin: Smugglers’ cave' }));
+    await screen.findByRole('complementary', { name: /Smugglers/ });
+    expect(screen.queryByRole('button', { name: 'Add a map beneath this pin' })).not.toBeInTheDocument();
+  });
+
+  it('players never get the option', async () => {
+    signInAs('player');
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' }));
+    expect(screen.queryByRole('button', { name: 'Add a map beneath this pin' })).not.toBeInTheDocument();
+  });
+
+  it('warns that the map beneath is kept when its pin is deleted', async () => {
+    signInAs('dm');
+    vi.mocked(mapsApi.listSubMaps).mockResolvedValue(new Map([['p1', kingdom]]));
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' }));
+    await screen.findByRole('link', { name: 'Enter The Kingdom' });
+    await user.click(screen.getByRole('button', { name: 'Delete pin' }));
+    expect(screen.getByText(/The Kingdom, is kept as a separate hidden map/)).toBeInTheDocument();
+  });
+});
+
+describe('moving pins', () => {
+  it('a DM drags a pin: it moves at once and the new place is saved', async () => {
+    signInAs('dm');
+    let finish: (pin: Pin) => void = () => {};
+    vi.mocked(pinsApi.updatePin).mockImplementation(() => new Promise(resolve => (finish = resolve)));
+    const user = userEvent.setup();
+    renderMap();
+
+    await user.click(await screen.findByRole('button', { name: 'move: The Drowned Rat' }));
+    expect(pinsApi.updatePin).toHaveBeenCalledWith('p1', { x: 300, y: 200 });
+    // optimistic: the pin is already in its new place while the save is still on its way
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'pin: The Drowned Rat' })).toHaveAttribute('data-pos', '300,200'),
+    );
+    finish({ ...tavern, x: 300, y: 200 });
+  });
+
+  it('a failed move puts the pin back and says why', async () => {
+    signInAs('dm');
+    vi.mocked(pinsApi.updatePin).mockRejectedValue(new DataError('network'));
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'move: The Drowned Rat' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the server');
+    expect(screen.getByRole('button', { name: 'pin: The Drowned Rat' })).toHaveAttribute('data-pos', '10,10');
+  });
+
+  it('players cannot move pins', async () => {
+    signInAs('player');
+    renderMap();
+    await screen.findByRole('button', { name: 'pin: The Drowned Rat' });
+    expect(screen.queryByRole('button', { name: /^move:/ })).not.toBeInTheDocument();
+  });
+
+  it('the position can be typed, and must stay on the map', async () => {
+    signInAs('dm');
+    vi.mocked(pinsApi.updatePin).mockImplementation(async (_id, changes) => ({ ...tavern, ...changes }) as Pin);
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' }));
+    const panel = screen.getByRole('complementary', { name: /The Drowned Rat/ });
+    const x = within(panel).getByRole('spinbutton', { name: /X, from the left/ });
+    expect(x).toHaveValue(10);
+
+    await user.clear(x);
+    await user.type(x, '5000'); // the map is 2000 px wide
+    await user.click(within(panel).getByRole('button', { name: 'Save pin' }));
+    expect(await within(panel).findByRole('alert')).toHaveTextContent('X from 0 to 2000');
+    expect(pinsApi.updatePin).not.toHaveBeenCalled();
+
+    await user.clear(x);
+    await user.type(x, '640');
+    await user.click(within(panel).getByRole('button', { name: 'Save pin' }));
+    await waitFor(() =>
+      expect(pinsApi.updatePin).toHaveBeenCalledWith('p1', expect.objectContaining({ x: 640, y: 10 })),
+    );
+  });
+});
+
+describe('terrain and weather regions', () => {
+  it('a player sees revealed regions only, and opens one to read its terrain, travel and weather rules', async () => {
+    signInAs('player');
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'region: The Glass Sands' }));
+    expect(screen.queryByRole('button', { name: 'region: Wraithwood' })).not.toBeInTheDocument();
+    expect(regionsApi.listRegions).toHaveBeenCalledWith('m1', { includeHidden: false });
+
+    const panel = screen.getByRole('complementary', { name: 'Region: The Glass Sands' });
+    expect(within(panel).getByText('Desert')).toBeInTheDocument();
+    expect(within(panel).getByText('Travel: 24 miles a day at a normal pace')).toBeInTheDocument();
+    expect(within(panel).getByText('Extreme heat')).toBeInTheDocument();
+    expect(within(panel).getByText(/Constitution save each hour \(DC 5/)).toBeInTheDocument();
+    expect(within(panel).queryByRole('form', { name: 'Edit region' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add region' })).not.toBeInTheDocument();
+  });
+
+  it('two regions on the same map have their own weather on the same day', async () => {
+    signInAs('dm');
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'region: Wraithwood' }));
+    const panel = screen.getByRole('complementary', { name: 'Region: Wraithwood' });
+    expect(within(panel).getByRole('combobox', { name: 'Weather today' })).toHaveValue('snow');
+    expect(within(panel).getByText('Travel: 12 miles a day at a normal pace (difficult terrain)')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'region: The Glass Sands' }));
+    const sandsPanel = screen.getByRole('complementary', { name: 'Region: The Glass Sands' });
+    expect(within(sandsPanel).getByRole('combobox', { name: 'Weather today' })).toHaveValue('extreme_heat');
+  });
+
+  it('a DM draws a region with "Add region", and it opens hidden and ready to edit', async () => {
+    signInAs('dm');
+    const fresh = region({ id: 'r3', name: 'New region', cx: 600, cy: 500, radius: 150, visibleToPlayers: false });
+    vi.mocked(regionsApi.createRegion).mockResolvedValue(fresh);
+    vi.mocked(regionsApi.listRegions).mockResolvedValue([sands, wraithwood, fresh]);
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'Add region' }));
+    expect(screen.getByTestId('map')).toHaveAttribute('data-drawing', 'true');
+    await user.click(screen.getByRole('button', { name: 'draw region' }));
+
+    expect(regionsApi.createRegion).toHaveBeenCalledWith('m1', { cx: 600, cy: 500, radius: 150 }, undefined);
+    const panel = await screen.findByRole('complementary', { name: 'Region: New region' });
+    expect(within(panel).getByText('Hidden from players')).toBeInTheDocument();
+    expect(screen.getByTestId('map')).toHaveAttribute('data-drawing', 'false');
+  });
+
+  it('edits terrain and weather, and checks the circle stays on the map', async () => {
+    signInAs('dm');
+    vi.mocked(regionsApi.updateRegion).mockImplementation(async (_id, changes) => ({ ...sands, ...changes }) as Region);
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'region: The Glass Sands' }));
+    const panel = screen.getByRole('complementary', { name: 'Region: The Glass Sands' });
+
+    await user.selectOptions(within(panel).getByRole('combobox', { name: 'Terrain' }), 'badlands');
+    await user.selectOptions(within(panel).getByRole('combobox', { name: 'Weather today' }), 'sandstorm');
+    expect(within(panel).getByText(/Heavily obscured beyond a few feet/)).toBeInTheDocument();
+
+    const cx = within(panel).getByRole('spinbutton', { name: /Centre X/ });
+    await user.clear(cx);
+    await user.type(cx, '9000');
+    await user.click(within(panel).getByRole('button', { name: 'Save region' }));
+    expect(await within(panel).findByRole('alert')).toHaveTextContent('X from 0 to 2000');
+    expect(regionsApi.updateRegion).not.toHaveBeenCalled();
+
+    await user.clear(cx);
+    await user.type(cx, '700');
+    await user.click(within(panel).getByRole('button', { name: 'Save region' }));
+    await waitFor(() =>
+      expect(regionsApi.updateRegion).toHaveBeenCalledWith(
+        'r1',
+        expect.objectContaining({ cx: 700, terrain: 'badlands', weather: 'sandstorm' }),
+      ),
+    );
+  });
+
+  it('"Roll weather" picks weather the chosen terrain usually sees', async () => {
+    signInAs('dm');
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'region: Wraithwood' }));
+    const panel = screen.getByRole('complementary', { name: 'Region: Wraithwood' });
+    await user.click(within(panel).getByRole('button', { name: 'Roll weather' }));
+    expect(['snow', 'overcast', 'extreme_cold', 'fog', 'clear']).toContain(
+      (within(panel).getByRole('combobox', { name: 'Weather today' }) as HTMLSelectElement).value,
+    );
+  });
+
+  it('a DM moves a region on the map and the move is saved', async () => {
+    signInAs('dm');
+    vi.mocked(regionsApi.updateRegion).mockImplementation(async (_id, changes) => ({ ...sands, ...changes }) as Region);
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'move region: The Glass Sands' }));
+    expect(regionsApi.updateRegion).toHaveBeenCalledWith('r1', { cx: 500, cy: 400 });
+  });
+
+  it('anyone can hide the region layer', async () => {
+    signInAs('player');
+    const user = userEvent.setup();
+    renderMap();
+    await screen.findByRole('button', { name: 'region: The Glass Sands' });
+    await user.click(screen.getByRole('switch', { name: 'Show regions and weather' }));
+    expect(screen.queryByRole('button', { name: 'region: The Glass Sands' })).not.toBeInTheDocument();
   });
 });

@@ -84,6 +84,8 @@ export interface NewMap {
   width: number;
   height: number;
   visibleToPlayers: boolean;
+  /** Set to put this map beneath a pin (a sub-map). The pin must be on a map in the same campaign. */
+  parentPinId?: string | null;
 }
 
 /** DMs only. The image must already be uploaded (see lib/storage). */
@@ -101,6 +103,7 @@ export async function createMap(campaignId: string, map: NewMap): Promise<Campai
       width: map.width,
       height: map.height,
       visible_to_players: map.visibleToPlayers,
+      ...(map.parentPinId ? { parent_pin_id: map.parentPinId } : {}),
     })
     .select(MAP_COLUMNS)
     .single();
@@ -119,4 +122,70 @@ export async function setMapVisible(mapId: string, visible: boolean): Promise<Ca
   if (error) throw toDataError(error);
   if (!data) throw new DataError('forbidden');
   return toMap(data as MapRow);
+}
+
+/** A map that hangs beneath a pin. */
+export interface SubMap extends MapSummary {
+  parentPinId: string;
+}
+
+/**
+ * The maps beneath the given pins, keyed by pin. With includeHidden false the request asks only for visible
+ * maps (players are also filtered by row level security, which hides a map whose parent pin is hidden).
+ */
+export async function listSubMaps(pinIds: string[], options: { includeHidden: boolean }): Promise<Map<string, SubMap>> {
+  const byPin = new Map<string, SubMap>();
+  if (pinIds.length === 0) return byPin;
+  let query = supabase
+    .from('maps')
+    .select('id, name, image_path, visible_to_players, created_at, parent_pin_id')
+    .in('parent_pin_id', pinIds);
+  if (!options.includeHidden) query = query.eq('visible_to_players', true);
+  const { data, error } = await query.order('created_at', { ascending: true });
+  if (error) throw toDataError(error);
+  for (const row of (data ?? []) as MapRow[]) {
+    // one map per pin: if a DM somehow made two, the first one wins
+    if (row.parent_pin_id && !byPin.has(row.parent_pin_id)) {
+      byPin.set(row.parent_pin_id, { ...toSummary(row), parentPinId: row.parent_pin_id });
+    }
+  }
+  return byPin;
+}
+
+/** One step up the breadcrumb: a map above the current one, reached through one of its pins. */
+export interface MapTrailStep {
+  mapId: string;
+  name: string;
+}
+
+/**
+ * The maps above this one, top first (world, region, town…). Stops at the top, at a map the caller cannot see,
+ * or after 12 steps. Without includeHidden it never requests a hidden map or pin.
+ */
+export async function getMapTrail(
+  map: Pick<CampaignMap, 'parentPinId'>,
+  options: { includeHidden: boolean },
+): Promise<MapTrailStep[]> {
+  const trail: MapTrailStep[] = [];
+  let parentPinId = map.parentPinId;
+  for (let depth = 0; parentPinId && depth < 12; depth++) {
+    let pinQuery = supabase.from('pins').select('map_id').eq('id', parentPinId);
+    if (!options.includeHidden) pinQuery = pinQuery.eq('visible_to_players', true);
+    const { data: pin, error: pinError } = await pinQuery.maybeSingle();
+    if (pinError) throw toDataError(pinError);
+    if (!pin) break;
+
+    let mapQuery = supabase
+      .from('maps')
+      .select('id, name, parent_pin_id')
+      .eq('id', (pin as { map_id: string }).map_id);
+    if (!options.includeHidden) mapQuery = mapQuery.eq('visible_to_players', true);
+    const { data: parent, error: mapError } = await mapQuery.maybeSingle();
+    if (mapError) throw toDataError(mapError);
+    if (!parent) break;
+    const row = parent as Pick<MapRow, 'id' | 'name' | 'parent_pin_id'>;
+    trail.unshift({ mapId: row.id, name: row.name });
+    parentPinId = row.parent_pin_id;
+  }
+  return trail;
 }

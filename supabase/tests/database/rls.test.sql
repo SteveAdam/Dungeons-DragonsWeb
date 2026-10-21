@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T12) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T18) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(101);
+select plan(113);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -319,6 +319,41 @@ select throws_ok($$ insert into pins (map_id, title, x, y, size) values (tests.u
 select throws_ok($$ insert into pins (map_id, title, x, y, music_url) values (tests.u('map:visible'), 'Plain http', 1, 1, 'http://example.com/a.mp3') $$, '23514', null, 'T17: a music link must be https');
 select throws_ok($$ insert into links (campaign_id, from_pin_id, to_pin_id) values (tests.u('campaign'), tests.u('pin:visible'), tests.u('pin:control')) $$, '23505', null, 'T17: the same two pins cannot be linked twice');
 select throws_ok($$ update maps set fog_mode = 'everyone' where id = tests.u('map:visible') $$, '23514', null, 'T17: fog mode is shared or per_group');
+reset role;
+
+-- T18: weather and terrain regions follow the same rules as pins (0003_regions.sql) ------
+insert into regions (id, map_id, name, cx, cy, radius, terrain, weather, visible_to_players) values
+  (tests.u('region:visible'),       tests.u('map:visible'), 'The Glass Sands', 30, 30, 20, 'desert', 'extreme_heat', true),
+  (tests.u('region:hidden'),        tests.u('map:visible'), 'Wraithwood',      70, 70, 20, 'boreal_forest', 'snow', false),
+  (tests.u('region:on-hidden-map'), tests.u('map:hidden'),  'Saltmarsh',       50, 50, 20, 'swamp', 'fog', true);
+select tests.act_as('player');
+select is((select count(*)::int from regions where id = tests.u('region:visible')), 1, 'T18: player can read a revealed region');
+select is((select count(*)::int from regions where id = tests.u('region:hidden')), 0, 'T18: player cannot read a hidden region');
+select is((select count(*)::int from regions where id = tests.u('region:on-hidden-map')), 0, 'T18: a region flagged visible on a hidden map stays hidden');
+select throws_ok($$ insert into regions (map_id, name, cx, cy, radius) values (tests.u('map:visible'), 'Player zone', 1, 1, 5) $$, '42501', null, 'T18: player cannot add a region');
+select lives_ok($$ do $do$ begin
+    update regions set weather = 'clear' where id = tests.u('region:visible');
+    if found then raise exception 'update applied'; end if;
+    delete from regions where id = tests.u('region:visible');
+    if found then raise exception 'delete applied'; end if;
+  end $do$ $$, 'T18: player cannot change or delete a region');
+reset role;
+select tests.act_as('outsider');
+select is((select count(*)::int from regions), 0, 'T18: a non-member reads no region');
+reset role;
+select tests.act_as('dm');
+select is((select count(*)::int from regions), 3, 'T18: DM reads every region');
+select lives_ok($$ do $do$ begin
+    insert into regions (id, map_id, name, cx, cy, radius) values (tests.u('region:new'), tests.u('map:visible'), 'New zone', 5, 5, 5);
+    update regions set weather = 'blizzard' where id = tests.u('region:new');
+    if not found then raise exception 'update did not apply'; end if;
+    delete from regions where id = tests.u('region:new');
+    if not found then raise exception 'delete did not apply'; end if;
+  end $do$ $$, 'T18: DM can insert, update and delete regions');
+select throws_ok($$ insert into regions (map_id, name, cx, cy, radius) values (tests.u('map2'), 'Foreign zone', 1, 1, 5) $$, '42501', null, 'T18: DM cannot add a region to another campaign''s map');
+select throws_ok($$ insert into regions (map_id, name, cx, cy, radius) values (tests.u('map:visible'), 'Flat', 1, 1, 0) $$, '23514', null, 'T18: a region needs a radius above zero');
+select throws_ok($$ insert into regions (map_id, name, cx, cy, radius, terrain) values (tests.u('map:visible'), 'Odd', 1, 1, 5, 'lava_lamp') $$, '23514', null, 'T18: terrain must be a known kind');
+select throws_ok($$ insert into regions (map_id, name, cx, cy, radius, weather) values (tests.u('map:visible'), 'Odd', 1, 1, 5, 'frogs') $$, '23514', null, 'T18: weather must be a known kind');
 reset role;
 
 select * from finish();

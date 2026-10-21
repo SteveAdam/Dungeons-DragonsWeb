@@ -41,3 +41,18 @@ export function clampToImage(point: ImagePoint, size: ImageSize): ImagePoint {
     y: Math.round(Math.min(Math.max(point.y, 0), size.height)),
   };
 }
+
+/**
+ * Leaflet zoom levels for showing an image in a box. In CRS.Simple zoom 0 draws one image pixel per screen
+ * pixel, and each zoom step doubles that, so the zoom for a scale s is log2(s).
+ *   cover:   the image fills the box completely (the overflow is cropped and can be panned to)
+ *   contain: the whole image fits inside the box (gaps where the shapes differ)
+ * They are equal when the box has the image's shape.
+ */
+export function coverZoom(box: ImageSize, image: ImageSize): number {
+  return Math.log2(Math.max(box.width / image.width, box.height / image.height));
+}
+
+export function containZoom(box: ImageSize, image: ImageSize): number {
+  return Math.log2(Math.min(box.width / image.width, box.height / image.height));
+}

@@ -31,7 +31,7 @@ export function SheetDemoPage() {
       <div className="topbar">
         <div>
           <p className="eyebrow">Campaign Ledger</p>
-          <h2>DM Manager</h2>
+          <h2>D&D MASTER</h2>
         </div>
         <div className="toggle-group">
           <label>
