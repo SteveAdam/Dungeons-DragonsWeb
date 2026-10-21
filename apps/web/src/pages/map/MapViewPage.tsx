@@ -1,9 +1,20 @@
-import { ChevronRight, CircleDashed, Eye, EyeOff, Map as MapIcon, MapPinPlus, Swords } from 'lucide-react';
+import {
+  ChevronRight,
+  CircleDashed,
+  Eye,
+  EyeOff,
+  Map as MapIcon,
+  MapPinPlus,
+  Ruler,
+  Settings2,
+  Swords,
+} from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { Button, ICON_PROPS, iconClasses, IconLink, Tag, Toggle } from '../../components/ui';
 import { friendlyMessage } from '../../data/errors';
+import type { Pin } from '../../data/pins';
 import type { Region } from '../../data/regions';
 import { useCampaign } from '../../hooks/useCampaigns';
 import { useDmMode } from '../../hooks/useDmMode';
@@ -18,14 +29,25 @@ import {
   useUpdatePin,
 } from '../../hooks/useMapView';
 import { useCreateRegion, useRegions, useUpdateRegion } from '../../hooks/useRegions';
+import type { ImagePoint } from '../../lib/mapCoordinates';
+import { gridCellPx } from '../../lib/mapGeometry';
 import { useShowDmIndicator } from '../../state/dmIndicator';
+import { Compass } from './Compass';
+import { LayersMenu, type LayerState } from './LayersMenu';
 import { MapCanvas } from './MapCanvas';
+import { MapSettingsPanel } from './MapSettingsPanel';
+import toolStyles from './MapTools.module.css';
 import styles from './MapView.module.css';
+import { MeasureBar } from './MeasureBar';
 import { PinPanel } from './PinPanel';
+import { PinSearch } from './PinSearch';
 import { RegionPanel } from './RegionPanel';
 
 const NO_SUB_MAPS: ReadonlySet<string> = new Set();
 const NO_REGIONS: Region[] = [];
+const NO_PINS: Pin[] = [];
+
+type Selection = { kind: 'pin' | 'region'; id: string } | { kind: 'settings' };
 
 /**
  * Map view, prep mode (P0-8). Everything hidden is requested only while a DM has DM mode on, so a player and a
@@ -57,26 +79,30 @@ function MapView() {
   const createRegion = useCreateRegion(mapId);
   const updateRegion = useUpdateRegion(mapId);
 
-  // one thing is open in the side panel at a time: a pin or a region
-  const [selection, setSelection] = useState<{ kind: 'pin' | 'region'; id: string } | null>(null);
-  const [tool, setTool] = useState<'pin' | 'region' | null>(null);
-  const [showRegions, setShowRegions] = useState(true);
-  const selected = selection?.kind === 'pin' ? (pins.data?.find(p => p.id === selection.id) ?? null) : null;
+  // one thing is open in the side panel at a time: a pin, a region or the map settings
+  const [selection, setSelection] = useState<Selection | null>(null);
+  const [tool, setTool] = useState<'pin' | 'region' | 'measure' | null>(null);
+  const [layers, setLayers] = useState<LayerState>({ pins: true, regions: true, grid: true, compass: true });
+  const [route, setRoute] = useState<ImagePoint[]>([]);
+  const [focus, setFocus] = useState<{ x: number; y: number; key: number } | null>(null);
+  const selected =
+    layers.pins && selection?.kind === 'pin' ? (pins.data?.find(p => p.id === selection.id) ?? null) : null;
   const selectedRegion =
-    showRegions && selection?.kind === 'region' ? (regions.data?.find(r => r.id === selection.id) ?? null) : null;
-  const placing = tool === 'pin' && dmMode;
-  const drawing = tool === 'region' && dmMode && showRegions;
+    layers.regions && selection?.kind === 'region' ? (regions.data?.find(r => r.id === selection.id) ?? null) : null;
+  const placing = tool === 'pin' && dmMode && layers.pins;
+  const drawing = tool === 'region' && dmMode && layers.regions;
+  const measuring = tool === 'measure';
   const subMapPinIds = useMemo(() => (subMaps.data ? new Set(subMaps.data.keys()) : NO_SUB_MAPS), [subMaps.data]);
   const selectPin = (id: string) => setSelection({ kind: 'pin', id });
-  const toggleTool = (which: 'pin' | 'region') => setTool(t => (t === which ? null : which));
+  const toggleTool = (which: 'pin' | 'region' | 'measure') => setTool(t => (t === which ? null : which));
 
-  // Escape leaves add-pin or draw-region mode
+  // Escape leaves add-pin, draw-region or measuring mode
   useEffect(() => {
-    if (!placing && !drawing) return;
+    if (!tool) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setTool(null);
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [placing, drawing]);
+  }, [tool]);
 
   const campaignName = campaign.data?.name ?? 'Campaign';
   const breadcrumb = (
@@ -118,6 +144,7 @@ function MapView() {
 
   const current = map.data;
   const size = { width: current.width, height: current.height };
+  const cell = gridCellPx(size, current.tools);
   const actionError =
     createPin.error ??
     updatePin.error ??
@@ -127,7 +154,6 @@ function MapView() {
     pins.error ??
     regions.error ??
     subMaps.error;
-  const hasRegions = (regions.data?.length ?? 0) > 0;
   return (
     <main className={styles.page}>
       <div className={styles.topBar}>
@@ -141,7 +167,10 @@ function MapView() {
             variant={placing ? 'primary' : 'ghost'}
             aria-pressed={placing}
             className={iconClasses.host}
-            onClick={() => toggleTool('pin')}
+            onClick={() => {
+              setLayers(l => ({ ...l, pins: true }));
+              toggleTool('pin');
+            }}
           >
             <MapPinPlus {...ICON_PROPS} className={iconClasses.icon} />
             {placing ? 'Click the map to place it' : 'Add pin'}
@@ -151,12 +180,21 @@ function MapView() {
             aria-pressed={drawing}
             className={iconClasses.host}
             onClick={() => {
-              setShowRegions(true);
+              setLayers(l => ({ ...l, regions: true }));
               toggleTool('region');
             }}
           >
             <CircleDashed {...ICON_PROPS} className={iconClasses.icon} />
             {drawing ? 'Click the centre, then the edge' : 'Add region'}
+          </Button>
+          <Button
+            variant={selection?.kind === 'settings' ? 'primary' : 'ghost'}
+            aria-pressed={selection?.kind === 'settings'}
+            className={iconClasses.host}
+            onClick={() => setSelection(s => (s?.kind === 'settings' ? null : { kind: 'settings' }))}
+          >
+            <Settings2 {...ICON_PROPS} className={iconClasses.icon} />
+            Map settings
           </Button>
           <Button
             variant="ghost"
@@ -174,18 +212,52 @@ function MapView() {
           {!current.visibleToPlayers && <Tag>Players cannot see this map</Tag>}
         </div>
       )}
-      {hasRegions && (
-        <div className={styles.viewBar}>
-          <Toggle
-            checked={showRegions}
-            onChange={on => {
-              setShowRegions(on);
-              if (!on && tool === 'region') setTool(null);
+
+      <div role="toolbar" aria-label="View" className={toolStyles.viewBar}>
+        <Button
+          variant={measuring ? 'primary' : 'ghost'}
+          aria-pressed={measuring}
+          className={iconClasses.host}
+          onClick={() => {
+            if (measuring) setRoute([]);
+            toggleTool('measure');
+          }}
+        >
+          <Ruler {...ICON_PROPS} className={iconClasses.icon} />
+          {measuring ? 'Stop measuring' : 'Measure'}
+        </Button>
+        <LayersMenu
+          layers={layers}
+          onChange={next => {
+            setLayers(next);
+            if (!next.regions && tool === 'region') setTool(null);
+            if (!next.pins && tool === 'pin') setTool(null);
+          }}
+          gridAvailable={cell !== null}
+          regions={regions.data ?? NO_REGIONS}
+        />
+        {layers.pins && (pins.data?.length ?? 0) > 0 && (
+          <PinSearch
+            pins={pins.data ?? NO_PINS}
+            onPick={pin => {
+              selectPin(pin.id);
+              setFocus({ x: pin.x, y: pin.y, key: Date.now() });
             }}
-            label="Show regions and weather"
           />
-        </div>
+        )}
+      </div>
+      {measuring && (
+        <MeasureBar
+          points={route}
+          size={size}
+          tools={current.tools}
+          regions={regions.data ?? NO_REGIONS}
+          isDm={dmMode}
+          onUndo={() => setRoute(r => r.slice(0, -1))}
+          onClear={() => setRoute([])}
+        />
       )}
+
       {actionError && (
         <p role="alert" className={styles.alertOnDesk}>
           {friendlyMessage(actionError)}
@@ -203,7 +275,7 @@ function MapView() {
             <MapCanvas
               imageUrl={image.data}
               size={size}
-              pins={pins.data ?? []}
+              pins={layers.pins ? (pins.data ?? NO_PINS) : NO_PINS}
               selectedPinId={selected?.id ?? null}
               onSelectPin={selectPin}
               addMode={placing}
@@ -213,7 +285,7 @@ function MapView() {
                 const sub = subMaps.data?.get(pinId);
                 if (sub) navigate(`/campaigns/${campaignId}/maps/${sub.id}`);
               }}
-              regions={showRegions ? (regions.data ?? []) : NO_REGIONS}
+              regions={layers.regions ? (regions.data ?? NO_REGIONS) : NO_REGIONS}
               selectedRegionId={selectedRegion?.id ?? null}
               onSelectRegion={id => setSelection({ kind: 'region', id })}
               drawMode={drawing}
@@ -243,6 +315,11 @@ function MapView() {
                   },
                 )
               }
+              measuring={measuring}
+              measurePoints={route}
+              onMeasurePoint={point => setRoute(r => [...r, point])}
+              gridCellPx={layers.grid ? cell : null}
+              focus={focus}
             />
           ) : image.isError ? (
             <ErrorNotice error={image.error} onRetry={() => image.refetch()} />
@@ -251,6 +328,7 @@ function MapView() {
               Fetching the map image…
             </p>
           )}
+          {layers.compass && image.data && <Compass northDegrees={current.tools.northDegrees} />}
         </section>
 
         {selected && (
@@ -272,6 +350,9 @@ function MapView() {
             canEdit={dmMode}
             onClose={() => setSelection(null)}
           />
+        )}
+        {selection?.kind === 'settings' && dmMode && (
+          <MapSettingsPanel map={current} onClose={() => setSelection(null)} />
         )}
       </div>
     </main>

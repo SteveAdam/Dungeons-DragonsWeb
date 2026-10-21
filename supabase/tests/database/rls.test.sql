@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T28) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T29) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(175);
+select plan(180);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -512,6 +512,24 @@ select lives_ok($$ delete from characters where id = tests.u('char:sera') $$, 'T
 reset role;
 select is((select count(*)::int from rolls where label = 'Wisdom save' and character_id is null), 1, 'T28: its rolls stay in the log, unlinked');
 select throws_ok($$ update rolls set character_id = null where label = 'Athletics' $$, 'P0001', 'The roll log is append-only: rolls cannot be changed or deleted', 'T28: unlinking a roll from a character that still exists is refused');
+
+
+-- T29: map tools (0006_map_tools.sql): only the DM sets them, and the values stay sensible ---------------
+select tests.act_as('player');
+select lives_ok($$ do $do$ begin
+    update maps set scale_width = 1 where id = tests.u('map:visible');
+    if found then raise exception 'update applied'; end if;
+  end $do$ $$, 'T29: a player cannot set a map''s scale');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ do $do$ begin
+    update maps set scale_width = 600, scale_unit = 'mi', north_degrees = 45, grid_size = 6 where id = tests.u('map:visible');
+    if not found then raise exception 'update did not apply'; end if;
+  end $do$ $$, 'T29: the DM sets scale, north and grid');
+select throws_ok($$ update maps set scale_width = 0 where id = tests.u('map:visible') $$, '23514', null, 'T29: a scale must be above zero');
+select throws_ok($$ update maps set north_degrees = 360 where id = tests.u('map:visible') $$, '23514', null, 'T29: north is 0 to 359 degrees');
+select throws_ok($$ update maps set scale_unit = 'leagues' where id = tests.u('map:visible') $$, '23514', null, 'T29: the unit is miles or feet');
+reset role;
 
 select * from finish();
 rollback;

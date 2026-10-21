@@ -15,6 +15,18 @@ export interface CampaignMap extends MapSummary {
   height: number;
   fogMode: 'shared' | 'per_group';
   parentPinId: string | null;
+  tools: MapTools;
+}
+
+/** The DM's settings for measuring, the compass and the grid (0006_map_tools.sql). */
+export interface MapTools {
+  /** How far the map's full width spans, in `scaleUnit`; null until the DM sets it. */
+  scaleWidth: number | null;
+  scaleUnit: 'mi' | 'ft';
+  /** The direction of north, in degrees clockwise from the top of the image. */
+  northDegrees: number;
+  /** Grid square size in `scaleUnit`; null for no grid. */
+  gridSize: number | null;
 }
 
 interface MapRow {
@@ -28,11 +40,15 @@ interface MapRow {
   fog_mode: string;
   parent_pin_id: string | null;
   created_at: string;
+  scale_width: number | null;
+  scale_unit: string;
+  north_degrees: number;
+  grid_size: number | null;
 }
 
 const SUMMARY_COLUMNS = 'id, name, image_path, visible_to_players, created_at';
 const MAP_COLUMNS =
-  'id, campaign_id, name, image_path, width, height, visible_to_players, fog_mode, parent_pin_id, created_at';
+  'id, campaign_id, name, image_path, width, height, visible_to_players, fog_mode, parent_pin_id, created_at, scale_width, scale_unit, north_degrees, grid_size';
 
 const toSummary = (
   r: Pick<MapRow, 'id' | 'name' | 'image_path' | 'visible_to_players' | 'created_at'>,
@@ -51,6 +67,12 @@ const toMap = (r: MapRow): CampaignMap => ({
   height: r.height,
   fogMode: r.fog_mode === 'per_group' ? 'per_group' : 'shared',
   parentPinId: r.parent_pin_id,
+  tools: {
+    scaleWidth: r.scale_width == null ? null : Number(r.scale_width),
+    scaleUnit: r.scale_unit === 'ft' ? 'ft' : 'mi',
+    northDegrees: r.north_degrees ?? 0,
+    gridSize: r.grid_size == null ? null : Number(r.grid_size),
+  },
 });
 
 /**
@@ -116,6 +138,33 @@ export async function setMapVisible(mapId: string, visible: boolean): Promise<Ca
   const { data, error } = await supabase
     .from('maps')
     .update({ visible_to_players: visible })
+    .eq('id', mapId)
+    .select(MAP_COLUMNS)
+    .maybeSingle();
+  if (error) throw toDataError(error);
+  if (!data) throw new DataError('forbidden');
+  return toMap(data as MapRow);
+}
+
+/** DMs only. Checks the values first so the user gets a plain message. */
+export async function setMapTools(mapId: string, tools: MapTools): Promise<CampaignMap> {
+  if (tools.scaleWidth !== null && !(Number.isFinite(tools.scaleWidth) && tools.scaleWidth > 0)) {
+    throw new DataError('validation', 'The map width must be a distance above zero.');
+  }
+  if (tools.gridSize !== null && !(Number.isFinite(tools.gridSize) && tools.gridSize > 0)) {
+    throw new DataError('validation', 'The grid size must be a distance above zero.');
+  }
+  if (!Number.isInteger(tools.northDegrees) || tools.northDegrees < 0 || tools.northDegrees > 359) {
+    throw new DataError('validation', 'North must be a whole number of degrees from 0 to 359.');
+  }
+  const { data, error } = await supabase
+    .from('maps')
+    .update({
+      scale_width: tools.scaleWidth,
+      scale_unit: tools.scaleUnit,
+      north_degrees: tools.northDegrees,
+      grid_size: tools.gridSize,
+    })
     .eq('id', mapId)
     .select(MAP_COLUMNS)
     .maybeSingle();

@@ -7,7 +7,18 @@ import L from 'leaflet';
 import { Layers } from 'lucide-react';
 import { createElement, useEffect, useMemo, useRef, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Circle, ImageOverlay, MapContainer, Marker, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import {
+  Circle,
+  CircleMarker,
+  ImageOverlay,
+  MapContainer,
+  Marker,
+  Polyline,
+  SVGOverlay,
+  Tooltip,
+  useMap,
+  useMapEvents,
+} from 'react-leaflet';
 import { DEFAULT_PIN_COLOR, PIN_COLOR_PATTERN, PIN_SIZE, type Pin } from '../../data/pins';
 import { MIN_REGION_RADIUS, type Region, type RegionChanges } from '../../data/regions';
 import {
@@ -49,6 +60,14 @@ export interface MapCanvasProps {
   /** DM mode: a region moves with the marker in its middle and resizes with the handle on its edge. */
   canEditRegions: boolean;
   onChangeRegion: (regionId: string, changes: Pick<RegionChanges, 'cx' | 'cy' | 'radius'>) => void;
+  /** Measuring: clicks add points to the route, which is drawn as a line. */
+  measuring: boolean;
+  measurePoints: readonly ImagePoint[];
+  onMeasurePoint: (point: ImagePoint) => void;
+  /** A grid square's side in image pixels, or null for no grid. */
+  gridCellPx: number | null;
+  /** Pan to this point; a new key pans again even to the same point. */
+  focus: { x: number; y: number; key: number } | null;
   /** Accessible name for the map region, e.g. the map's name. */
   label: string;
 }
@@ -325,6 +344,76 @@ function DrawRegion({ size, onDraw }: { size: ImageSize; onDraw: (circle: Region
   );
 }
 
+/** Square grid lines over the whole image, one square every `cell` image pixels; lines stay 1 px at any zoom. */
+function GridOverlay({ size, cell }: { size: ImageSize; cell: number }) {
+  const bounds = useMemo(() => imageBounds(size), [size]);
+  // one path of real lines (a pattern would clip half of each line at the tile edge); far too many squares to
+  // see apart are not drawn at all
+  const d = useMemo(() => {
+    if (size.width / cell + size.height / cell > 600) return '';
+    const parts: string[] = [];
+    for (let x = cell; x < size.width; x += cell) parts.push(`M${x} 0V${size.height}`);
+    for (let y = cell; y < size.height; y += cell) parts.push(`M0 ${y}H${size.width}`);
+    return parts.join('');
+  }, [size, cell]);
+  return (
+    <SVGOverlay
+      bounds={bounds}
+      interactive={false}
+      attributes={{ viewBox: `0 0 ${size.width} ${size.height}`, preserveAspectRatio: 'none', class: styles.grid }}
+    >
+      <path d={d} fill="none" vectorEffect="non-scaling-stroke" />
+    </SVGOverlay>
+  );
+}
+
+/** While measuring, each click adds a point; the route is drawn as a dashed line with a dot at each point. */
+function MeasureLayer({
+  active,
+  size,
+  points,
+  onPoint,
+}: {
+  active: boolean;
+  size: ImageSize;
+  points: readonly ImagePoint[];
+  onPoint: (p: ImagePoint) => void;
+}) {
+  useMapEvents({
+    click(event) {
+      if (active) onPoint(clampToImage(toImagePoint(event.latlng, size), size));
+    },
+  });
+  const positions = points.map(p => toLatLng(p, size));
+  return (
+    <>
+      {positions.length > 1 && (
+        <Polyline positions={positions} interactive={false} pathOptions={{ className: styles.route, weight: 3 }} />
+      )}
+      {positions.map((p, i) => (
+        <CircleMarker
+          key={i}
+          center={p}
+          radius={5}
+          interactive={false}
+          pathOptions={{ className: styles.routePoint, weight: 2, fillOpacity: 1 }}
+        />
+      ))}
+    </>
+  );
+}
+
+/** Pans to a point when asked (finding a pin), keeping the zoom. */
+function PanTo({ size, focus }: { size: ImageSize; focus: MapCanvasProps['focus'] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (focus) map.panTo(toLatLng(focus, size));
+    // the key, not the object, decides: a fresh request pans even to the same point
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, focus?.key]);
+  return null;
+}
+
 export function MapCanvas({
   imageUrl,
   size,
@@ -344,8 +433,14 @@ export function MapCanvas({
   onDrawRegion,
   canEditRegions,
   onChangeRegion,
+  measuring,
+  measurePoints,
+  onMeasurePoint,
+  gridCellPx,
+  focus,
   label,
 }: MapCanvasProps) {
+  const busy = addMode || drawMode || measuring;
   const bounds = useMemo(() => imageBounds(size), [size]);
   return (
     <MapContainer
@@ -359,19 +454,22 @@ export function MapCanvas({
       zoomSnap={0}
       zoomDelta={0.5}
       attributionControl={false}
-      className={addMode || drawMode ? `${styles.map} ${styles.placing}` : styles.map}
+      className={busy ? `${styles.map} ${styles.placing}` : styles.map}
       aria-label={label}
     >
       <ImageOverlay url={imageUrl} bounds={bounds} />
       <KeepImageFilled width={size.width} height={size.height} />
+      {gridCellPx && <GridOverlay size={size} cell={gridCellPx} />}
       <PlaceOnClick active={addMode} size={size} onPlace={onPlace} />
+      <MeasureLayer active={measuring} size={size} points={measurePoints} onPoint={onMeasurePoint} />
+      <PanTo size={size} focus={focus} />
       {regions.map(region => (
         <RegionShape
           key={region.id}
           region={region}
           size={size}
           selected={region.id === selectedRegionId}
-          busy={addMode || drawMode}
+          busy={busy}
           editable={canEditRegions}
           onSelect={() => onSelectRegion(region.id)}
           onChange={changes => onChangeRegion(region.id, changes)}
@@ -395,7 +493,7 @@ export function MapCanvas({
             icon={sealIcon(pin, pin.id === selectedPinId, hasSubMap)}
             title={name}
             keyboard
-            draggable={canMovePins && !addMode && !drawMode}
+            draggable={canMovePins && !busy}
             eventHandlers={{
               click: () => onSelectPin(pin.id),
               dblclick: () => hasSubMap && onEnterSubMap(pin.id),

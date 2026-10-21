@@ -320,3 +320,21 @@
 :global(:root[data-reduce-texture='true']) .terrain_urban {
   fill: var(--terrain-urban);
 }
+
+/* MAP TOOLS */
+/* Grid lines: thin ink, readable over any terrain. */
+.grid path {
+  stroke: color-mix(in srgb, var(--ink) 55%, transparent);
+  stroke-width: 1;
+}
+
+/* A measured route: a dashed wax-red line with gold points. */
+.route {
+  stroke: var(--wax-red);
+  stroke-dasharray: 10 6;
+}
+
+.routePoint {
+  fill: var(--gold);
+  stroke: var(--iron);
+}

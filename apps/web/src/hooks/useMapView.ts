@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DataError } from '../data/errors';
-import { createMap, getMap, getMapTrail, listSubMaps, setMapVisible, type CampaignMap } from '../data/maps';
+import {
+  createMap,
+  getMap,
+  getMapTrail,
+  listSubMaps,
+  setMapTools,
+  setMapVisible,
+  type CampaignMap,
+  type MapTools,
+} from '../data/maps';
 import { getPinNotes, savePinNotes } from '../data/pinSecrets';
 import { createPin, deletePin, listPins, updatePin, type Pin, type PinChanges, type PinType } from '../data/pins';
 import { mapImageStore } from '../lib/storage';
@@ -102,6 +111,14 @@ export function useSavePinNotes() {
   return useMutation({
     mutationFn: ({ pinId, notes }: { pinId: string; notes: string }) => savePinNotes(pinId, notes),
     onSuccess: (notes, { pinId }) => client.setQueryData(queryKeys.pinNotes(pinId), notes),
+  });
+}
+
+export function useSetMapTools() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ mapId, tools }: { mapId: string; tools: MapTools }) => setMapTools(mapId, tools),
+    onSuccess: (map: CampaignMap) => client.invalidateQueries({ queryKey: ['maps', map.id] }),
   });
 }
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '../lib/supabase';
 import { fakeQuery } from '../test/fakeQuery';
-import { createMap, getMap, listMaps, setMapVisible } from './maps';
+import { createMap, getMap, listMaps, setMapTools, setMapVisible } from './maps';
 
 vi.mock('../lib/supabase', () => ({ supabase: { from: vi.fn(), rpc: vi.fn(), auth: { getSession: vi.fn() } } }));
 
@@ -72,6 +72,7 @@ describe('getMap', () => {
       fogMode: 'shared',
       parentPinId: null,
       createdAt: '2026-10-18T10:00:00Z',
+      tools: { scaleWidth: null, scaleUnit: 'mi', northDegrees: 0, gridSize: null },
     });
     expect(q.eq).not.toHaveBeenCalledWith('visible_to_players', true);
   });
@@ -118,5 +119,39 @@ describe('setMapVisible', () => {
   it('treats "no row changed" as not allowed', async () => {
     from({ data: null, error: null });
     await expect(setMapVisible('m1', true)).rejects.toMatchObject({ kind: 'forbidden' });
+  });
+});
+
+describe('setMapTools', () => {
+  const row = {
+    id: 'm1',
+    campaign_id: 'c1',
+    name: 'Sword Coast',
+    image_path: 'c1/coast.png',
+    width: 2000,
+    height: 1500,
+    visible_to_players: true,
+    fog_mode: 'shared',
+    parent_pin_id: null,
+    created_at: '',
+    scale_width: '600', // numeric columns arrive as strings
+    scale_unit: 'mi',
+    north_degrees: 15,
+    grid_size: null,
+  };
+
+  it('saves the tools and reads numbers back as numbers', async () => {
+    const q = from({ data: row, error: null });
+    const result = await setMapTools('m1', { scaleWidth: 600, scaleUnit: 'mi', northDegrees: 15, gridSize: null });
+    expect(q.update).toHaveBeenCalledWith({ scale_width: 600, scale_unit: 'mi', north_degrees: 15, grid_size: null });
+    expect(result.tools).toEqual({ scaleWidth: 600, scaleUnit: 'mi', northDegrees: 15, gridSize: null });
+  });
+
+  it('refuses nonsense before reaching the server', async () => {
+    const base = { scaleWidth: 600, scaleUnit: 'mi' as const, northDegrees: 0, gridSize: null };
+    await expect(setMapTools('m1', { ...base, scaleWidth: 0 })).rejects.toMatchObject({ kind: 'validation' });
+    await expect(setMapTools('m1', { ...base, gridSize: -5 })).rejects.toMatchObject({ kind: 'validation' });
+    await expect(setMapTools('m1', { ...base, northDegrees: 360 })).rejects.toMatchObject({ kind: 'validation' });
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 });

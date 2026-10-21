@@ -37,8 +37,23 @@ vi.mock('./MapCanvas', () => ({
     onDrawRegion,
     canEditRegions,
     onChangeRegion,
+    measuring,
+    onMeasurePoint,
+    gridCellPx,
   }: MapCanvasProps) => (
-    <div data-testid="map" data-image={imageUrl} data-adding={String(addMode)} data-drawing={String(drawMode)}>
+    <div
+      data-testid="map"
+      data-image={imageUrl}
+      data-adding={String(addMode)}
+      data-drawing={String(drawMode)}
+      data-grid={String(gridCellPx)}
+    >
+      {measuring && (
+        <>
+          <button onClick={() => onMeasurePoint({ x: 0, y: 500 })}>measure from the west edge</button>
+          <button onClick={() => onMeasurePoint({ x: 2000, y: 500 })}>measure to the east edge</button>
+        </>
+      )}
       {regions.map(r => (
         <span key={r.id}>
           <button onClick={() => onSelectRegion(r.id)}>{`region: ${r.name}`}</button>
@@ -91,6 +106,7 @@ const map: CampaignMap = {
   fogMode: 'shared',
   parentPinId: null,
   createdAt: '',
+  tools: { scaleWidth: null, scaleUnit: 'mi', northDegrees: 0, gridSize: null },
 };
 const pin = (over: Partial<Pin>): Pin => ({
   id: 'p',
@@ -499,9 +515,12 @@ describe('terrain and weather regions', () => {
 
     const panel = screen.getByRole('complementary', { name: 'Region: The Glass Sands' });
     expect(within(panel).getByText('Desert')).toBeInTheDocument();
-    expect(within(panel).getByText('Travel: 24 miles a day at a normal pace')).toBeInTheDocument();
+    expect(
+      within(panel).getByText('Travel: Normal pace at most, up to 24 miles a day (Desert terrain)'),
+    ).toBeInTheDocument();
+    expect(within(panel).getByText(/Foraging DC 20 · Navigation DC 10 · Search DC 10/)).toBeInTheDocument();
     expect(within(panel).getByText('Extreme heat')).toBeInTheDocument();
-    expect(within(panel).getByText(/Constitution save each hour \(DC 5/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Constitution save at the end of each hour \(DC 5/)).toBeInTheDocument();
     expect(within(panel).queryByRole('form', { name: 'Edit region' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add region' })).not.toBeInTheDocument();
   });
@@ -513,7 +532,9 @@ describe('terrain and weather regions', () => {
     await user.click(await screen.findByRole('button', { name: 'region: Wraithwood' }));
     const panel = screen.getByRole('complementary', { name: 'Region: Wraithwood' });
     expect(within(panel).getByRole('combobox', { name: 'Weather today' })).toHaveValue('snow');
-    expect(within(panel).getByText('Travel: 12 miles a day at a normal pace (difficult terrain)')).toBeInTheDocument();
+    expect(
+      within(panel).getByText('Travel: Normal pace at most, up to 24 miles a day (Forest terrain)'),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'region: The Glass Sands' }));
     const sandsPanel = screen.getByRole('complementary', { name: 'Region: The Glass Sands' });
@@ -547,7 +568,7 @@ describe('terrain and weather regions', () => {
 
     await user.selectOptions(within(panel).getByRole('combobox', { name: 'Terrain' }), 'badlands');
     await user.selectOptions(within(panel).getByRole('combobox', { name: 'Weather today' }), 'sandstorm');
-    expect(within(panel).getByText(/Heavily obscured beyond a few feet/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Strong wind in the desert: disadvantage on Wisdom/)).toBeInTheDocument();
 
     const cx = within(panel).getByRole('spinbutton', { name: /Centre X/ });
     await user.clear(cx);
@@ -593,7 +614,104 @@ describe('terrain and weather regions', () => {
     const user = userEvent.setup();
     renderMap();
     await screen.findByRole('button', { name: 'region: The Glass Sands' });
-    await user.click(screen.getByRole('switch', { name: 'Show regions and weather' }));
+    await user.click(screen.getByRole('switch', { name: 'Regions and weather' }));
     expect(screen.queryByRole('button', { name: 'region: The Glass Sands' })).not.toBeInTheDocument();
+  });
+});
+
+describe('map tools', () => {
+  const scaled = { ...map, tools: { scaleWidth: 400, scaleUnit: 'mi' as const, northDegrees: 90, gridSize: 20 } };
+
+  it('anyone measures a route: distance and travel time at the chosen pace (SRD travel pace)', async () => {
+    signInAs('player');
+    vi.mocked(mapsApi.getMap).mockResolvedValue(scaled);
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'Measure' }));
+    expect(screen.getByText('Click the map to start a route; each click adds a point.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'measure from the west edge' }));
+    await user.click(screen.getByRole('button', { name: 'measure to the east edge' }));
+    // 2000 px across a 400-mile map: 400 miles; at a Normal pace that is 400 / 24 days and 400 / 3 hours
+    expect(screen.getByText('400 miles')).toBeInTheDocument();
+    expect(screen.getByText('Normal pace: 16.7 days (133 hours on the move)')).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Pace' }), 'fast');
+    expect(screen.getByText('Fast pace: 13.3 days (100 hours on the move)')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Undo point' }));
+    expect(screen.getByText('Click the map to start a route; each click adds a point.')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('button', { name: 'measure from the west edge' })).not.toBeInTheDocument();
+  });
+
+  it('without a scale, measuring says so (and tells the DM where to set it)', async () => {
+    signInAs('dm');
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'Measure' }));
+    expect(
+      screen.getByText('This map has no scale yet: set its width in Map settings to measure.'),
+    ).toBeInTheDocument();
+  });
+
+  it('the compass points where the DM set north, and the grid follows the scale', async () => {
+    signInAs('player');
+    vi.mocked(mapsApi.getMap).mockResolvedValue(scaled);
+    const user = userEvent.setup();
+    renderMap();
+    expect(
+      await screen.findByRole('img', { name: 'Compass: north is 90 degrees clockwise from the top' }),
+    ).toBeInTheDocument();
+    // 20-mile squares on a 400-mile, 2000 px map: 100 px squares
+    expect(screen.getByTestId('map')).toHaveAttribute('data-grid', '100');
+    await user.click(screen.getByRole('switch', { name: 'Grid' }));
+    expect(screen.getByTestId('map')).toHaveAttribute('data-grid', 'null');
+    await user.click(screen.getByRole('switch', { name: 'Compass' }));
+    expect(screen.queryByRole('img', { name: /Compass/ })).not.toBeInTheDocument();
+  });
+
+  it('finds a pin by name and opens it', async () => {
+    signInAs('player');
+    const user = userEvent.setup();
+    renderMap();
+    await user.type(await screen.findByRole('searchbox', { name: 'Find a pin' }), 'drowned');
+    const results = screen.getByRole('list', { name: 'Pins found' });
+    await user.click(within(results).getByRole('button', { name: /The Drowned Rat/ }));
+    expect(screen.getByRole('complementary', { name: /The Drowned Rat/ })).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Pins found' })).not.toBeInTheDocument();
+  });
+
+  it('hiding pins removes them from the map', async () => {
+    signInAs('player');
+    const user = userEvent.setup();
+    renderMap();
+    await screen.findByRole('button', { name: 'pin: The Drowned Rat' });
+    await user.click(screen.getByRole('switch', { name: 'Pins' }));
+    expect(screen.queryByRole('button', { name: 'pin: The Drowned Rat' })).not.toBeInTheDocument();
+  });
+
+  it('the DM sets the scale, north and grid in Map settings', async () => {
+    signInAs('dm');
+    vi.mocked(mapsApi.setMapTools).mockImplementation(async (_id, tools) => ({ ...map, tools }));
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'Map settings' }));
+    const panel = screen.getByRole('complementary', { name: 'Map settings' });
+    await user.type(within(panel).getByRole('spinbutton', { name: 'Map width' }), '120');
+    await user.selectOptions(within(panel).getByRole('combobox', { name: 'Unit' }), 'ft');
+    await user.type(within(panel).getByRole('spinbutton', { name: /Grid square size in feet/ }), '5');
+    await user.click(within(panel).getByRole('button', { name: 'Save settings' }));
+    expect(mapsApi.setMapTools).toHaveBeenCalledWith('m1', {
+      scaleWidth: 120,
+      scaleUnit: 'ft',
+      northDegrees: 0,
+      gridSize: 5,
+    });
+    expect(await within(panel).findByText('Saved')).toBeInTheDocument();
+  });
+
+  it('players get no Map settings', async () => {
+    signInAs('player');
+    renderMap();
+    await screen.findByRole('button', { name: 'Measure' });
+    expect(screen.queryByRole('button', { name: 'Map settings' })).not.toBeInTheDocument();
   });
 });

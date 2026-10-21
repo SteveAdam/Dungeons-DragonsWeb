@@ -1,6 +1,9 @@
-// Terrain and weather for map regions (EXL-3). The effects paraphrase the environment rules of the SRD 5.2
-// (CC-BY-4.0); the DM always has the last word, so these are reminders, not automation.
-// The keys match the check constraints on public.regions (supabase/migrations/0003_regions.sql).
+// Terrain, travel and weather for map regions (EXL-1, EXL-3), from the SRD 5.2.1: "Travel Pace" (Playing the
+// Game), and "Travel Pace", "Travel Terrain" and "Environmental Effects" (Gameplay Toolbox). Rule text is
+// paraphrased; numbers are the SRD's. The keys match the check constraints on public.regions (0003_regions.sql).
+//
+// 2024 rules note: terrain does not halve overland travel. Each kind of terrain sets the MAXIMUM pace a group
+// can travel at; a good road raises that maximum by one step.
 
 export const TERRAINS = [
   'arctic',
@@ -40,10 +43,167 @@ export const WEATHERS = [
 ] as const;
 export type Weather = (typeof WEATHERS)[number];
 
+// TRAVEL PACE (SRD "Travel Pace" table) -------------------------------------------------------------------
+
+export type Pace = 'slow' | 'normal' | 'fast';
+const PACE_ORDER: readonly Pace[] = ['slow', 'normal', 'fast'];
+
+export const TRAVEL_PACE: Record<
+  Pace,
+  { label: string; feetPerMinute: number; milesPerHour: number; milesPerDay: number; effect: string }
+> = {
+  fast: {
+    label: 'Fast',
+    feetPerMinute: 400,
+    milesPerHour: 4,
+    milesPerDay: 30,
+    effect: 'Disadvantage on Wisdom (Perception or Survival) and Dexterity (Stealth) checks.',
+  },
+  normal: {
+    label: 'Normal',
+    feetPerMinute: 300,
+    milesPerHour: 3,
+    milesPerDay: 24,
+    effect: 'Disadvantage on Dexterity (Stealth) checks.',
+  },
+  slow: {
+    label: 'Slow',
+    feetPerMinute: 200,
+    milesPerHour: 2,
+    milesPerDay: 18,
+    effect: 'Advantage on Wisdom (Perception or Survival) checks.',
+  },
+};
+
+/** Miles per day at each pace, kept for older callers. */
+export const MILES_PER_DAY = { slow: 18, normal: 24, fast: 30 } as const;
+
+// TRAVEL TERRAIN (SRD "Travel Terrain" table) -------------------------------------------------------------
+
+export type SrdTerrain =
+  | 'arctic'
+  | 'coastal'
+  | 'desert'
+  | 'forest'
+  | 'grassland'
+  | 'hill'
+  | 'mountain'
+  | 'swamp'
+  | 'underdark'
+  | 'urban'
+  | 'waterborne';
+
+export interface SrdTerrainInfo {
+  label: string;
+  /** The fastest pace allowed; 'special' for waterborne travel, which uses the vessel's speed. */
+  maxPace: Pace | 'special';
+  maxPaceNote?: string;
+  /** How far away encounters start, as dice times 10 feet. */
+  encounterDistance: string;
+  foragingDc: number;
+  navigationDc: number;
+  searchDc: number;
+}
+
+export const SRD_TERRAIN: Record<SrdTerrain, SrdTerrainInfo> = {
+  arctic: {
+    label: 'Arctic',
+    maxPace: 'fast',
+    maxPaceNote: 'Needs suitable equipment (such as skis) to keep up a Fast pace.',
+    encounterDistance: '6d6 × 10 feet',
+    foragingDc: 20,
+    navigationDc: 10,
+    searchDc: 10,
+  },
+  coastal: {
+    label: 'Coastal',
+    maxPace: 'normal',
+    encounterDistance: '2d10 × 10 feet',
+    foragingDc: 10,
+    navigationDc: 5,
+    searchDc: 15,
+  },
+  desert: {
+    label: 'Desert',
+    maxPace: 'normal',
+    encounterDistance: '6d6 × 10 feet',
+    foragingDc: 20,
+    navigationDc: 10,
+    searchDc: 10,
+  },
+  forest: {
+    label: 'Forest',
+    maxPace: 'normal',
+    encounterDistance: '2d8 × 10 feet',
+    foragingDc: 10,
+    navigationDc: 15,
+    searchDc: 15,
+  },
+  grassland: {
+    label: 'Grassland',
+    maxPace: 'fast',
+    encounterDistance: '6d6 × 10 feet',
+    foragingDc: 15,
+    navigationDc: 5,
+    searchDc: 15,
+  },
+  hill: {
+    label: 'Hill',
+    maxPace: 'normal',
+    encounterDistance: '2d10 × 10 feet',
+    foragingDc: 15,
+    navigationDc: 10,
+    searchDc: 15,
+  },
+  mountain: {
+    label: 'Mountain',
+    maxPace: 'slow',
+    encounterDistance: '4d10 × 10 feet',
+    foragingDc: 20,
+    navigationDc: 15,
+    searchDc: 20,
+  },
+  swamp: {
+    label: 'Swamp',
+    maxPace: 'slow',
+    encounterDistance: '2d8 × 10 feet',
+    foragingDc: 10,
+    navigationDc: 15,
+    searchDc: 20,
+  },
+  underdark: {
+    label: 'Underdark',
+    maxPace: 'normal',
+    encounterDistance: '2d6 × 10 feet',
+    foragingDc: 20,
+    navigationDc: 10,
+    searchDc: 20,
+  },
+  urban: {
+    label: 'Urban',
+    maxPace: 'normal',
+    encounterDistance: '2d6 × 10 feet',
+    foragingDc: 20,
+    navigationDc: 15,
+    searchDc: 15,
+  },
+  waterborne: {
+    label: 'Waterborne',
+    maxPace: 'special',
+    maxPaceNote: 'Travel at the speed of the vessel; no travel pace is chosen.',
+    encounterDistance: '6d6 × 10 feet',
+    foragingDc: 15,
+    navigationDc: 10,
+    searchDc: 15,
+  },
+};
+
+// OUR TERRAINS -------------------------------------------------------------------------------------------
+
 export interface TerrainInfo {
   label: string;
-  /** Overland travel through it counts as difficult terrain: half the usual distance per day. */
-  difficult: boolean;
+  /** The SRD terrain whose travel rules apply (our list is finer than the SRD's). */
+  srdTerrain: SrdTerrain;
   /** What the land is like, for the DM to read out or build on. */
   note: string;
   /** The weather this land usually sees, most common first. "Roll weather" picks from these. */
@@ -53,107 +213,165 @@ export interface TerrainInfo {
 export const TERRAIN_INFO: Record<Terrain, TerrainInfo> = {
   arctic: {
     label: 'Arctic',
-    difficult: true,
+    srdTerrain: 'arctic',
     note: 'Ice sheets and deep snow. Slippery ice and thin ice are common hazards.',
     typicalWeather: ['extreme_cold', 'snow', 'blizzard', 'strong_wind', 'clear'],
   },
   tundra: {
     label: 'Tundra',
-    difficult: false,
+    srdTerrain: 'arctic',
     note: 'Treeless, frozen plains with little shelter from the wind.',
     typicalWeather: ['extreme_cold', 'strong_wind', 'snow', 'overcast', 'clear'],
   },
   boreal_forest: {
     label: 'Boreal forest',
-    difficult: true,
+    srdTerrain: 'forest',
     note: 'Dense pine and spruce under long winters; snow lies deep between the trees.',
     typicalWeather: ['snow', 'overcast', 'extreme_cold', 'fog', 'clear'],
   },
   temperate_forest: {
     label: 'Temperate forest',
-    difficult: false,
+    srdTerrain: 'forest',
     note: 'Oak and beech woods with paths and clearings; thick undergrowth off the trails.',
     typicalWeather: ['clear', 'overcast', 'rain', 'fog', 'thunderstorm'],
   },
   jungle: {
     label: 'Jungle',
-    difficult: true,
+    srdTerrain: 'forest',
     note: 'Steaming, tangled growth. Visibility rarely goes beyond a few dozen feet.',
     typicalWeather: ['heavy_rain', 'thunderstorm', 'rain', 'extreme_heat', 'fog'],
   },
   grassland: {
     label: 'Grassland',
-    difficult: false,
+    srdTerrain: 'grassland',
     note: 'Open plains; you see trouble coming from far off, and it sees you.',
     typicalWeather: ['clear', 'strong_wind', 'overcast', 'thunderstorm', 'hail'],
   },
   farmland: {
     label: 'Farmland',
-    difficult: false,
+    srdTerrain: 'grassland',
     note: 'Fields, hedgerows and villages linked by cart roads.',
     typicalWeather: ['clear', 'overcast', 'rain', 'fog'],
   },
   hills: {
     label: 'Hills',
-    difficult: true,
+    srdTerrain: 'hill',
     note: 'Rolling high ground, good for watchtowers and ambushes.',
     typicalWeather: ['clear', 'overcast', 'strong_wind', 'rain', 'fog'],
   },
   mountains: {
     label: 'Mountains',
-    difficult: true,
-    note: 'Steep climbs. Above 10,000 feet the air is thin and travel is exhausting.',
+    srdTerrain: 'mountain',
+    note: 'Steep climbs. Above 10,000 feet each hour of travel counts as 2 hours of travel.',
     typicalWeather: ['strong_wind', 'snow', 'extreme_cold', 'clear', 'blizzard'],
   },
   desert: {
     label: 'Desert',
-    difficult: false,
+    srdTerrain: 'desert',
     note: 'Dunes and salt flats; water is the first thing to run out.',
     typicalWeather: ['extreme_heat', 'clear', 'sandstorm', 'strong_wind'],
   },
   badlands: {
     label: 'Badlands',
-    difficult: true,
+    srdTerrain: 'hill',
     note: 'Eroded canyons and mesas; easy to get lost, easy to get trapped.',
     typicalWeather: ['clear', 'extreme_heat', 'strong_wind', 'thunderstorm'],
   },
   swamp: {
     label: 'Swamp',
-    difficult: true,
+    srdTerrain: 'swamp',
     note: 'Mud, reeds and stagnant water; insects and worse.',
     typicalWeather: ['fog', 'rain', 'overcast', 'extreme_heat', 'heavy_rain'],
   },
   coast: {
     label: 'Coast',
-    difficult: false,
+    srdTerrain: 'coastal',
     note: 'Cliffs, coves and beaches. Tides can cut off a path within the hour.',
     typicalWeather: ['strong_wind', 'fog', 'clear', 'rain', 'thunderstorm'],
   },
   sea: {
     label: 'Open sea',
-    difficult: false,
-    note: 'Travel by ship. Frigid water saps a swimmer quickly.',
+    srdTerrain: 'waterborne',
+    note: 'Travel by ship. Frigid water saps a swimmer within minutes.',
     typicalWeather: ['clear', 'strong_wind', 'thunderstorm', 'fog', 'heavy_rain'],
   },
   volcanic: {
     label: 'Volcanic',
-    difficult: true,
+    srdTerrain: 'mountain',
     note: 'Ash fields, lava tubes and vents of poisonous gas.',
     typicalWeather: ['extreme_heat', 'overcast', 'strong_wind', 'clear'],
   },
   underdark: {
     label: 'Underdark',
-    difficult: true,
+    srdTerrain: 'underdark',
     note: 'Endless caverns without daylight; darkness is the norm, not the weather.',
     typicalWeather: ['clear', 'fog'],
   },
   urban: {
     label: 'City',
-    difficult: false,
+    srdTerrain: 'urban',
     note: 'Streets, markets and alleys; shelter is never far away.',
     typicalWeather: ['clear', 'overcast', 'rain', 'fog'],
   },
 };
+
+/** The SRD travel rules for one of our terrains. */
+export const travelTerrain = (terrain: Terrain): SrdTerrainInfo => SRD_TERRAIN[TERRAIN_INFO[terrain].srdTerrain];
+
+/**
+ * The pace a group actually travels at: the pace it wants, but no faster than the terrain allows. A good road
+ * raises the terrain's maximum by one step. null for waterborne travel (the vessel's speed decides).
+ */
+export function effectivePace(terrain: Terrain | null, wanted: Pace, goodRoad = false): Pace | null {
+  if (!terrain) return wanted;
+  const max = travelTerrain(terrain).maxPace;
+  if (max === 'special') return null;
+  const maxIndex = Math.min(PACE_ORDER.indexOf(max) + (goodRoad ? 1 : 0), PACE_ORDER.length - 1);
+  return PACE_ORDER[Math.min(PACE_ORDER.indexOf(wanted), maxIndex)];
+}
+
+/** Miles a day's travel covers in this terrain at the wanted pace (limited by the terrain); null at sea. */
+export function milesPerDay(terrain: Terrain, pace: Pace = 'normal', goodRoad = false): number | null {
+  const actual = effectivePace(terrain, pace, goodRoad);
+  return actual ? TRAVEL_PACE[actual].milesPerDay : null;
+}
+
+export interface JourneyLeg {
+  miles: number;
+  /** The terrain of the region this leg runs through, or null outside every region. */
+  terrain: Terrain | null;
+}
+
+export interface Journey {
+  miles: number;
+  /** Hours on the move, at the per-hour rates. */
+  hours: number;
+  /** Travel days, at the per-day rates (a travel day is about 8 hours). */
+  days: number;
+  /** Terrains that forced a slower pace than the one wanted. */
+  slowedBy: Terrain[];
+  /** Miles over water, which depend on a vessel and are left out of hours and days. */
+  waterborneMiles: number;
+}
+
+/** How long a route takes at a pace, leg by leg, each leg limited by its terrain's maximum pace. */
+export function journeyTime(legs: readonly JourneyLeg[], pace: Pace): Journey {
+  const out: Journey = { miles: 0, hours: 0, days: 0, slowedBy: [], waterborneMiles: 0 };
+  for (const leg of legs) {
+    out.miles += leg.miles;
+    const actual = effectivePace(leg.terrain, pace);
+    if (!actual) {
+      out.waterborneMiles += leg.miles;
+      continue;
+    }
+    if (leg.terrain && actual !== pace && !out.slowedBy.includes(leg.terrain)) out.slowedBy.push(leg.terrain);
+    out.hours += leg.miles / TRAVEL_PACE[actual].milesPerHour;
+    out.days += leg.miles / TRAVEL_PACE[actual].milesPerDay;
+  }
+  return out;
+}
+
+// WEATHER (SRD "Environmental Effects") ---------------------------------------------------------------------
 
 export type WeatherSeverity = 'calm' | 'harsh' | 'hazard';
 
@@ -166,98 +384,83 @@ export interface WeatherInfo {
 
 export const WEATHER_INFO: Record<Weather, WeatherInfo> = {
   clear: { label: 'Clear', severity: 'calm', effects: [] },
-  overcast: { label: 'Overcast', severity: 'calm', effects: ['Dim, grey light; no other effect.'] },
+  overcast: { label: 'Overcast', severity: 'calm', effects: ['No game effect.'] },
   fog: {
     label: 'Fog',
     severity: 'harsh',
-    effects: ['The area is heavily obscured: creatures in it are effectively blinded beyond a few feet.'],
+    effects: [
+      'Patchy fog is Lightly Obscured: disadvantage on Wisdom (Perception) checks that rely on sight.',
+      'Heavy fog is Heavily Obscured: a creature trying to see into it has the Blinded condition.',
+    ],
   },
-  rain: {
-    label: 'Rain',
-    severity: 'calm',
-    effects: ['Light rain: no game effect, but tracks wash out over time.'],
-  },
+  rain: { label: 'Rain', severity: 'calm', effects: ['Light rain has no game effect.'] },
   heavy_rain: {
     label: 'Heavy rain',
     severity: 'harsh',
-    effects: [
-      'Lightly obscured: disadvantage on Wisdom (Perception) checks that rely on sight.',
-      'Open flames go out; disadvantage on Wisdom (Perception) checks that rely on hearing.',
-    ],
+    effects: ['Lightly Obscured, and disadvantage on all Wisdom (Perception) checks.', 'Open flames are put out.'],
   },
   thunderstorm: {
     label: 'Thunderstorm',
     severity: 'harsh',
     effects: [
-      'As heavy rain, plus strong wind.',
-      'Lightning can strike the highest point nearby: a good moment for a Dexterity save.',
+      'Heavy rain and strong wind together: Lightly Obscured, disadvantage on Wisdom (Perception) checks and on ranged weapon attacks, open flames are put out, and flyers must land or fall.',
+      'Lightning strikes are not an SRD rule: the DM decides.',
     ],
   },
   snow: {
-    label: 'Snow',
+    label: 'Heavy snow',
     severity: 'harsh',
-    effects: [
-      'Heavy snowfall is lightly obscured: disadvantage on sight-based Perception.',
-      'Deep snow is difficult terrain.',
-    ],
+    effects: ['Lightly Obscured, and disadvantage on all Wisdom (Perception) checks.'],
   },
   blizzard: {
     label: 'Blizzard',
     severity: 'hazard',
     effects: [
-      'Heavy snow and strong wind together: lightly obscured, open flames go out, ranged attacks have disadvantage.',
-      'Extreme cold: a Constitution save (DC 10) each hour or gain 1 Exhaustion level, unless dressed for it.',
+      'Heavy snow and strong wind: Lightly Obscured, disadvantage on Wisdom (Perception) checks and on ranged weapon attacks, open flames are put out, and flyers must land or fall.',
+      'At 0 °F or below, a DC 10 Constitution save at the end of each hour or gain 1 Exhaustion level (automatic success with Resistance or Immunity to Cold damage).',
     ],
   },
   hail: {
     label: 'Hail',
     severity: 'harsh',
     effects: [
-      'Lightly obscured, and loud: disadvantage on hearing-based Perception. Large hail can deal bludgeoning damage.',
+      'Hail is not an SRD rule. A fair ruling: treat it like heavy precipitation (Lightly Obscured, disadvantage on Wisdom (Perception) checks).',
     ],
   },
   sandstorm: {
     label: 'Sandstorm',
     severity: 'hazard',
     effects: [
-      'Heavily obscured beyond a few feet; ranged attacks have disadvantage.',
-      'Travelling through it is difficult terrain, and exposed flames go out.',
+      'Strong wind in the desert: disadvantage on Wisdom (Perception) checks.',
+      'Plus strong wind: disadvantage on ranged weapon attacks, open flames are put out, fog disperses, and flyers must land or fall.',
     ],
   },
   strong_wind: {
     label: 'Strong wind',
     severity: 'harsh',
     effects: [
-      'Disadvantage on ranged weapon attack rolls.',
-      'Open flames go out and fog disperses.',
-      'Flying creatures without magic must land at the end of their turn or fall.',
+      'Disadvantage on ranged attack rolls with weapons.',
+      'Open flames are put out and fog disperses.',
+      'A flying creature must land at the end of its turn or fall.',
     ],
   },
   extreme_heat: {
     label: 'Extreme heat',
     severity: 'hazard',
     effects: [
-      'Without water, a Constitution save each hour (DC 5, +1 per hour) or gain 1 Exhaustion level.',
-      'Medium or heavy armour or heavy clothing gives disadvantage on the save.',
+      'At 100 °F or above, without drinkable water: a Constitution save at the end of each hour (DC 5, +1 each further hour) or gain 1 Exhaustion level.',
+      'Medium or Heavy armor gives disadvantage on the save; Resistance or Immunity to Fire damage means automatic success.',
     ],
   },
   extreme_cold: {
     label: 'Extreme cold',
     severity: 'hazard',
     effects: [
-      'A Constitution save (DC 10) each hour or gain 1 Exhaustion level, unless dressed for the cold or resistant to cold.',
+      'At 0 °F or below: a DC 10 Constitution save at the end of each hour or gain 1 Exhaustion level.',
+      'Resistance or Immunity to Cold damage means automatic success.',
     ],
   },
 };
-
-/** Hours of travel per day at a normal pace, and the miles covered on open ground (SRD 5.2 travel pace). */
-export const MILES_PER_DAY = { slow: 18, normal: 24, fast: 30 } as const;
-
-/** Miles a day's travel covers in this terrain: difficult terrain halves it. */
-export function milesPerDay(terrain: Terrain, pace: keyof typeof MILES_PER_DAY = 'normal'): number {
-  const miles = MILES_PER_DAY[pace];
-  return TERRAIN_INFO[terrain].difficult ? miles / 2 : miles;
-}
 
 /**
  * Picks today's weather for a terrain from what it usually sees, weighted towards the first (most common) ones.

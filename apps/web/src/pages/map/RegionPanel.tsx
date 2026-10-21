@@ -1,8 +1,9 @@
 import {
-  milesPerDay,
   rollWeather,
   TERRAIN_INFO,
   TERRAINS,
+  TRAVEL_PACE,
+  travelTerrain,
   WEATHER_INFO,
   WEATHERS,
   type Terrain,
@@ -32,6 +33,7 @@ const SEVERITY_LABELS = { calm: 'Calm', harsh: 'Harsh', hazard: 'Hazard' } as co
 /** What this terrain and weather mean at the table: travel, the land, and the weather's game effects. */
 function Conditions({ terrain, weather }: { terrain: Terrain; weather: Weather }) {
   const land = TERRAIN_INFO[terrain];
+  const srd = travelTerrain(terrain);
   const sky = WEATHER_INFO[weather];
   const TerrainIcon = TERRAIN_ICONS[terrain];
   const WeatherIcon = WEATHER_ICONS[weather];
@@ -44,7 +46,13 @@ function Conditions({ terrain, weather }: { terrain: Terrain; weather: Weather }
       <p className={styles.prose}>{land.note}</p>
       <p className={styles.travel}>
         <Footprints {...ICON_PROPS} />
-        {`Travel: ${milesPerDay(terrain)} miles a day at a normal pace${land.difficult ? ' (difficult terrain)' : ''}`}
+        {srd.maxPace === 'special'
+          ? `Travel: by vessel (${srd.label} terrain)`
+          : `Travel: ${TRAVEL_PACE[srd.maxPace].label} pace at most, up to ${TRAVEL_PACE[srd.maxPace].milesPerDay} miles a day (${srd.label} terrain)`}
+      </p>
+      {srd.maxPaceNote && <p className={styles.prose}>{srd.maxPaceNote}</p>}
+      <p className={styles.prose}>
+        {`Foraging DC ${srd.foragingDc} · Navigation DC ${srd.navigationDc} · Search DC ${srd.searchDc} · Encounters start ${srd.encounterDistance} away`}
       </p>
       <p className={styles.type}>
         <WeatherIcon {...ICON_PROPS} />

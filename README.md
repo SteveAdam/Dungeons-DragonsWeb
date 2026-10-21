@@ -15,7 +15,7 @@ apps/web/                 React + TypeScript + Vite app
   src/types/database.ts   generated from the schema (pnpm db:types)
 packages/rules-engine/    D&D 2024 rules (P1): core odds, bonus dice, effects, item requirements, terrain
 supabase/
-  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters
+  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters, 0006 map tools
   tests/database/         pgTAP suite for every policy
 scripts/                  mutation check (RLS suite) and token check (CSS)
 docs/                     design notes, including the P0-5 schema review
@@ -42,7 +42,7 @@ pnpm dev                                # http://localhost:5173
 | `pnpm check:tokens`                          | Fails if a CSS file other than `tokens.css` contains a hex colour  |
 | `pnpm db:start` / `db:stop`                  | Starts or stops the local Supabase stack                           |
 | `pnpm db:reset`                              | Rebuilds the local database from `migrations/` and `seed.sql`      |
-| `pnpm db:test`                               | pgTAP row level security suite (175 assertions)                    |
+| `pnpm db:test`                               | pgTAP row level security suite (180 assertions)                    |
 | `pnpm db:test:mutations`                     | Removes each protection in turn; all 26 must be caught             |
 | `pnpm db:seed:dev <email>`                   | Gives that local player account Brannoc (P1-7 golden fixture)      |
 | `pnpm db:types`                              | Regenerates `apps/web/src/types/database.ts` from the local schema |
@@ -159,6 +159,12 @@ Cloudflare R2) means writing one new `MapImageStore` implementation.
 
 Licences: `react-leaflet` uses the Hippocratic License 2.1 (an ethical-use licence, not OSI open source); Leaflet is
 BSD-2-Clause; icons are lucide (ISC).
+
+- **Map tools.** The DM sets each map's scale (its width in miles or feet), which way is north and an optional
+  grid in Map settings (`0006_map_tools.sql`). Anyone can measure a route: the distance, and for maps in miles the
+  travel time at a Slow, Normal or Fast pace, where each zone the route crosses caps the pace at its SRD terrain's
+  maximum (forest Normal, swamp and mountain Slow; open sea is left to the vessel). Layers switch pins, zones, grid
+  and the compass rose on and off, with a legend of the terrains and weather on show; Find a pin jumps to a pin.
 
 ## Dice and the roll log (P1-5)
 

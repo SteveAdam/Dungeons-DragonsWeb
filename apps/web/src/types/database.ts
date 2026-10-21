@@ -159,14 +159,14 @@ isOneToOne: false
                   ]
                 },"maps": {
                   Row: {
-                    "campaign_id": string,"created_at": string,"fog_mode": string,"height": number,"id": string,"image_path": string,"name": string,"parent_pin_id": string | null,"visible_to_players": boolean,"width": number
+                    "campaign_id": string,"created_at": string,"fog_mode": string,"grid_size": number | null,"height": number,"id": string,"image_path": string,"name": string,"north_degrees": number,"parent_pin_id": string | null,"scale_unit": string,"scale_width": number | null,"visible_to_players": boolean,"width": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "campaign_id": string,"created_at"?: string,"fog_mode"?: string,"height": number,"id"?: string,"image_path": string,"name": string,"parent_pin_id"?: string | null,"visible_to_players"?: boolean,"width": number
+                    "campaign_id": string,"created_at"?: string,"fog_mode"?: string,"grid_size"?: number | null,"height": number,"id"?: string,"image_path": string,"name": string,"north_degrees"?: number,"parent_pin_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width": number
                   }
                   Update: {
-                    "campaign_id"?: string,"created_at"?: string,"fog_mode"?: string,"height"?: number,"id"?: string,"image_path"?: string,"name"?: string,"parent_pin_id"?: string | null,"visible_to_players"?: boolean,"width"?: number
+                    "campaign_id"?: string,"created_at"?: string,"fog_mode"?: string,"grid_size"?: number | null,"height"?: number,"id"?: string,"image_path"?: string,"name"?: string,"north_degrees"?: number,"parent_pin_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width"?: number
                   }
                   Relationships: [
                     {
