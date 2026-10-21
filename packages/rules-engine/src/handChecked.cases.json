@@ -1,0 +1,302 @@
+[
+  {
+    "name": "01 Check +3 vs DC 14",
+    "kind": "check",
+    "bonus": 3,
+    "target": 14,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.5,
+    "working": "need 11; (21-11)/20 = 0.50"
+  },
+  {
+    "name": "02 Check +3 vs DC 14, advantage",
+    "kind": "check",
+    "bonus": 3,
+    "target": 14,
+    "mode": "advantage",
+    "bonusDice": [],
+    "expected": 0.75,
+    "working": "s = 0.50; 1 - 0.5^2 = 0.75"
+  },
+  {
+    "name": "03 Check +3 vs DC 14, disadvantage",
+    "kind": "check",
+    "bonus": 3,
+    "target": 14,
+    "mode": "disadvantage",
+    "bonusDice": [],
+    "expected": 0.25,
+    "working": "s = 0.50; 0.5^2 = 0.25"
+  },
+  {
+    "name": "04 Check +6 vs DC 18",
+    "kind": "check",
+    "bonus": 6,
+    "target": 18,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.45,
+    "working": "need 12; 9/20 = 0.45"
+  },
+  {
+    "name": "05 Check +0 vs DC 13",
+    "kind": "check",
+    "bonus": 0,
+    "target": 13,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.4,
+    "working": "need 13; 8/20 = 0.40"
+  },
+  {
+    "name": "06 Check +3 vs DC 30 (impossible)",
+    "kind": "check",
+    "bonus": 3,
+    "target": 30,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0,
+    "working": "need 27; no 20 saves a check: 0"
+  },
+  {
+    "name": "07 Check +3 vs DC 2 (certain)",
+    "kind": "check",
+    "bonus": 3,
+    "target": 2,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 1,
+    "working": "need -1; no 1 fails a check: 1"
+  },
+  {
+    "name": "08 Attack +5 vs AC 13",
+    "kind": "attack",
+    "bonus": 5,
+    "target": 13,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.65,
+    "working": "need 8; 13/20 = 0.65"
+  },
+  {
+    "name": "09 Attack +5 vs AC 13, disadvantage",
+    "kind": "attack",
+    "bonus": 5,
+    "target": 13,
+    "mode": "disadvantage",
+    "bonusDice": [],
+    "expected": 0.4225,
+    "working": "s = 0.65; 0.65^2 = 0.4225"
+  },
+  {
+    "name": "10 Attack +20 vs AC 10 (natural 1 misses)",
+    "kind": "attack",
+    "bonus": 20,
+    "target": 10,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.95,
+    "working": "need -10; capped at 0.95"
+  },
+  {
+    "name": "11 Attack -5 vs AC 25 (natural 20 hits)",
+    "kind": "attack",
+    "bonus": -5,
+    "target": 25,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.05,
+    "working": "need 30; floored at 0.05"
+  },
+  {
+    "name": "12 Shortbow +5 at 90 ft vs AC 13 (long range)",
+    "kind": "attack",
+    "bonus": 5,
+    "target": 13,
+    "mode": "disadvantage",
+    "bonusDice": [],
+    "expected": 0.4225,
+    "working": "beyond 80 ft: disadvantage; 0.65^2 = 0.4225 (42%)"
+  },
+  {
+    "name": "13 Check +3 vs DC 14, Bless",
+    "kind": "check",
+    "bonus": 3,
+    "target": 14,
+    "mode": "normal",
+    "bonusDice": [{ "count": 1, "sides": 4, "sign": 1 }],
+    "expected": 0.625,
+    "working": "e=1..4: 0.55, 0.60, 0.65, 0.70; average 0.625"
+  },
+  {
+    "name": "14 Check +3 vs DC 14, Bless, advantage",
+    "kind": "check",
+    "bonus": 3,
+    "target": 14,
+    "mode": "advantage",
+    "bonusDice": [{ "count": 1, "sides": 4, "sign": 1 }],
+    "expected": 0.85625,
+    "working": "1-(1-s)^2: 0.7975, 0.84, 0.8775, 0.91; average 0.85625"
+  },
+  {
+    "name": "15 Attack +5 vs AC 13, Bless",
+    "kind": "attack",
+    "bonus": 5,
+    "target": 13,
+    "mode": "normal",
+    "bonusDice": [{ "count": 1, "sides": 4, "sign": 1 }],
+    "expected": 0.775,
+    "working": "0.70, 0.75, 0.80, 0.85; average 0.775"
+  },
+  {
+    "name": "16 Check +3 vs DC 14, Bane",
+    "kind": "check",
+    "bonus": 3,
+    "target": 14,
+    "mode": "normal",
+    "bonusDice": [{ "count": 1, "sides": 4, "sign": -1 }],
+    "expected": 0.375,
+    "working": "0.45, 0.40, 0.35, 0.30; average 0.375"
+  },
+  {
+    "name": "17 Save +2 vs DC 15",
+    "kind": "save",
+    "bonus": 2,
+    "target": 15,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.4,
+    "working": "need 13; 8/20 = 0.40"
+  },
+  {
+    "name": "18 Save +2 vs DC 15, advantage",
+    "kind": "save",
+    "bonus": 2,
+    "target": 15,
+    "mode": "advantage",
+    "bonusDice": [],
+    "expected": 0.64,
+    "working": "1 - 0.6^2 = 0.64"
+  },
+  {
+    "name": "19 Save +5 vs DC 10, disadvantage",
+    "kind": "save",
+    "bonus": 5,
+    "target": 10,
+    "mode": "disadvantage",
+    "bonusDice": [],
+    "expected": 0.64,
+    "working": "need 5; s = 16/20 = 0.80; 0.8^2 = 0.64"
+  },
+  {
+    "name": "20 Attack +7 vs AC 18",
+    "kind": "attack",
+    "bonus": 7,
+    "target": 18,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.5,
+    "working": "need 11; 10/20 = 0.50"
+  },
+  {
+    "name": "21 Attack +7 vs AC 18, advantage",
+    "kind": "attack",
+    "bonus": 7,
+    "target": 18,
+    "mode": "advantage",
+    "bonusDice": [],
+    "expected": 0.75,
+    "working": "1 - 0.5^2 = 0.75"
+  },
+  {
+    "name": "22 Attack +4 vs AC 20, disadvantage",
+    "kind": "attack",
+    "bonus": 4,
+    "target": 20,
+    "mode": "disadvantage",
+    "bonusDice": [],
+    "expected": 0.0625,
+    "working": "need 16; s = 5/20 = 0.25; 0.25^2 = 0.0625"
+  },
+  {
+    "name": "23 Attack +10 vs AC 12, advantage",
+    "kind": "attack",
+    "bonus": 10,
+    "target": 12,
+    "mode": "advantage",
+    "bonusDice": [],
+    "expected": 0.9975,
+    "working": "need 2; s = 0.95 (cap); 1 - 0.05^2 = 0.9975"
+  },
+  {
+    "name": "24 Check -1 vs DC 10",
+    "kind": "check",
+    "bonus": -1,
+    "target": 10,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.5,
+    "working": "need 11; 10/20 = 0.50"
+  },
+  {
+    "name": "25 Save +0 vs DC 21 (a 20 is not enough)",
+    "kind": "save",
+    "bonus": 0,
+    "target": 21,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0,
+    "working": "need 21; 0/20 = 0"
+  },
+  {
+    "name": "26 Save +0 vs DC 20",
+    "kind": "save",
+    "bonus": 0,
+    "target": 20,
+    "mode": "normal",
+    "bonusDice": [],
+    "expected": 0.05,
+    "working": "need 20; 1/20 = 0.05"
+  },
+  {
+    "name": "27 Attack +0 vs AC 30, advantage",
+    "kind": "attack",
+    "bonus": 0,
+    "target": 30,
+    "mode": "advantage",
+    "bonusDice": [],
+    "expected": 0.0975,
+    "working": "s = 0.05 (natural 20); 1 - 0.95^2 = 0.0975"
+  },
+  {
+    "name": "28 Check +3 vs DC 14, +2d4",
+    "kind": "check",
+    "bonus": 3,
+    "target": 14,
+    "mode": "normal",
+    "bonusDice": [{ "count": 2, "sides": 4, "sign": 1 }],
+    "expected": 0.75,
+    "working": "e=2..8 weights 1,2,3,4,3,2,1 of 16; s = (10+e)/20; sum 12.0/16 = 0.75"
+  },
+  {
+    "name": "29 Attack +5 vs AC 13, Bless, advantage",
+    "kind": "attack",
+    "bonus": 5,
+    "target": 13,
+    "mode": "advantage",
+    "bonusDice": [{ "count": 1, "sides": 4, "sign": 1 }],
+    "expected": 0.94625,
+    "working": "1-(1-s)^2 for 0.70..0.85: 0.91, 0.9375, 0.96, 0.9775; average 0.94625"
+  },
+  {
+    "name": "30 Save +1 vs DC 12, Bane, disadvantage",
+    "kind": "save",
+    "bonus": 1,
+    "target": 12,
+    "mode": "disadvantage",
+    "bonusDice": [{ "count": 1, "sides": 4, "sign": -1 }],
+    "expected": 0.14375,
+    "working": "s = 0.45, 0.40, 0.35, 0.30; squared 0.2025, 0.16, 0.1225, 0.09; average 0.14375"
+  }
+]
