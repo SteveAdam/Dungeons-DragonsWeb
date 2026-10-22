@@ -41,14 +41,14 @@ isOneToOne: true
                   ]
                 },"characters": {
                   Row: {
-                    "campaign_id": string,"created_at": string,"id": string,"name": string,"owner_id": string,"sheet": NonNullable<Json>,"xp": number
+                    "campaign_id": string,"created_at": string,"entity_id": string | null,"id": string,"name": string,"owner_id": string,"sheet": NonNullable<Json>,"xp": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "campaign_id": string,"created_at"?: string,"id"?: string,"name": string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
+                    "campaign_id": string,"created_at"?: string,"entity_id"?: string | null,"id"?: string,"name": string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
                   }
                   Update: {
-                    "campaign_id"?: string,"created_at"?: string,"id"?: string,"name"?: string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
+                    "campaign_id"?: string,"created_at"?: string,"entity_id"?: string | null,"id"?: string,"name"?: string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
                   }
                   Relationships: [
                     {
@@ -56,6 +56,12 @@ isOneToOne: true
       columns: ["campaign_id"]
 isOneToOne: false
       referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "characters_entity_id_fkey"
+      columns: ["entity_id"]
+isOneToOne: true
+      referencedRelation: "entities"
       referencedColumns: ["id"]
     }
                   ]
@@ -96,6 +102,90 @@ isOneToOne: true
       columns: ["character_id"]
 isOneToOne: false
       referencedRelation: "characters"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"entities": {
+                  Row: {
+                    "campaign_id": string,"created_at": string,"folder_id": string | null,"id": string,"name": string,"sort_order": number,"type": Database["public"]['Enums']["entity_type"],"updated_at": string,"visible_to_players": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"created_at"?: string,"folder_id"?: string | null,"id"?: string,"name": string,"sort_order"?: number,"type": Database["public"]['Enums']["entity_type"],"updated_at"?: string,"visible_to_players"?: boolean
+                  }
+                  Update: {
+                    "campaign_id"?: string,"created_at"?: string,"folder_id"?: string | null,"id"?: string,"name"?: string,"sort_order"?: number,"type"?: Database["public"]['Enums']["entity_type"],"updated_at"?: string,"visible_to_players"?: boolean
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "entities_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "entities_folder_id_fkey"
+      columns: ["folder_id"]
+isOneToOne: false
+      referencedRelation: "entity_folders"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"entity_folders": {
+                  Row: {
+                    "campaign_id": string,"created_at": string,"id": string,"name": string,"parent_id": string | null,"sort_order": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"created_at"?: string,"id"?: string,"name": string,"parent_id"?: string | null,"sort_order"?: number
+                  }
+                  Update: {
+                    "campaign_id"?: string,"created_at"?: string,"id"?: string,"name"?: string,"parent_id"?: string | null,"sort_order"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "entity_folders_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "entity_folders_parent_id_fkey"
+      columns: ["parent_id"]
+isOneToOne: false
+      referencedRelation: "entity_folders"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"entity_links": {
+                  Row: {
+                    "a_id": string,"b_id": string,"campaign_id": string,"created_at": string,"hidden": boolean,"id": string,"label_ab": string,"label_ba": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "a_id": string,"b_id": string,"campaign_id": string,"created_at"?: string,"hidden"?: boolean,"id"?: string,"label_ab": string,"label_ba": string
+                  }
+                  Update: {
+                    "a_id"?: string,"b_id"?: string,"campaign_id"?: string,"created_at"?: string,"hidden"?: boolean,"id"?: string,"label_ab"?: string,"label_ba"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "entity_links_a_id_fkey"
+      columns: ["a_id"]
+isOneToOne: false
+      referencedRelation: "entities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "entity_links_b_id_fkey"
+      columns: ["b_id"]
+isOneToOne: false
+      referencedRelation: "entities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "entity_links_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
       referencedColumns: ["id"]
     }
                   ]
@@ -205,14 +295,14 @@ isOneToOne: false
                   ]
                 },"pages": {
                   Row: {
-                    "body": string,"campaign_id": string,"created_at": string,"folder_id": string | null,"id": string,"ingame_date": string | null,"kind": string,"real_date": string | null,"session_no": number | null,"tags": (string)[],"title": string,"updated_at": string,"visible_to_players": boolean
+                    "body": string,"campaign_id": string,"created_at": string,"entity_id": string | null,"folder_id": string | null,"id": string,"ingame_date": string | null,"kind": string,"real_date": string | null,"session_no": number | null,"tags": (string)[],"title": string,"updated_at": string,"visible_to_players": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "body"?: string,"campaign_id": string,"created_at"?: string,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title": string,"updated_at"?: string,"visible_to_players"?: boolean
+                    "body"?: string,"campaign_id": string,"created_at"?: string,"entity_id"?: string | null,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title": string,"updated_at"?: string,"visible_to_players"?: boolean
                   }
                   Update: {
-                    "body"?: string,"campaign_id"?: string,"created_at"?: string,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title"?: string,"updated_at"?: string,"visible_to_players"?: boolean
+                    "body"?: string,"campaign_id"?: string,"created_at"?: string,"entity_id"?: string | null,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title"?: string,"updated_at"?: string,"visible_to_players"?: boolean
                   }
                   Relationships: [
                     {
@@ -220,6 +310,12 @@ isOneToOne: false
       columns: ["campaign_id"]
 isOneToOne: false
       referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pages_entity_id_fkey"
+      columns: ["entity_id"]
+isOneToOne: false
+      referencedRelation: "entities"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "pages_folder_id_fkey"
@@ -251,17 +347,23 @@ isOneToOne: true
                   ]
                 },"pins": {
                   Row: {
-                    "color": string,"created_at": string,"description": string,"history": string,"icon": string,"id": string,"map_id": string,"music_url": string | null,"size": number,"tags": (string)[],"title": string,"traits": (string)[],"type": string,"visible_to_players": boolean,"x": number,"y": number
+                    "color": string,"created_at": string,"description": string,"entity_id": string | null,"history": string,"icon": string,"id": string,"map_id": string,"music_url": string | null,"size": number,"tags": (string)[],"title": string,"traits": (string)[],"type": string,"visible_to_players": boolean,"x": number,"y": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "color"?: string,"created_at"?: string,"description"?: string,"history"?: string,"icon"?: string,"id"?: string,"map_id": string,"music_url"?: string | null,"size"?: number,"tags"?: (string)[],"title": string,"traits"?: (string)[],"type"?: string,"visible_to_players"?: boolean,"x": number,"y": number
+                    "color"?: string,"created_at"?: string,"description"?: string,"entity_id"?: string | null,"history"?: string,"icon"?: string,"id"?: string,"map_id": string,"music_url"?: string | null,"size"?: number,"tags"?: (string)[],"title": string,"traits"?: (string)[],"type"?: string,"visible_to_players"?: boolean,"x": number,"y": number
                   }
                   Update: {
-                    "color"?: string,"created_at"?: string,"description"?: string,"history"?: string,"icon"?: string,"id"?: string,"map_id"?: string,"music_url"?: string | null,"size"?: number,"tags"?: (string)[],"title"?: string,"traits"?: (string)[],"type"?: string,"visible_to_players"?: boolean,"x"?: number,"y"?: number
+                    "color"?: string,"created_at"?: string,"description"?: string,"entity_id"?: string | null,"history"?: string,"icon"?: string,"id"?: string,"map_id"?: string,"music_url"?: string | null,"size"?: number,"tags"?: (string)[],"title"?: string,"traits"?: (string)[],"type"?: string,"visible_to_players"?: boolean,"x"?: number,"y"?: number
                   }
                   Relationships: [
                     {
+      foreignKeyName: "pins_entity_id_fkey"
+      columns: ["entity_id"]
+isOneToOne: false
+      referencedRelation: "entities"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "pins_map_id_fkey"
       columns: ["map_id"]
 isOneToOne: false
@@ -335,14 +437,79 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "can_read_map_image":
+            "add_link":
+{ Args: { "p_a": string,"p_b": string,"p_hidden"?: boolean,"p_label_ab": string,"p_label_ba": string }; Returns: {
+              "a_id": string,
+"b_id": string,
+"campaign_id": string,
+"created_at": string,
+"hidden": boolean,
+"id": string,
+"label_ab": string,
+"label_ba": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "entity_links"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"can_read_map_image":
 { Args: { "object_name": string }; Returns: boolean
                            },
 "character_campaign":
 { Args: { "c": string }; Returns: string
                            },
+"create_entity":
+{ Args: { "p_campaign": string,"p_folder"?: string,"p_name": string,"p_type": Database["public"]['Enums']["entity_type"],"p_visible"?: boolean }; Returns: {
+              "campaign_id": string,
+"created_at": string,
+"folder_id": string | null,
+"id": string,
+"name": string,
+"sort_order": number,
+"type": Database["public"]['Enums']["entity_type"],
+"updated_at": string,
+"visible_to_players": boolean
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "entities"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"create_folder":
+{ Args: { "p_campaign": string,"p_name": string,"p_parent"?: string }; Returns: {
+              "campaign_id": string,
+"created_at": string,
+"id": string,
+"name": string,
+"parent_id": string | null,
+"sort_order": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "entity_folders"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "d20":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"delete_entity":
+{ Args: { "p_entity": string }; Returns: undefined
+                           },
+"delete_folder":
+{ Args: { "p_folder": string }; Returns: undefined
+                           },
+"entity_campaign":
+{ Args: { "e": string }; Returns: string
+                           },
+"entity_folder_campaign":
+{ Args: { "f": string }; Returns: string
+                           },
+"entity_visible":
+{ Args: { "e": string }; Returns: boolean
                            },
 "folder_campaign":
 { Args: { "object_name": string }; Returns: string
@@ -362,6 +529,39 @@ isOneToOne: false
 "map_is_revealed":
 { Args: { "m": string }; Returns: boolean
                            },
+"move_entity":
+{ Args: { "p_entity": string,"p_folder": string,"p_sort_order"?: number }; Returns: {
+              "campaign_id": string,
+"created_at": string,
+"folder_id": string | null,
+"id": string,
+"name": string,
+"sort_order": number,
+"type": Database["public"]['Enums']["entity_type"],
+"updated_at": string,
+"visible_to_players": boolean
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "entities"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"move_folder":
+{ Args: { "p_folder": string,"p_parent": string,"p_sort_order"?: number }; Returns: {
+              "campaign_id": string,
+"created_at": string,
+"id": string,
+"name": string,
+"parent_id": string | null,
+"sort_order": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "entity_folders"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "owns_character":
 { Args: { "c": string }; Returns: boolean
                            },
@@ -371,6 +571,62 @@ isOneToOne: false
 "pin_is_revealed":
 { Args: { "p": string }; Returns: boolean
                            },
+"remove_link":
+{ Args: { "p_link": string }; Returns: undefined
+                           },
+"rename_entity":
+{ Args: { "p_entity": string,"p_name": string }; Returns: {
+              "campaign_id": string,
+"created_at": string,
+"folder_id": string | null,
+"id": string,
+"name": string,
+"sort_order": number,
+"type": Database["public"]['Enums']["entity_type"],
+"updated_at": string,
+"visible_to_players": boolean
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "entities"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"rename_folder":
+{ Args: { "p_folder": string,"p_name": string }; Returns: {
+              "campaign_id": string,
+"created_at": string,
+"id": string,
+"name": string,
+"parent_id": string | null,
+"sort_order": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "entity_folders"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"require_dm":
+{ Args: { "c": string }; Returns: undefined
+                           },
+"reveal_link":
+{ Args: { "p_hidden"?: boolean,"p_link": string }; Returns: {
+              "a_id": string,
+"b_id": string,
+"campaign_id": string,
+"created_at": string,
+"hidden": boolean,
+"id": string,
+"label_ab": string,
+"label_ba": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "entity_links"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "roll_d20":
 { Args: { "p_bonus": number,"p_campaign": string,"p_character": string,"p_hidden"?: boolean,"p_kind": string,"p_label": string,"p_mode": string,"p_target": number }; Returns: {
               "bonus": number,
@@ -400,12 +656,30 @@ isOneToOne: false
 "roll_outcome":
 { Args: { "p_bonus": number,"p_dice": (number)[],"p_kind": string,"p_mode": string,"p_target": number }; Returns: Record<string, unknown>
                            },
+"set_entity_visibility":
+{ Args: { "p_entity": string,"p_visible": boolean }; Returns: {
+              "campaign_id": string,
+"created_at": string,
+"folder_id": string | null,
+"id": string,
+"name": string,
+"sort_order": number,
+"type": Database["public"]['Enums']["entity_type"],
+"updated_at": string,
+"visible_to_players": boolean
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "entities"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "shares_campaign":
 { Args: { "other": string }; Returns: boolean
                            }
           }
           Enums: {
-            [_ in never]: never
+            "entity_type": "npc"|"location"|"item"|"faction"|"lore"|"player"|"party"|"session"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -521,7 +795,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            
+            "entity_type": ["npc", "location", "item", "faction", "lore", "player", "party", "session"]
           }
         }
 } as const

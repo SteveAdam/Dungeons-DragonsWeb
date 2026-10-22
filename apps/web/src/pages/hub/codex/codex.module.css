@@ -1,0 +1,250 @@
+/* The codex: folders | entities | detail. Players get entities | detail. One column on phones. */
+.codex {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.9fr) minmax(14rem, 1fr) minmax(16rem, 1.3fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.codexPlayer {
+  grid-template-columns: minmax(14rem, 1fr) minmax(16rem, 1.5fr);
+}
+
+.column {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .codex,
+  .codexPlayer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.folders {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.tree {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.treeButton,
+.entityButton {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.2rem;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.treeButton:hover,
+.entityButton:hover {
+  background: var(--ink-wash);
+}
+
+.treeButton[aria-pressed='true'],
+.entityButton[aria-pressed='true'] {
+  border-color: var(--gold-dark);
+  background: var(--ink-wash-strong);
+}
+
+.treeButton:focus-visible,
+.entityButton:focus-visible {
+  outline: var(--focus-ring);
+}
+
+.count,
+.kind {
+  margin-left: auto;
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.kind + .kind {
+  margin-left: 0;
+}
+
+/* Drop targets light up while something is dragged over them. */
+.drop {
+  border-radius: 0.2rem;
+}
+
+.dropOver {
+  outline: 2px dashed var(--verdigris);
+  background: color-mix(in srgb, var(--verdigris) 12%, transparent);
+}
+
+.grip {
+  display: grid;
+  place-items: center;
+  color: var(--ink-faded);
+  cursor: grab;
+  touch-action: none;
+}
+
+.dragging {
+  opacity: 0.5;
+}
+
+.entityList {
+  display: grid;
+  gap: 0.1rem;
+  max-height: 28rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.entityRow {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.filters,
+.inlineForm,
+.moveTo,
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.newForm,
+.addLink,
+.folderTools {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border: 1px dashed var(--gold-dark);
+  border-radius: 0.2rem;
+}
+
+.select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.detail {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.detailHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.detailTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+}
+
+.subTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+}
+
+.tools {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+.relationships {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.linkList {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.linkRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.linkText {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.25rem 0.35rem;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.linkText:hover {
+  text-decoration: none;
+  background: var(--ink-wash);
+}
+
+.iconButton {
+  padding: 0.25rem;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-faded);
+  font-style: italic;
+}
+
+.error {
+  margin: 0;
+  color: var(--wax-red);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

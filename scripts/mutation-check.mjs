@@ -203,6 +203,33 @@ end $f$;`,
     fails: ['T28'],
   },
   {
+    name: 'hidden entities readable by members',
+    why: 'players would see NPCs and places the DM has not revealed',
+    sql: `drop policy "read entities" on entities;
+create policy "read entities" on entities for select using (is_dm(campaign_id) or is_member(campaign_id));`,
+    fails: ['T30'],
+  },
+  {
+    name: 'link policy ignores hidden entities',
+    why: 'an open link would reveal the hidden entity at its other end',
+    sql: `drop policy "read entity links" on entity_links;
+create policy "read entity links" on entity_links for select using (is_dm(campaign_id) or (is_member(campaign_id) and not hidden));`,
+    fails: ['T31'],
+  },
+  {
+    name: 'duplicate-relationship index removed',
+    why: 'the same relationship could be stored twice, once from each side',
+    sql: `drop index entity_links_same_relationship_key;`,
+    fails: ['T32'],
+  },
+  {
+    name: 'any member can create entities',
+    why: 'players could add NPCs and places to the DM registry',
+    sql: `create or replace function require_dm(c uuid) returns void language plpgsql stable security definer set search_path = public as $f$
+begin if c is null or not is_member(c) then raise exception 'Only the DM can do that' using errcode = '42501'; end if; end $f$;`,
+    fails: ['T34'],
+  },
+  {
     name: 'helper function opened to signed-out visitors',
     why: 'visitors could call is_dm over the REST API',
     sql: `grant execute on function is_dm(uuid) to anon;`,

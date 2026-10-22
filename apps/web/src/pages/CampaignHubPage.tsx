@@ -1,4 +1,4 @@
-import { ArrowLeft, Feather, Map as MapIcon, ScrollText, Users, Waypoints } from 'lucide-react';
+import { ArrowLeft, BookMarked, Feather, Map as MapIcon, ScrollText, Users, Waypoints } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { IconLink, Paper, RibbonTabs, Toggle } from '../components/ui';
@@ -9,6 +9,7 @@ import { useMembers } from '../hooks/useMembers';
 import { useShowDmIndicator } from '../state/dmIndicator';
 import styles from './CampaignHubPage.module.css';
 import { CharactersTab } from './hub/CharactersTab';
+import { CodexTab } from './hub/codex/CodexTab';
 import { ComingSoonTab } from './hub/ComingSoonTab';
 import { MapsTab } from './hub/MapsTab';
 import { PeopleTab } from './hub/PeopleTab';
@@ -17,6 +18,7 @@ import { SealedInviteCard } from './hub/SealedInviteCard';
 const TABS = [
   { id: 'maps', label: 'Maps', icon: MapIcon },
   { id: 'characters', label: 'Characters', icon: ScrollText },
+  { id: 'entities', label: 'Codex', icon: BookMarked },
   { id: 'notes', label: 'Notes', icon: Feather },
   { id: 'web', label: 'Web', icon: Waypoints },
   { id: 'people', label: 'People', icon: Users },
@@ -105,6 +107,7 @@ export function CampaignHubPage() {
         <Paper as="section" texture="flat" role="tabpanel" aria-label={tabLabel} className={styles.panel}>
           {activeTab === 'maps' && <MapsTab campaignId={campaignId} includeHidden={dmMode} />}
           {activeTab === 'characters' && <CharactersTab campaignId={campaignId} />}
+          {activeTab === 'entities' && <CodexTab campaignId={campaignId} dmMode={dmMode} />}
           {activeTab === 'people' && <PeopleTab campaignId={campaignId} canManage={dmMode} />}
           {activeTab === 'notes' && <ComingSoonTab name="Notes" />}
           {activeTab === 'web' && <ComingSoonTab name="Web" />}

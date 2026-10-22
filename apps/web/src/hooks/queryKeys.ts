@@ -16,6 +16,12 @@ export const queryKeys = {
   characterEffects: (characterId: string) => ['characters', characterId, 'effects'] as const,
   effectSecrets: (characterId: string, effectIds: string[]) =>
     ['characters', characterId, 'effect-secrets', effectIds.join(',')] as const,
+  registry: (campaignId: string) => ['campaigns', campaignId, 'registry'] as const,
+  entities: (campaignId: string, includeHidden: boolean) =>
+    ['campaigns', campaignId, 'registry', 'entities', { includeHidden }] as const,
+  entityFolders: (campaignId: string) => ['campaigns', campaignId, 'registry', 'folders'] as const,
+  entityLinks: (campaignId: string, includeHidden: boolean) =>
+    ['campaigns', campaignId, 'registry', 'links', { includeHidden }] as const,
   pinNotes: (pinId: string) => ['pins', pinId, 'notes'] as const,
   mapImage: (path: string) => ['map-image', path] as const,
 };

@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T29) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T34) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(180);
+select plan(211);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -529,6 +529,92 @@ select lives_ok($$ do $do$ begin
 select throws_ok($$ update maps set scale_width = 0 where id = tests.u('map:visible') $$, '23514', null, 'T29: a scale must be above zero');
 select throws_ok($$ update maps set north_degrees = 360 where id = tests.u('map:visible') $$, '23514', null, 'T29: north is 0 to 359 degrees');
 select throws_ok($$ update maps set scale_unit = 'leagues' where id = tests.u('map:visible') $$, '23514', null, 'T29: the unit is miles or feet');
+reset role;
+
+-- T30 to T34: the entity registry (P2-1, 0007_entities.sql) -------------------------------------------
+-- fixture, as the database owner: Mira and Port Vellum are visible, the Cult is hidden; one open link, one
+-- hidden link, and one open link that touches the hidden Cult
+select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+insert into entities (id, campaign_id, type, name, visible_to_players) values
+  (tests.u('ent:mira'), tests.u('campaign'), 'npc', 'Mira', true),
+  (tests.u('ent:port'), tests.u('campaign'), 'location', 'Port Vellum', true),
+  (tests.u('ent:cult'), tests.u('campaign'), 'faction', 'The Drowned Cult', false);
+insert into entity_links (id, campaign_id, a_id, b_id, label_ab, label_ba, hidden) values
+  (tests.u('link:open'),   tests.u('campaign'), tests.u('ent:mira'), tests.u('ent:port'), 'lives in', 'is home to', false),
+  (tests.u('link:secret'), tests.u('campaign'), tests.u('ent:mira'), tests.u('ent:port'), 'secretly rules', 'is secretly ruled by', true),
+  (tests.u('link:cult'),   tests.u('campaign'), tests.u('ent:mira'), tests.u('ent:cult'), 'serves', 'is served by', false);
+
+-- T30: players see visible entities only; strangers see none
+select tests.act_as('player');
+select is((select count(*)::int from entities), 2, 'T30: a player sees only the visible entities');
+select is((select count(*)::int from entities where id = tests.u('ent:cult')), 0, 'T30: a player cannot see the hidden entity');
+reset role;
+select tests.act_as('outsider');
+select is((select count(*)::int from entities), 0, 'T30: a non-member sees no entities');
+reset role;
+select tests.act_as('dm');
+select is((select count(*)::int from entities), 3, 'T30: the DM sees every entity');
+reset role;
+
+-- T31: hidden links, and links touching hidden entities, stay hidden
+select tests.act_as('player');
+select is((select count(*)::int from entity_links where id = tests.u('link:open')), 1, 'T31: a player sees an open link between visible entities');
+select is((select count(*)::int from entity_links where id = tests.u('link:secret')), 0, 'T31: a player cannot see a hidden link');
+select is((select count(*)::int from entity_links where id = tests.u('link:cult')), 0, 'T31: a player cannot see a link to a hidden entity, even when the link is not hidden');
+reset role;
+select tests.act_as('dm');
+select is((select count(*)::int from entity_links), 3, 'T31: the DM sees every link');
+reset role;
+
+-- T32: links stay inside their campaign, never point at themselves, and are never stored twice
+insert into campaigns (id, owner_id, name) values (tests.u('campaign3'), tests.u('user:outsider'), 'Third campaign');
+insert into entities (id, campaign_id, type, name) values (tests.u('ent:foreign'), tests.u('campaign3'), 'npc', 'Stranger');
+select tests.act_as('dm');
+select throws_ok($$ select add_link(tests.u('ent:mira'), tests.u('ent:foreign'), 'knows', 'is known by') $$, 'P0001', 'Both ends of a relationship must belong to its campaign', 'T32: a link between two campaigns is rejected');
+select throws_ok($$ select add_link(tests.u('ent:mira'), tests.u('ent:mira'), 'admires', 'is admired by') $$, '23514', null, 'T32: a link from an entity to itself is rejected');
+select throws_ok($$ select add_link(tests.u('ent:mira'), tests.u('ent:port'), 'Lives In', 'Is Home To') $$, '23505', null, 'T32: the same relationship again (any case) is rejected');
+select throws_ok($$ select add_link(tests.u('ent:port'), tests.u('ent:mira'), 'is home to', 'lives in') $$, '23505', null, 'T32: the same relationship in the other direction is rejected');
+select lives_ok($$ select add_link(tests.u('ent:port'), tests.u('ent:mira'), 'taxes', 'is taxed by') $$, 'T32: a different relationship between the same two entities is allowed');
+select throws_ok($$ insert into entities (campaign_id, type, name) values (tests.u('campaign'), 'npc', 'MIRA') $$, '23505', null, 'T32: entity names are unique in a campaign, ignoring case');
+reset role;
+
+-- T33: deleting a folder moves its contents up and deletes no entity
+select tests.act_as('dm');
+select lives_ok($$ do $do$
+  declare outer_f uuid; inner_f uuid;
+  begin
+    outer_f := (select id from create_folder(tests.u('campaign'), 'Sword Coast'));
+    inner_f := (select id from create_folder(tests.u('campaign'), 'Port Vellum', outer_f));
+    perform move_entity(tests.u('ent:mira'), inner_f);
+    perform move_entity(tests.u('ent:port'), outer_f);
+    perform set_config('tests.outer', outer_f::text, true);
+    perform set_config('tests.inner', inner_f::text, true);
+  end $do$ $$, 'T33: the DM builds folders and files entities in them');
+select throws_ok($$ select move_folder(current_setting('tests.outer')::uuid, current_setting('tests.inner')::uuid) $$, 'P0001', 'A folder cannot go inside itself or one of its own subfolders', 'T33: a folder cannot be moved inside its own subfolder');
+select lives_ok($$ select delete_folder(current_setting('tests.outer')::uuid) $$, 'T33: the DM deletes the outer folder');
+select is((select parent_id from entity_folders where id = current_setting('tests.inner')::uuid), null, 'T33: its subfolder moved up to the top level');
+select is((select folder_id from entities where id = tests.u('ent:port')), null, 'T33: its entities moved up to the top level');
+select is((select folder_id from entities where id = tests.u('ent:mira')), current_setting('tests.inner')::uuid, 'T33: entities in the subfolder stay in the subfolder');
+select is((select count(*)::int from entities where campaign_id = tests.u('campaign')), 3, 'T33: no entity was deleted');
+reset role;
+
+-- T34: players cannot create, move or delete anything
+select tests.act_as('player');
+select throws_ok($$ select create_entity(tests.u('campaign'), 'npc', 'Player-made NPC') $$, '42501', 'Only the DM can do that', 'T34: a player cannot create an entity');
+select throws_ok($$ select move_entity(tests.u('ent:port'), null) $$, '42501', 'Only the DM can do that', 'T34: a player cannot move an entity');
+select throws_ok($$ select delete_entity(tests.u('ent:port')) $$, '42501', 'Only the DM can do that', 'T34: a player cannot delete an entity');
+select throws_ok($$ select set_entity_visibility(tests.u('ent:cult'), true) $$, '42501', 'Only the DM can do that', 'T34: a player cannot reveal an entity');
+select throws_ok($$ select create_folder(tests.u('campaign'), 'Player folder') $$, '42501', 'Only the DM can do that', 'T34: a player cannot create a folder');
+select throws_ok($$ select add_link(tests.u('ent:mira'), tests.u('ent:port'), 'loves', 'is loved by') $$, '42501', 'Only the DM can do that', 'T34: a player cannot add a link');
+select throws_ok($$ select reveal_link(tests.u('link:secret')) $$, '42501', 'Only the DM can do that', 'T34: a player cannot reveal a hidden link');
+select throws_ok($$ insert into entities (campaign_id, type, name) values (tests.u('campaign'), 'npc', 'Sneaky') $$, '42501', null, 'T34: a player cannot insert an entity directly');
+select lives_ok($$ do $do$ begin
+    update entities set name = 'Renamed' where id = tests.u('ent:port');
+    if found then raise exception 'update applied'; end if;
+    delete from entity_links where id = tests.u('link:open');
+    if found then raise exception 'delete applied'; end if;
+  end $do$ $$, 'T34: a player cannot change entities or links directly');
+select is((select count(*)::int from entity_folders), 0, 'T34: a player sees no folders');
 reset role;
 
 select * from finish();

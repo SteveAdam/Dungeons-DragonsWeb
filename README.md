@@ -15,7 +15,7 @@ apps/web/                 React + TypeScript + Vite app
   src/types/database.ts   generated from the schema (pnpm db:types)
 packages/rules-engine/    D&D 2024 rules (P1): core odds, bonus dice, effects, item requirements, terrain
 supabase/
-  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters, 0006 map tools
+  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters, 0006 map tools, 0007 entities
   tests/database/         pgTAP suite for every policy
 scripts/                  mutation check (RLS suite) and token check (CSS)
 docs/                     design notes, including the P0-5 schema review
@@ -42,8 +42,8 @@ pnpm dev                                # http://localhost:5173
 | `pnpm check:tokens`                          | Fails if a CSS file other than `tokens.css` contains a hex colour  |
 | `pnpm db:start` / `db:stop`                  | Starts or stops the local Supabase stack                           |
 | `pnpm db:reset`                              | Rebuilds the local database from `migrations/` and `seed.sql`      |
-| `pnpm db:test`                               | pgTAP row level security suite (180 assertions)                    |
-| `pnpm db:test:mutations`                     | Removes each protection in turn; all 26 must be caught             |
+| `pnpm db:test`                               | pgTAP row level security suite (211 assertions)                    |
+| `pnpm db:test:mutations`                     | Removes each protection in turn; all 30 must be caught             |
 | `pnpm db:seed:dev <email>`                   | Gives that local player account Brannoc (P1-7 golden fixture)      |
 | `pnpm db:types`                              | Regenerates `apps/web/src/types/database.ts` from the local schema |
 | `pnpm db:push`                               | Applies new migrations to the linked hosted project                |
@@ -201,6 +201,20 @@ for that character.
 - Game time is real time in Phase 1: a one-hour potion lasts a real hour.
 - Development: `pnpm db:seed:dev <player email>` gives a local player Brannoc; a DM in DM mode can switch the Potion of
   Hill Giant Strength on from the sheet to watch Strength become 21 and the greatsword unlock.
+
+## The Codex: entities, folders and relationships (P2-1)
+
+The hub's Codex tab (`/campaigns/<id>/entities`) is the registry of every named thing: NPCs, locations, items,
+factions, lore, player characters, the party and sessions (`0007_entities.sql`).
+
+- The DM files entities in folders (any mix of types, nested freely) by dragging them, or with the keyboard-friendly
+  "Move to…" lists. Deleting a folder moves its contents up one level; no entity is deleted with it.
+- Names are unique in a campaign, ignoring case, so a wiki link such as `[[Port Vellum]]` always means one entity.
+- A relationship has a label for each side ("owns" / "is owned by") and reads correctly from both ends. The same
+  relationship cannot be stored twice, even the other way round; two entities can have several different ones.
+- New entities start hidden. Players see a flat, searchable list of revealed entities, and a relationship only when
+  it is not hidden and both ends are revealed. Every write goes through DM-only database functions.
+- A manual two-account test is in `docs/p2-1-manual-test.md`.
 
 ## Rules content licence
 

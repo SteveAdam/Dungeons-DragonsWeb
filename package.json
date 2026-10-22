@@ -15,7 +15,7 @@
     "db:test": "supabase test db",
     "db:test:mutations": "node scripts/mutation-check.mjs",
     "db:push": "supabase db push",
-    "db:types": "supabase gen types typescript --local --schema public > apps/web/src/types/database.ts",
+    "db:types": "node scripts/gen-types.mjs",
     "check:tokens": "node scripts/check-tokens.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
