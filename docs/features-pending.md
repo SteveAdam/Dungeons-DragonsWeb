@@ -182,4 +182,13 @@ not run yet. Levels 1 to 3 only.
 | Tiefling | Fiendish Legacy |
 | Tiefling | Otherworldly Presence |
 
-80 class features and 33 species traits in all.
+## Origin feats (from backgrounds)
+
+| Feat | Background |
+| ---- | ---------- |
+| Magic Initiate (Cleric) | Acolyte |
+| Alert | Criminal |
+| Magic Initiate (Wizard) | Sage |
+| Savage Attacker | Soldier |
+
+80 class features, 33 species traits and 4 Origin feats in all.

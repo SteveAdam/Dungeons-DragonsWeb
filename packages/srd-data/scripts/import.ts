@@ -1,5 +1,5 @@
-// P2-3, P2-4: loads the SRD data into the database (srd_weapons, srd_armor, srd_species, srd_classes,
-// srd_backgrounds). Run from the repo root:
+// P2-3 to P2-5: loads the SRD data into the database (srd_weapons, srd_armor, srd_species, srd_classes,
+// srd_backgrounds, srd_spells). Run from the repo root:
 //
 //   pnpm srd:import
 //
@@ -8,7 +8,14 @@
 // updates the rows in place, so it is safe to repeat.
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { armorSchema, backgroundSchema, classSchema, speciesSchema, weaponSchema } from '../src/schemas.ts';
+import {
+  armorSchema,
+  backgroundSchema,
+  classSchema,
+  speciesSchema,
+  spellSchema,
+  weaponSchema,
+} from '../src/schemas.ts';
 
 const read = (file: string) => JSON.parse(readFileSync(new URL(`../data/${file}`, import.meta.url), 'utf8'));
 const weapons = weaponSchema.array().parse(read('weapons.json'));
@@ -16,6 +23,7 @@ const armor = armorSchema.array().parse(read('armor.json'));
 const species = speciesSchema.array().parse(read('species.json'));
 const classes = classSchema.array().parse(read('classes.json'));
 const backgrounds = backgroundSchema.array().parse(read('backgrounds.json'));
+const spells = spellSchema.array().parse(read('spells.json'));
 
 function target(): { url: string; key: string } {
   const url = process.env.SRD_IMPORT_URL;
@@ -77,4 +85,8 @@ const named = (r: { id: string; name: string; source: string }) => ({
 await upsert('srd_species', species.map(named));
 await upsert('srd_classes', classes.map(named));
 await upsert('srd_backgrounds', backgrounds.map(named));
+await upsert(
+  'srd_spells',
+  spells.map(s => ({ id: s.id, name: s.name, source: s.source, level: s.level, data: s })),
+);
 console.log(`Loaded into ${new URL(url).host}.`);

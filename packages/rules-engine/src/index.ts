@@ -18,3 +18,4 @@ export * from './legacy';
 export * from './progression';
 export * from './requirements';
 export * from './sheet';
+export * from './spellcasting';

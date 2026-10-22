@@ -1,14 +1,15 @@
-// /dev/classes (development builds only): browse the SRD classes and species as imported into the database, so each
-// can be checked against the SRD: a class's core traits, table, features (levels 1 to 3) and subclass; a species'
-// creature type, size, speed and traits.
+// /dev/classes (development builds only): browse the SRD classes, species and backgrounds as imported into the
+// database, so each can be checked against the SRD: a class's core traits, table, features (levels 1 to 3) and
+// subclass; a species' creature type, size, speed and traits; a background's abilities, feat, skills, tool and
+// equipment; a spell's heading lines, text and the mechanics read from it.
 import { useQuery } from '@tanstack/react-query';
 import { classProgression } from '@dnd-manager/rules-engine';
-import type { SrdClass, SrdFeature, SrdSpecies } from '@dnd-manager/srd-data';
+import type { SrdBackground, SrdClass, SrdFeature, SrdSpecies, SrdSpell } from '@dnd-manager/srd-data';
 import { useId, useState } from 'react';
 import { useAuth } from '../../auth/authContext';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { Paper, RibbonTabs, Tag } from '../../components/ui';
-import { listSrdClasses, listSrdSpecies } from '../../data/srd';
+import { listSrdBackgrounds, listSrdClasses, listSrdSpecies, listSrdSpells } from '../../data/srd';
 import styles from './SrdDevPage.module.css';
 
 const ABILITY = {
@@ -22,11 +23,27 @@ const ABILITY = {
 const SKILL_LABELS: Record<string, string> = { animalHandling: 'Animal Handling', sleightOfHand: 'Sleight of Hand' };
 const skillLabel = (key: string) => SKILL_LABELS[key] ?? key.charAt(0).toUpperCase() + key.slice(1);
 const SPECIES_TAB = 'species';
+const BACKGROUNDS_TAB = 'backgrounds';
+const SPELLS_TAB = 'spells';
+const ORDINAL = [
+  'Cantrips',
+  'Level 1',
+  'Level 2',
+  'Level 3',
+  'Level 4',
+  'Level 5',
+  'Level 6',
+  'Level 7',
+  'Level 8',
+  'Level 9',
+];
 
 export default function ClassesDevPage() {
   const { session } = useAuth();
   const classes = useQuery({ queryKey: ['srd', 'classes'], queryFn: listSrdClasses, enabled: !!session });
   const species = useQuery({ queryKey: ['srd', 'species'], queryFn: listSrdSpecies, enabled: !!session });
+  const backgrounds = useQuery({ queryKey: ['srd', 'backgrounds'], queryFn: listSrdBackgrounds, enabled: !!session });
+  const spells = useQuery({ queryKey: ['srd', 'spells'], queryFn: listSrdSpells, enabled: !!session });
   const [picked, setPicked] = useState<string | null>(null);
 
   if (!session) {
@@ -57,17 +74,46 @@ export default function ClassesDevPage() {
       </main>
     );
   }
-  const current = picked === SPECIES_TAB ? null : (classes.data.find(c => c.id === picked) ?? classes.data[0]);
+  const other = picked === SPECIES_TAB || picked === BACKGROUNDS_TAB || picked === SPELLS_TAB ? picked : null;
+  const current = other ? null : (classes.data.find(c => c.id === picked) ?? classes.data[0]);
   return (
     <main className={styles.page}>
       <RibbonTabs
         aria-label="Classes and species"
-        tabs={[...classes.data.map(c => ({ id: c.id, label: c.name })), { id: SPECIES_TAB, label: 'Species' }]}
-        value={current?.id ?? SPECIES_TAB}
+        tabs={[
+          ...classes.data.map(c => ({ id: c.id, label: c.name })),
+          { id: SPECIES_TAB, label: 'Species' },
+          { id: BACKGROUNDS_TAB, label: 'Backgrounds' },
+          { id: SPELLS_TAB, label: 'Spells' },
+        ]}
+        value={current?.id ?? other ?? SPECIES_TAB}
         onChange={setPicked}
       />
       {current ? (
         <ClassView key={current.id} cls={current} />
+      ) : other === SPELLS_TAB ? (
+        spells.isError ? (
+          <ErrorNotice error={spells.error} onRetry={() => void spells.refetch()} />
+        ) : spells.isPending ? (
+          <p role="status">Unrolling the scrolls…</p>
+        ) : spells.data.length === 0 ? (
+          <p>No spells imported yet. Run pnpm srd:import.</p>
+        ) : (
+          ORDINAL.map((label, level) => {
+            const atLevel = spells.data.filter(s => s.level === level);
+            return atLevel.length ? <SpellLevel key={level} label={label} spells={atLevel} /> : null;
+          })
+        )
+      ) : other === BACKGROUNDS_TAB ? (
+        backgrounds.isError ? (
+          <ErrorNotice error={backgrounds.error} onRetry={() => void backgrounds.refetch()} />
+        ) : backgrounds.isPending ? (
+          <p role="status">Reading the life stories…</p>
+        ) : backgrounds.data.length === 0 ? (
+          <p>No backgrounds imported yet. Run pnpm srd:import.</p>
+        ) : (
+          backgrounds.data.map(b => <BackgroundView key={b.id} background={b} />)
+        )
       ) : species.isError ? (
         <ErrorNotice error={species.error} onRetry={() => void species.refetch()} />
       ) : species.isPending ? (
@@ -191,6 +237,76 @@ function SpeciesView({ species }: { species: SrdSpecies }) {
       {species.traits.map(t => (
         <Feature key={t.name} feature={t} />
       ))}
+    </Paper>
+  );
+}
+
+function SpellLevel({ label, spells }: { label: string; spells: SrdSpell[] }) {
+  const id = useId();
+  return (
+    <Paper as="section" texture="flat" aria-labelledby={`${id}-level`} className={styles.card}>
+      <h2 id={`${id}-level`} className={styles.title}>
+        {`${label} (${spells.length})`}
+      </h2>
+      {spells.map(s => (
+        <section key={s.id} aria-label={s.name}>
+          <h3 className={styles.group}>
+            {`${s.name} `}
+            <Tag>{s.source}</Tag>
+          </h3>
+          <p className={styles.note}>
+            <i>{`${s.level === 0 ? `${cap(s.school)} Cantrip` : `Level ${s.level} ${cap(s.school)}`} (${s.classes.join(', ')})`}</i>
+          </p>
+          <table className={styles.table}>
+            <tbody>
+              <Trait label="Casting Time">{s.castingTime}</Trait>
+              <Trait label="Range">{s.range}</Trait>
+              <Trait label="Components">{components(s)}</Trait>
+              <Trait label="Duration">{s.duration}</Trait>
+            </tbody>
+          </table>
+          <Text text={s.text} />
+          {s.higherLevels && <Text text={s.higherLevels} />}
+          <p className={styles.note}>
+            {s.mechanics ? `Mechanics read: ${JSON.stringify(s.mechanics)}` : 'Text only (no mechanics read)'}
+          </p>
+        </section>
+      ))}
+    </Paper>
+  );
+}
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const components = (s: SrdSpell) =>
+  [s.components.v && 'V', s.components.s && 'S', s.components.m && `M (${s.components.materialText})`]
+    .filter(Boolean)
+    .join(', ');
+
+function BackgroundView({ background }: { background: SrdBackground }) {
+  const id = useId();
+  return (
+    <Paper as="section" texture="flat" aria-labelledby={`${id}-name`} className={styles.card}>
+      <h2 id={`${id}-name`} className={styles.title}>
+        {background.name} <Tag>{background.source}</Tag>
+      </h2>
+      <table className={styles.table}>
+        <tbody>
+          <Trait label="Ability Scores">{background.abilityScores.map(a => ABILITY[a]).join(', ')}</Trait>
+          <Trait label="Feat">{background.originFeat.name}</Trait>
+          <Trait label="Skill Proficiencies">{background.skillProficiencies.map(skillLabel).join(' and ')}</Trait>
+          <Trait label="Tool Proficiency">{background.toolProficiency}</Trait>
+          <Trait label="Equipment">
+            {background.equipmentOptions.map(o => `(${o.option}) ${o.text}`).join('; or ')}
+          </Trait>
+        </tbody>
+      </table>
+      <section aria-label={`Feat: ${background.originFeat.name}`}>
+        <h3 className={styles.group}>
+          {`${background.originFeat.name} `}
+          <Tag>mechanics later</Tag>
+        </h3>
+        <Text text={background.originFeat.description} />
+      </section>
     </Paper>
   );
 }

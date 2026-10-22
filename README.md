@@ -19,7 +19,7 @@ packages/rules-engine/    D&D 2024 rules (P1): core odds, bonus dice, effects, i
 packages/srd-data/        SRD 5.2.1 data as zod-checked JSON, made from the SRD text: equipment (P2-3), classes,
                           species and backgrounds to level 3 (P2-4)
 supabase/
-  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters, 0006 map tools, 0007 entities, 0008 roll security, 0009 SRD equipment, 0010 SRD classes, species, backgrounds
+  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters, 0006 map tools, 0007 entities, 0008 roll security, 0009 SRD equipment, 0010 SRD classes, species, backgrounds, 0011 SRD spells
   tests/database/         pgTAP suite for every policy
 scripts/                  mutation check (RLS suite) and token check (CSS)
 docs/                     design notes, including the P0-5 schema review
@@ -46,8 +46,8 @@ pnpm dev                                # http://localhost:5173
 | `pnpm check:tokens`                          | Fails if a CSS file other than `tokens.css` contains a hex colour  |
 | `pnpm db:start` / `db:stop`                  | Starts or stops the local Supabase stack                           |
 | `pnpm db:reset`                              | Rebuilds the local database from `migrations/` and `seed.sql`      |
-| `pnpm db:test`                               | pgTAP row level security suite (246 assertions)                    |
-| `pnpm db:test:mutations`                     | Removes each protection in turn; all 36 must be caught             |
+| `pnpm db:test`                               | pgTAP row level security suite (253 assertions)                    |
+| `pnpm db:test:mutations`                     | Removes each protection in turn; all 37 must be caught             |
 | `pnpm db:seed:dev <email>`                   | Gives that local player account Brannoc (P1-7 golden fixture)      |
 | `pnpm db:types`                              | Regenerates `apps/web/src/types/database.ts` from the local schema |
 | `pnpm db:push`                               | Applies new migrations to the linked hosted project                |
@@ -272,7 +272,7 @@ Only SRD 5.2.1 content (CC-BY-4.0) is bundled, and none of it is typed in from m
 
 ## SRD classes, species and backgrounds, levels 1 to 3 (P2-4)
 
-Classes were added one at a time, each checked against the SRD before the next. All twelve are done: **Barbarian**, **Bard**, **Cleric**, **Druid**, **Fighter**, **Monk**, **Paladin**, **Ranger**, **Rogue**, **Sorcerer**, **Warlock**, **Wizard**. The nine species are done too; backgrounds come next.
+Classes were added one at a time, each checked against the SRD before the next. All twelve are done: **Barbarian**, **Bard**, **Cleric**, **Druid**, **Fighter**, **Monk**, **Paladin**, **Ranger**, **Rogue**, **Sorcerer**, **Warlock**, **Wizard**. The nine species and the four backgrounds are done too, which completes P2-4.
 
 - Each class's SRD pages are kept in `packages/srd-data/source/classes` twice: `<id>.flow.txt` (`pdftotext`, which
   keeps paragraphs whole) for the Core Traits table and the feature text, and `<id>.raw.txt` (`pdftotext -raw`, one
@@ -284,6 +284,9 @@ Classes were added one at a time, each checked against the SRD before the next. 
   in the SRD's words, with the Draconic Ancestors, Elven Lineages and Fiendish Legacies tables read as rows.
   `src/speciesSources.ts` names each species' traits (so trait lines are not confused with option lines such as
   "Forest Gnome.") and decides their mechanics.
+- Backgrounds come from the Background Descriptions (`src/convertBackgrounds.ts`): the three abilities, the Origin
+  feat with its text from "Feats", two skills, the tool, and the equipment choice. `applyBackground` in the engine
+  takes a background record as it is.
 - `src/classSources.ts` says which pages hold a class, names its table's extra columns, and decides for every level
   1 to 3 feature whether it has game mechanics (it can also name the tables inside a feature, such as Life
   Domain Spells or Wild Shape's Beast Shapes, which are then read as rows from the raw text and removed from the
@@ -295,8 +298,29 @@ Classes were added one at a time, each checked against the SRD before the next. 
 - The engine adds `classProgression(class, level, subclass?)`, `hitPointsAtLevel1` (die maximum plus Constitution),
   `hitPointsGain` (half the die plus 1, or a roll, plus Constitution; at least 1) and `applyBackground` (+2 and +1,
   or +1 to all three of the background's abilities; none above 20).
-- `/dev/classes` (development only) reads the imported classes from the database: traits, table, features and
-  subclass.
+- `/dev/classes` (development only) reads the imported classes, species and backgrounds from the database, a tab
+  for each class and one each for species and backgrounds.
+
+## Spells and spellcasting (P2-5)
+
+Spells are imported in batches by level, each checked against the SRD before the next. Done so far: **cantrips**
+(all 27). Levels 1 to 3 follow, then Greater Restoration and Regenerate (Cure Wounds, Lesser Restoration and Revivify
+come with their levels).
+
+- `packages/srd-data/source/spells.*.txt` is the whole Spell Descriptions chapter; `src/convertSpells.ts` reads all
+  339 spells (level, school, class list, casting time, range, components with any cost and whether it is consumed,
+  duration, Concentration, Ritual, the text and the higher-level or Cantrip Upgrade text), and
+  `src/spellSources.ts` says which batches ship. Mechanics (a spell attack, one saving throw, one kind of damage or
+  healing, how they grow with slot level or character level) are recorded only where the text states them plainly;
+  otherwise the spell is text only.
+- `0011_srd_spells.sql` adds `srd_spells`, read-only like the other SRD tables; `pnpm srd:import` loads it.
+- The rules engine adds `spellSaveDc` and `spellAttackBonus`, `slotsFor` (from the class table, Pact Magic
+  included), `castSpell` (needs a free slot of the spell's level or higher; upcast dice), `cantripDamageDice`
+  (levels 5, 11 and 17), Concentration (`startConcentration`, `loseConcentration`, `concentrationSaveDc`: 10 or
+  half the damage, at most 30, as the SRD says), `preparedLimit` and `canPrepare`, `castAsRitual` (Ritual tag
+  only; 10 minutes longer; no slot) and `spellbookCopy` (2 hours and 50 GP per level; 1 hour and 10 GP to copy your
+  own).
+- `/dev/classes` has a Spells tab listing the imported spells by level, with the mechanics read from each.
 
 ## Rules content licence
 

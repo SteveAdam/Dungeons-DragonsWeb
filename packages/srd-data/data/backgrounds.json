@@ -1,1 +1,118 @@
-[]
+[
+  {
+    "id": "acolyte",
+    "name": "Acolyte",
+    "source": "srd-5.2",
+    "abilityScores": [
+      "int",
+      "wis",
+      "cha"
+    ],
+    "originFeat": {
+      "name": "Magic Initiate (Cleric)",
+      "description": "You gain the following benefits.\n\nTwo Cantrips. You learn two cantrips of your choice from the Cleric, Druid, or Wizard spell list. Intelligence, Wisdom, or Charisma is your spellcasting ability for this feat’s spells (choose when you select this feat).\n\nLevel 1 Spell. Choose a level 1 spell from the same list you selected for this feat’s cantrips. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have.\n\nSpell Change. Whenever you gain a new level, you can replace one of the spells you chose for this feat with a different spell of the same level from the chosen spell list.\n\nRepeatable. You can take this feat more than once, but you must choose a different spell list each time."
+    },
+    "skillProficiencies": [
+      "insight",
+      "religion"
+    ],
+    "toolProficiency": "Calligrapher’s Supplies",
+    "equipmentOptions": [
+      {
+        "option": "A",
+        "text": "Calligrapher’s Supplies, Book (prayers), Holy Symbol, Parchment (10 sheets), Robe, 8 GP"
+      },
+      {
+        "option": "B",
+        "text": "50 GP"
+      }
+    ]
+  },
+  {
+    "id": "criminal",
+    "name": "Criminal",
+    "source": "srd-5.2",
+    "abilityScores": [
+      "dex",
+      "con",
+      "int"
+    ],
+    "originFeat": {
+      "name": "Alert",
+      "description": "You gain the following benefits.\n\nInitiative Proficiency. When you roll Initiative, you can add your Proficiency Bonus to the roll.\n\nInitiative Swap. Immediately after you roll Initiative, you can swap your Initiative with the Initiative of one willing ally in the same combat. You can’t make this swap if you or the ally has the Incapacitated condition."
+    },
+    "skillProficiencies": [
+      "sleightOfHand",
+      "stealth"
+    ],
+    "toolProficiency": "Thieves’ Tools",
+    "equipmentOptions": [
+      {
+        "option": "A",
+        "text": "2 Daggers, Thieves’ Tools, Crowbar, 2 Pouches, Traveler’s Clothes, 16 GP"
+      },
+      {
+        "option": "B",
+        "text": "50 GP"
+      }
+    ]
+  },
+  {
+    "id": "sage",
+    "name": "Sage",
+    "source": "srd-5.2",
+    "abilityScores": [
+      "con",
+      "int",
+      "wis"
+    ],
+    "originFeat": {
+      "name": "Magic Initiate (Wizard)",
+      "description": "You gain the following benefits.\n\nTwo Cantrips. You learn two cantrips of your choice from the Cleric, Druid, or Wizard spell list. Intelligence, Wisdom, or Charisma is your spellcasting ability for this feat’s spells (choose when you select this feat).\n\nLevel 1 Spell. Choose a level 1 spell from the same list you selected for this feat’s cantrips. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have.\n\nSpell Change. Whenever you gain a new level, you can replace one of the spells you chose for this feat with a different spell of the same level from the chosen spell list.\n\nRepeatable. You can take this feat more than once, but you must choose a different spell list each time."
+    },
+    "skillProficiencies": [
+      "arcana",
+      "history"
+    ],
+    "toolProficiency": "Calligrapher’s Supplies",
+    "equipmentOptions": [
+      {
+        "option": "A",
+        "text": "Quarterstaff, Calligrapher’s Supplies, Book (history), Parchment (8 sheets), Robe, 8 GP"
+      },
+      {
+        "option": "B",
+        "text": "50 GP"
+      }
+    ]
+  },
+  {
+    "id": "soldier",
+    "name": "Soldier",
+    "source": "srd-5.2",
+    "abilityScores": [
+      "str",
+      "dex",
+      "con"
+    ],
+    "originFeat": {
+      "name": "Savage Attacker",
+      "description": "You’ve trained to deal particularly damaging strikes. Once per turn when you hit a target with a weapon, you can roll the weapon’s damage dice twice and use either roll against the target."
+    },
+    "skillProficiencies": [
+      "athletics",
+      "intimidation"
+    ],
+    "toolProficiency": "Choose one kind of Gaming Set (see “Equipment”)",
+    "equipmentOptions": [
+      {
+        "option": "A",
+        "text": "Spear, Shortbow, 20 Arrows, Gaming Set (same as above), Healer’s Kit, Quiver, Traveler’s Clothes, 14 GP"
+      },
+      {
+        "option": "B",
+        "text": "50 GP"
+      }
+    ]
+  }
+]

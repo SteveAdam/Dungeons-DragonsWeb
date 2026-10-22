@@ -228,7 +228,8 @@ export const backgroundSchema = z
     source: z.literal(SOURCE),
     /** The three abilities: +2 to one and +1 to another, or +1 to all three; never above 20. */
     abilityScores: z.array(ability).length(3),
-    originFeat: z.object({ name: z.string(), description: z.string().optional() }).strict(),
+    // the feat's text from "Feats"
+    originFeat: z.object({ name: z.string(), description: z.string().min(1) }).strict(),
     skillProficiencies: z.array(skill).length(2),
     toolProficiency: z.string(),
     equipmentOptions: z.array(option).min(1),
@@ -239,3 +240,76 @@ export type SrdFeature = z.infer<typeof featureSchema>;
 export type SrdClass = z.infer<typeof classSchema>;
 export type SrdSpecies = z.infer<typeof speciesSchema>;
 export type SrdBackground = z.infer<typeof backgroundSchema>;
+
+// P2-5: spells. Mechanics are recorded only where the text states them plainly; otherwise the spell is text only.
+const damageType = z.enum([
+  'acid',
+  'bludgeoning',
+  'cold',
+  'fire',
+  'force',
+  'lightning',
+  'necrotic',
+  'piercing',
+  'poison',
+  'psychic',
+  'radiant',
+  'slashing',
+  'thunder',
+]);
+
+export const spellSchema = z
+  .object({
+    id,
+    name: z.string().min(1),
+    source: z.literal(SOURCE),
+    level: z.number().int().min(0).max(9),
+    school: z.enum([
+      'abjuration',
+      'conjuration',
+      'divination',
+      'enchantment',
+      'evocation',
+      'illusion',
+      'necromancy',
+      'transmutation',
+    ]),
+    castingTime: z.string(),
+    range: z.string(),
+    components: z
+      .object({
+        v: z.boolean(),
+        s: z.boolean(),
+        m: z.boolean(),
+        /** As printed inside the M's brackets. */
+        materialText: z.string().optional(),
+        costGp: z.number().positive().optional(),
+        consumed: z.boolean().optional(),
+      })
+      .strict(),
+    duration: z.string(),
+    concentration: z.boolean(),
+    ritual: z.boolean(),
+    /** The classes named in the spell's heading, e.g. ['Sorcerer', 'Wizard']. */
+    classes: z.array(z.string()).min(1),
+    /** The SRD's wording; paragraphs split by a blank line. */
+    text: z.string().min(1),
+    /** "Using a Higher-Level Spell Slot." or "Cantrip Upgrade.", as printed. */
+    higherLevels: z.string().optional(),
+    mechanics: z
+      .object({
+        attack: z.boolean().optional(),
+        save: z
+          .object({ ability, onSuccess: z.enum(['none', 'half', 'other']) })
+          .strict()
+          .optional(),
+        damage: z.object({ dice, type: damageType, perSlotLevel: dice.optional() }).strict().optional(),
+        healing: z.object({ dice, addAbilityModifier: z.boolean(), perSlotLevel: dice.optional() }).strict().optional(),
+        cantripScaling: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+export type SrdSpell = z.infer<typeof spellSchema>;

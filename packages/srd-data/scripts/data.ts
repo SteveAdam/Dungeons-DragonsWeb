@@ -8,16 +8,20 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import type { ZodTypeAny } from 'zod';
 import { CLASS_SOURCES } from '../src/classSources.ts';
 import { convertArmor, convertCurrency, convertWeapons } from '../src/convert.ts';
+import { convertBackgrounds } from '../src/convertBackgrounds.ts';
 import { convertClass } from '../src/convertClass.ts';
 import { convertSpecies } from '../src/convertSpecies.ts';
+import { convertSpells } from '../src/convertSpells.ts';
 import { featuresPending } from '../src/featuresPending.ts';
 import { SPECIES_SOURCES } from '../src/speciesSources.ts';
+import { SPELL_BATCH } from '../src/spellSources.ts';
 import {
   armorSchema,
   backgroundSchema,
   classSchema,
   currencySchema,
   speciesSchema,
+  spellSchema,
   weaponSchema,
 } from '../src/schemas.ts';
 
@@ -46,8 +50,22 @@ const sets: { file: string; records: unknown; schema: ZodTypeAny }[] = [
     ),
     schema: speciesSchema.array(),
   },
-  // backgrounds arrive in the last P2-4 batch
-  { file: 'data/backgrounds.json', records: [], schema: backgroundSchema.array() },
+  {
+    file: 'data/backgrounds.json',
+    records: convertBackgrounds(
+      read('source/species.raw.txt'),
+      read('source/feats.raw.txt'),
+      read('source/feats.flow.txt'),
+    ),
+    schema: backgroundSchema.array(),
+  },
+  {
+    file: 'data/spells.json',
+    records: convertSpells(read('source/spells.raw.txt'), read('source/spells.flow.txt')).filter(
+      s => s.level <= SPELL_BATCH.maxLevel || SPELL_BATCH.extras.includes(s.name),
+    ),
+    schema: spellSchema.array(),
+  },
 ];
 
 let failed = false;
@@ -65,9 +83,10 @@ for (const { file, records, schema } of sets) {
 if (!failed) {
   const classes = classSchema.array().parse(sets.find(s => s.file === 'data/classes.json')!.records);
   const species = speciesSchema.array().parse(sets.find(s => s.file === 'data/species.json')!.records);
+  const backgrounds = backgroundSchema.array().parse(sets.find(s => s.file === 'data/backgrounds.json')!.records);
   outputs.push({
     file: '../../docs/features-pending.md',
-    text: featuresPending(classes, species),
+    text: featuresPending(classes, species, backgrounds),
     count: 'generated',
   });
 }

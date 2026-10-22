@@ -487,6 +487,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"srd_spells": {
+                  Row: {
+                    "data": NonNullable<Json>,"id": string,"level": number,"name": string,"source": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "data": NonNullable<Json>,"id": string,"level": number,"name": string,"source": string
+                  }
+                  Update: {
+                    "data"?: NonNullable<Json>,"id"?: string,"level"?: number,"name"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"srd_weapons": {
                   Row: {
                     "category": string,"data": NonNullable<Json>,"id": string,"kind": string,"name": string,"source": string

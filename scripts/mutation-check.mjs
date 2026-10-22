@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T39) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T40) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -261,6 +261,13 @@ create policy "anyone writes srd armor" on srd_armor for all to authenticated us
     sql: `grant insert, update, delete on srd_classes to authenticated;
 create policy "anyone writes srd classes" on srd_classes for all to authenticated using (true) with check (true);`,
     fails: ['T39'],
+  },
+  {
+    name: 'SRD spells writable by signed-in users (P2-5)',
+    why: 'a player could make Fireball a cantrip for everyone',
+    sql: `grant insert, update, delete on srd_spells to authenticated;
+create policy "anyone writes srd spells" on srd_spells for all to authenticated using (true) with check (true);`,
+    fails: ['T40'],
   },
   {
     name: 'hidden entities readable by members',

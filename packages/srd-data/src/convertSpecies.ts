@@ -75,7 +75,7 @@ function readLineage(lines: string[], start: number, layout: string, stop: (l: s
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Joins wrapped lines, dropping the hyphen of a word split at the end of a line ("sav-" + "ing"). */
-function joinLines(lines: string[]): string {
+export function joinLines(lines: string[]): string {
   return lines.reduce((text, line) => {
     if (!text) return line;
     if (/[A-Za-z]-$/.test(text) && /^[a-z]/.test(line)) return text.slice(0, -1) + line;
@@ -84,7 +84,7 @@ function joinLines(lines: string[]): string {
 }
 
 /** The flow text with each line's words, so a sentence end can be checked for a paragraph break after it. */
-const flowParagraphEnds = (flow: string) =>
+export const flowParagraphEnds = (flow: string) =>
   new Set(
     flow
       .split('\n')
@@ -97,7 +97,7 @@ const flowParagraphEnds = (flow: string) =>
  * Splits a trait's raw lines into paragraphs. A raw line ending a sentence ends a paragraph when the flow text
  * also ends a line with the same words.
  */
-function paragraphs(lines: string[], ends: Set<string>): string {
+export function paragraphs(lines: string[], ends: Set<string>): string {
   const out: string[][] = [[]];
   for (const line of lines) {
     out[out.length - 1].push(line);

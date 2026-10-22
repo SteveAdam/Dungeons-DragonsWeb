@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T39) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T40) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(246);
+select plan(253);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -721,6 +721,23 @@ select throws_ok($$ update srd_species set data = '{"id":"test-species","speed":
 reset role;
 select tests.act_as_anon();
 select is((select count(*)::int from srd_classes), 0, 'T39: a signed-out visitor reads nothing');
+reset role;
+
+-- T40: SRD spells (P2-5, 0011_srd_spells.sql): read by all signed in, written by none ----------------------------
+select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+insert into srd_spells (id, name, source, level, data) values ('test-spell', 'Test Spell', 'srd-5.2', 1, '{"id":"test-spell","level":1}');
+select throws_ok($$ insert into srd_spells (id, name, source, level, data) values ('mislevelled', 'Mislevelled', 'srd-5.2', 9, '{"id":"mislevelled","level":1}') $$, '23514', null, 'T40: the level column matches the record');
+select tests.act_as('player');
+select is((select level from srd_spells where id = 'test-spell'), 1, 'T40: a player reads SRD spells');
+select throws_ok($$ update srd_spells set data = data || '{"level":0}' where id = 'test-spell' $$, '42501', null, 'T40: a player cannot change a spell');
+select throws_ok($$ insert into srd_spells (id, name, source, level, data) values ('wish-plus', 'Wish Plus', 'srd-5.2', 9, '{"id":"wish-plus","level":9}') $$, '42501', null, 'T40: a player cannot add a spell');
+select throws_ok($$ delete from srd_spells where id = 'test-spell' $$, '42501', null, 'T40: a player cannot delete a spell');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ update srd_spells set level = 0 where id = 'test-spell' $$, '42501', null, 'T40: nor can a DM change one');
+reset role;
+select tests.act_as_anon();
+select is((select count(*)::int from srd_spells), 0, 'T40: a signed-out visitor reads nothing');
 reset role;
 
 select * from finish();

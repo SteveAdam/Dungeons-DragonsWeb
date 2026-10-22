@@ -8,8 +8,17 @@ import backgroundsJson from '../data/backgrounds.json';
 import classesJson from '../data/classes.json';
 import currencyJson from '../data/currency.json';
 import speciesJson from '../data/species.json';
+import spellsJson from '../data/spells.json';
 import weaponsJson from '../data/weapons.json';
-import { armorSchema, backgroundSchema, classSchema, currencySchema, speciesSchema, weaponSchema } from './schemas';
+import {
+  armorSchema,
+  backgroundSchema,
+  classSchema,
+  currencySchema,
+  speciesSchema,
+  spellSchema,
+  weaponSchema,
+} from './schemas';
 
 export * from './schemas';
 
@@ -21,7 +30,10 @@ export const SRD_WEAPONS = weaponSchema.array().parse(weaponsJson);
 export const SRD_ARMOR = armorSchema.array().parse(armorJson);
 export const SRD_CURRENCY = currencySchema.parse(currencyJson);
 
-// P2-4: levels 1 to 3. Classes are added one at a time; species and backgrounds follow.
+// P2-4: classes (levels 1 to 3), species and backgrounds.
 export const SRD_CLASSES = classSchema.array().parse(classesJson);
 export const SRD_SPECIES = speciesSchema.array().parse(speciesJson);
 export const SRD_BACKGROUNDS = backgroundSchema.array().parse(backgroundsJson);
+
+// P2-5: SRD spells, imported in batches by level (see spellSources.ts).
+export const SRD_SPELLS = spellSchema.array().parse(spellsJson);

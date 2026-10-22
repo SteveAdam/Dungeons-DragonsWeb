@@ -1,8 +1,12 @@
 // P2-4: docs/features-pending.md, made from the data: every level 1 to 3 feature and species trait marked 'later',
 // shown as text only for now, so the work of running them can be scheduled.
-import type { SrdClass, SrdSpecies } from './schemas';
+import type { SrdBackground, SrdClass, SrdSpecies } from './schemas';
 
-export function featuresPending(classes: SrdClass[], species: SrdSpecies[] = []): string {
+export function featuresPending(
+  classes: SrdClass[],
+  species: SrdSpecies[] = [],
+  backgrounds: SrdBackground[] = [],
+): string {
   const lines = [
     '# Features shown as text only (mechanics later)',
     '',
@@ -29,6 +33,14 @@ export function featuresPending(classes: SrdClass[], species: SrdSpecies[] = [])
     for (const t of traits) lines.push(`| ${t.from} | ${t.name} |`);
     lines.push('');
   }
-  lines.push(`${total} class features and ${traits.length} species traits in all.`, '');
+  // every Origin feat has mechanics; list each once, with the backgrounds that give it
+  const feats = new Map<string, string[]>();
+  for (const b of backgrounds) feats.set(b.originFeat.name, [...(feats.get(b.originFeat.name) ?? []), b.name]);
+  if (feats.size) {
+    lines.push('## Origin feats (from backgrounds)', '', '| Feat | Background |', '| ---- | ---------- |');
+    for (const [feat, from] of feats) lines.push(`| ${feat} | ${from.join(', ')} |`);
+    lines.push('');
+  }
+  lines.push(`${total} class features, ${traits.length} species traits and ${feats.size} Origin feats in all.`, '');
   return lines.join('\n');
 }
