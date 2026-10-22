@@ -4,6 +4,6 @@
 export const SPELL_PAGES = '107-175';
 
 export const SPELL_BATCH: { maxLevel: number; extras: string[] } = {
-  maxLevel: 0,
+  maxLevel: 2,
   extras: [],
 };

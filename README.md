@@ -304,7 +304,7 @@ Classes were added one at a time, each checked against the SRD before the next. 
 ## Spells and spellcasting (P2-5)
 
 Spells are imported in batches by level, each checked against the SRD before the next. Done so far: **cantrips**
-(all 27). Levels 1 to 3 follow, then Greater Restoration and Regenerate (Cure Wounds, Lesser Restoration and Revivify
+(all 27), **level 1** (all 57) and **level 2** (all 57). Levels 1 to 3 follow, then Greater Restoration and Regenerate (Cure Wounds, Lesser Restoration and Revivify
 come with their levels).
 
 - `packages/srd-data/source/spells.*.txt` is the whole Spell Descriptions chapter; `src/convertSpells.ts` reads all
@@ -312,7 +312,9 @@ come with their levels).
   duration, Concentration, Ritual, the text and the higher-level or Cantrip Upgrade text), and
   `src/spellSources.ts` says which batches ship. Mechanics (a spell attack, one saving throw, one kind of damage or
   healing, how they grow with slot level or character level) are recorded only where the text states them plainly;
-  otherwise the spell is text only.
+  otherwise the spell is text only. Raw text prints a few things away from their spell: stat blocks (Otherworldly
+  Steed and others) are attached to the spell that says it uses them, and a line printed at the top of an earlier
+  page goes back to the spell whose text stops mid-sentence.
 - `0011_srd_spells.sql` adds `srd_spells`, read-only like the other SRD tables; `pnpm srd:import` loads it.
 - The rules engine adds `spellSaveDc` and `spellAttackBonus`, `slotsFor` (from the class table, Pact Magic
   included), `castSpell` (needs a free slot of the spell's level or higher; upcast dice), `cantripDamageDice`

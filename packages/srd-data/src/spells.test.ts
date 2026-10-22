@@ -52,6 +52,79 @@ describe('the SRD spells (SRD 5.2.1 pages 107 to 175)', () => {
     ]);
   });
 
+  it('include all 57 level 1 spells', () => {
+    const level1 = SRD_SPELLS.filter(s => s.level === 1);
+    expect(level1).toHaveLength(57);
+    expect([level1[0].name, level1[level1.length - 1].name]).toEqual(['Alarm', 'Unseen Servant']);
+  });
+
+  it('read Concentration even where the SRD leaves out the comma (Protection from Evil and Good)', () => {
+    expect(byName('Protection from Evil and Good').duration).toBe('Concentration up to 10 minutes');
+    expect(byName('Protection from Evil and Good').concentration).toBe(true);
+    expect(byName('Bless').concentration).toBe(true);
+    expect(byName('Mage Armor').concentration).toBe(false);
+  });
+
+  it('read level 1 mechanics: Cure Wounds heals 2d8 plus the modifier, more per slot; Burning Hands is half on a save', () => {
+    expect(byName('Cure Wounds').mechanics).toEqual({
+      healing: { dice: '2d8', addAbilityModifier: true, perSlotLevel: '2d8' },
+    });
+    expect(byName('Burning Hands').mechanics).toEqual({
+      damage: { dice: '3d6', type: 'fire', perSlotLevel: '1d6' },
+      save: { ability: 'dex', onSuccess: 'half' },
+    });
+    // "1d4 + 1 Force damage" per dart is not one plain damage roll: Magic Missile stays text only
+    expect(byName('Magic Missile').mechanics).toBeUndefined();
+    expect(byName('Find Familiar').components).toMatchObject({ costGp: 10, consumed: true });
+  });
+
+  it('include all 57 level 2 spells', () => {
+    const level2 = SRD_SPELLS.filter(s => s.level === 2);
+    expect(level2).toHaveLength(57);
+    expect([level2[0].name, level2[level2.length - 1].name]).toEqual(['Acid Arrow', 'Zone of Truth']);
+  });
+
+  it('end every paragraph of every spell shipped so far like a sentence (no stray table or page fragments)', () => {
+    for (const s of SRD_SPELLS) {
+      for (const p of [...s.text.split('\n\n'), ...(s.higherLevels?.split('\n\n') ?? [])]) {
+        expect(/[.:?!)”]$/.test(p) || p.startsWith('• '), `${s.name}: "${p.slice(-40)}"`).toBe(true);
+      }
+    }
+  });
+
+  it('attach each stat block to the spell that uses it, not to the spell printed next to it', () => {
+    expect(all.filter(s => s.statBlocks).map(s => [s.name, s.statBlocks!.map(b => b.name)])).toEqual([
+      ['Animate Objects', ['Animated Object']],
+      ['Find Steed', ['Otherworldly Steed']],
+      ['Giant Insect', ['Giant Insect']],
+      ['Summon Dragon', ['Draconic Spirit']],
+    ]);
+    const steed = byName('Find Steed').statBlocks![0].text;
+    expect(steed.split('\n').slice(0, 2)).toEqual([
+      'Otherworldly Steed',
+      'Large Celestial, Fey, or Fiend (Your Choice), Neutral',
+    ]);
+    expect(all.find(s => s.name === 'Fireball')!.higherLevels).toBe(
+      'Using a Higher-Level Spell Slot. The damage increases by 1d6 for each spell slot level above 3.',
+    );
+  });
+
+  it('give a line the PDF printed at the top of an earlier page back to its spell (Find the Path)', () => {
+    expect(all.find(s => s.name === 'Find the Path')!.text).toContain(
+      'Whenever you face a choice of paths along the way there, you know which path is the most direct.',
+    );
+    expect(byName('Find Steed').higherLevels).toBe(
+      'Using a Higher-Level Spell Slot. Use the spell slot’s level for the spell’s level in the stat block.',
+    );
+  });
+
+  it('close up an em dash split at the end of a line, and read healing without a modifier', () => {
+    expect(byName('Find Steed').text).toContain('choose the steed’s creature type—Celestial, Fey, or Fiend—which');
+    expect(byName('Prayer of Healing').mechanics).toEqual({
+      healing: { dice: '2d8', addAbilityModifier: false, perSlotLevel: '1d8' },
+    });
+  });
+
   it('read the heading, casting time, range, components and duration', () => {
     const acid = all.find(s => s.name === 'Acid Arrow')!;
     expect([

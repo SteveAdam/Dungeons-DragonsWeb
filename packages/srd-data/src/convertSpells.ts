@@ -29,20 +29,57 @@ const slug = (name: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-function rawLines(raw: string): string[] {
+const SENTENCE_END = /[.:)\u201d]$/;
+/** Marks where an orphan was printed; no SRD line starts with a NUL. */
+const ORPHAN = '\u0000orphan:';
+
+/**
+ * Raw lines without page footers. Also returns orphans: text the PDF prints at the top of a page although it ends
+ * a spell printed later (the last line of Find the Path). An orphan starts in lower case right after a page break
+ * where the text before it had already finished its sentence.
+ */
+function rawLines(raw: string): { lines: string[]; orphans: string[][] } {
   const lines = raw
     .replace(/\u200b/g, '')
     .split('\n')
     .map(l => l.trim());
   const out: string[] = [];
+  const orphans: string[][] = [];
   for (let i = 0; i < lines.length; i++) {
     if (lines[i] === PAGE_FOOTER) {
       if (/^\d+$/.test(lines[i + 1] ?? '')) i++;
+      if (/^[a-z]/.test(lines[i + 1] ?? '') && SENTENCE_END.test(out[out.length - 1] ?? '')) {
+        const orphan: string[] = [];
+        do orphan.push(lines[++i]);
+        while (!SENTENCE_END.test(orphan[orphan.length - 1]) && i + 1 < lines.length);
+        orphans.push(orphan);
+        // a marker where it was printed: it can only belong to a spell that comes after this point
+        out.push(`${ORPHAN}${orphans.length - 1}`);
+      }
       continue;
     }
     if (lines[i]) out.push(lines[i]);
   }
-  return out;
+  return { lines: out, orphans };
+}
+
+/**
+ * Cuts the stat blocks (Otherworldly Steed, Giant Insect, ...) out of the text: a name, a size and type line, then
+ * an AC line, up to the next spell. Raw text prints them wherever they sat on the page, often inside another spell.
+ */
+function cutStatBlocks(body: string[]): { body: string[]; blocks: { name: string; text: string }[] } {
+  const blocks: { name: string; text: string }[] = [];
+  const out = [...body];
+  for (let i = 0; i < out.length; i++) {
+    if (!/^(Tiny|Small|Medium|Large|Huge|Gargantuan)\b/.test(out[i + 1] ?? '') || !out[i + 2]?.startsWith('AC '))
+      continue;
+    let end = i + 3;
+    while (end < out.length && !HEADING.test(out[end + 1] ?? '')) end++;
+    blocks.push({ name: out[i], text: out.slice(i, end).join('\n') });
+    out.splice(i, end - i);
+    i--;
+  }
+  return { body: out, blocks };
 }
 
 /**
@@ -65,10 +102,10 @@ function joiner(flowWords: string) {
 }
 
 export function convertSpells(rawText: string, flowText: string): SrdSpell[] {
-  const lines = rawLines(rawText);
+  const { lines, orphans } = rawLines(rawText);
   const start = lines.indexOf('Spell Descriptions');
   if (start < 0) throw new Error('No "Spell Descriptions" in the spell pages');
-  const body = lines.slice(start + 1);
+  const { body, blocks } = cutStatBlocks(lines.slice(start + 1));
   // the flow text with line breaks closed up, to look a hyphenated word up in
   const flowWords = flowText.replace(/\s*\n\s*/g, ' ');
   const join = joiner(flowWords);
@@ -76,9 +113,21 @@ export function convertSpells(rawText: string, flowText: string): SrdSpell[] {
 
   // a spell starts where a line is followed by a heading line
   const starts = body.flatMap((_, i) => (i > 0 && HEADING.test(body[i]) ? [i - 1] : []));
-  return starts.map((at, n) => {
+  const pending: number[] = [];
+  const placed = new Set<number>();
+  const spells = starts.map((at, n) => {
     const name = body[at];
-    const lines = body.slice(at + 1, starts[n + 1] ?? body.length);
+    const lines = body.slice(at + 1, starts[n + 1] ?? body.length).filter(l => {
+      if (!l.startsWith(ORPHAN)) return true;
+      pending.push(Number(l.slice(ORPHAN.length)));
+      return false;
+    });
+    // a spell whose text stops mid-sentence takes the orphan printed at the top of a page before it
+    if (!SENTENCE_END.test(lines[lines.length - 1]) && pending.length) {
+      const o = pending.shift()!;
+      lines.push(...orphans[o]);
+      placed.add(o);
+    }
 
     // the heading, with its class list possibly running onto the next line
     let h = 0;
@@ -115,7 +164,8 @@ export function convertSpells(rawText: string, flowText: string): SrdSpell[] {
         paragraphs.push([]);
       paragraphs[paragraphs.length - 1].push(line);
     }
-    const all = paragraphs.map(join);
+    // an em dash at the end of a line picks up a space in the join ("Fiend— which")
+    const all = paragraphs.map(p => join(p).replace(/— /g, '—'));
     const upgrade = all.findIndex(p => /^(Using a Higher-Level Spell Slot|Cantrip Upgrade)\. /.test(p));
     const text = (upgrade < 0 ? all : all.slice(0, upgrade)).join('\n\n');
     const higherLevels = upgrade < 0 ? undefined : all.slice(upgrade).join('\n\n');
@@ -132,7 +182,8 @@ export function convertSpells(rawText: string, flowText: string): SrdSpell[] {
       range: field('Range'),
       components: components(field('Components')),
       duration,
-      concentration: /^Concentration, /.test(duration),
+      // Protection from Evil and Good is printed "Concentration up to 10 minutes", without the comma
+      concentration: /^Concentration,? up to /.test(duration),
       ritual: /\bor Ritual$/.test(castingTime),
       classes,
       text,
@@ -141,6 +192,16 @@ export function convertSpells(rawText: string, flowText: string): SrdSpell[] {
     const mechanics = readMechanics(record);
     return mechanics ? { ...record, mechanics } : record;
   });
+
+  const lost = orphans.find((_, o) => !placed.has(o));
+  if (lost) throw new Error(`Text with no spell to go to: "${lost.join(' ')}"`);
+  // each stat block belongs to the one spell that says "uses the <Name> stat block"
+  for (const block of blocks) {
+    const owners = spells.filter(s => s.text.includes(`${block.name} stat block`));
+    if (owners.length !== 1) throw new Error(`The ${block.name} stat block belongs to ${owners.length} spells`);
+    owners[0].statBlocks = [...(owners[0].statBlocks ?? []), block];
+  }
+  return spells;
 }
 
 function endsHere(text: string, ends: Set<string>): boolean {
@@ -208,8 +269,15 @@ function readMechanics(s: SrdSpell): SrdSpell['mechanics'] | undefined {
   );
   const perSlotHeal =
     s.higherLevels && /healing increases by (\d+d\d+) for each spell slot level above/.exec(s.higherLevels);
-  if (heal) {
-    out.healing = { dice: heal[1], addAbilityModifier: true, ...(perSlotHeal ? { perSlotLevel: perSlotHeal[1] } : {}) };
+  // or plain dice of healing, as Prayer of Healing's "regain 2d8 Hit Points"
+  const plainHeal = heal ? null : /\bregains? (\d+d\d+) Hit Points\b/.exec(s.text);
+  const healDice = (heal ?? plainHeal)?.[1];
+  if (healDice) {
+    out.healing = {
+      dice: healDice,
+      addAbilityModifier: !!heal,
+      ...(perSlotHeal ? { perSlotLevel: perSlotHeal[1] } : {}),
+    };
   }
 
   // only a cantrip whose damage dice grow (other upgrades add beams, change the die or double the range)

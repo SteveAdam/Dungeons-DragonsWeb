@@ -55,3 +55,10 @@
 .note {
   margin: 0;
 }
+
+/* a spell's stat block, kept in the SRD's own lines */
+.statBlock {
+  margin: 0;
+  font-family: var(--font-body);
+  white-space: pre-wrap;
+}

@@ -267,6 +267,12 @@ function SpellLevel({ label, spells }: { label: string; spells: SrdSpell[] }) {
           </table>
           <Text text={s.text} />
           {s.higherLevels && <Text text={s.higherLevels} />}
+          {s.statBlocks?.map(b => (
+            <figure key={b.name} className={styles.note}>
+              <figcaption className={styles.group}>{`Stat block: ${b.name}`}</figcaption>
+              <pre className={styles.statBlock}>{b.text}</pre>
+            </figure>
+          ))}
           <p className={styles.note}>
             {s.mechanics ? `Mechanics read: ${JSON.stringify(s.mechanics)}` : 'Text only (no mechanics read)'}
           </p>

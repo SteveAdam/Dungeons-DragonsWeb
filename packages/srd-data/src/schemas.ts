@@ -296,6 +296,8 @@ export const spellSchema = z
     text: z.string().min(1),
     /** "Using a Higher-Level Spell Slot." or "Cantrip Upgrade.", as printed. */
     higherLevels: z.string().optional(),
+    /** The stat blocks a spell summons into, e.g. Otherworldly Steed; lines as printed. */
+    statBlocks: z.array(z.object({ name: z.string(), text: z.string() }).strict()).optional(),
     mechanics: z
       .object({
         attack: z.boolean().optional(),
