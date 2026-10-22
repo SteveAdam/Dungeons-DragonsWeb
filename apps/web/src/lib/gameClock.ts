@@ -1,21 +1,7 @@
 import type { Effect, GameClock } from '@dnd-manager/rules-engine';
-import { useEffect, useState } from 'react';
 
-/**
- * The game clock, in seconds. Phase 1 has no campaign clock yet, so game time is real time (seconds since
- * 1970): a one-hour potion lasts a real hour. A DM-driven campaign clock can replace this later.
- */
-export const nowClock = (): GameClock => ({ seconds: Math.floor(Date.now() / 1000) });
-
-/** The clock, refreshed every 30 seconds so effects run out on screen without a reload. */
-export function useGameClock(): GameClock {
-  const [clock, setClock] = useState(nowClock);
-  useEffect(() => {
-    const timer = setInterval(() => setClock(nowClock()), 30_000);
-    return () => clearInterval(timer);
-  }, []);
-  return clock;
-}
+// The game clock is the campaign's game_seconds (P2-2), the same clock the roll function measures effects
+// against, so the sheet and the server always agree on which effects are active. The DM moves it (P2-8).
 
 /** "1 hour", "23 minutes", "less than a minute": how long until a moment on the clock. */
 export function timeLeft(untilSeconds: number, clock: GameClock): string {

@@ -1,13 +1,10 @@
 // /dev/odds (development builds only): try the odds popup with any bonus, target, reasons and bonus dice,
-// with a pretend roll in memory or a real roll through the server's roll_d20.
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Dices, FlaskConical, Server } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
-import { useAuth } from '../../auth/authContext';
+// with a pretend roll in memory. Since P2-2 the server rolls only for characters, with the bonus it works out
+// itself, so a made-up bonus can no longer be rolled for real: real rolls are made from a character's sheet.
+import { Dices } from 'lucide-react';
+import { useId, useState } from 'react';
 import { OddsPopup, type OddsBonusDie, type OddsCheck } from '../../components/odds/OddsPopup';
-import { Button, ICON_PROPS, iconClasses, Input, Paper, RibbonTabs } from '../../components/ui';
-import { listRecentRolls, rollD20, subscribeToRolls } from '../../data/rolls';
-import { useCampaigns } from '../../hooks/useCampaigns';
+import { Button, ICON_PROPS, iconClasses, Input, Paper } from '../../components/ui';
 import { fakeRoll } from './fakeRoller';
 import styles from './OddsDevPage.module.css';
 
@@ -16,7 +13,6 @@ const DICE: Record<string, OddsBonusDie> = {
   bane: { label: 'Bane', count: 1, sides: 4, sign: -1 },
   guidance: { label: 'Guidance', count: 1, sides: 4, sign: 1 },
 };
-const rollsKey = (campaignId: string) => ['campaigns', campaignId, 'rolls'];
 const lines = (text: string) =>
   text
     .split('\n')
@@ -25,8 +21,6 @@ const lines = (text: string) =>
 
 export default function OddsDevPage() {
   const id = useId();
-  const { session } = useAuth();
-  const [tab, setTab] = useState<'fake' | 'real'>('fake');
   const [form, setForm] = useState({
     label: 'Search the undergrowth',
     skill: 'Perception',
@@ -37,8 +31,6 @@ export default function OddsDevPage() {
     disadvantage: '',
     dice: [] as string[],
   });
-  const [campaignId, setCampaignId] = useState('');
-  const client = useQueryClient();
   const [open, setOpen] = useState(false);
   // a callback ref kept in state, so the popup can be placed next to the button it opened from
   const [opener, setOpener] = useState<HTMLButtonElement | null>(null);
@@ -54,7 +46,6 @@ export default function OddsDevPage() {
     disadvantage: lines(form.disadvantage),
     bonusDice: form.dice.map(d => DICE[d]),
   };
-  const canRollForReal = tab === 'fake' || (!!session && !!campaignId);
 
   return (
     <main className={styles.page}>
@@ -62,15 +53,9 @@ export default function OddsDevPage() {
         <h1 id={`${id}-title`} className={styles.title}>
           Odds popup (development)
         </h1>
-        <RibbonTabs
-          aria-label="Roll with"
-          tabs={[
-            { id: 'fake', label: 'Pretend roll', icon: FlaskConical },
-            { id: 'real', label: 'Real roll', icon: Server },
-          ]}
-          value={tab}
-          onChange={t => setTab(t as 'fake' | 'real')}
-        />
+        <p className={styles.note}>
+          Pretend rolls only. Real rolls come from a character's sheet, where the server works out the bonus.
+        </p>
 
         <div className={styles.form}>
           <label htmlFor={`${id}-label`}>What is happening</label>
@@ -132,15 +117,12 @@ export default function OddsDevPage() {
               </label>
             ))}
           </fieldset>
-
-          {tab === 'real' && <RealRollSettings campaignId={campaignId} onCampaign={setCampaignId} />}
         </div>
 
-        <Button ref={setOpener} className={iconClasses.host} disabled={!canRollForReal} onClick={() => setOpen(true)}>
+        <Button ref={setOpener} className={iconClasses.host} onClick={() => setOpen(true)}>
           <Dices {...ICON_PROPS} className={iconClasses.icon} />
           Show the odds
         </Button>
-        {tab === 'real' && campaignId && <RollLog campaignId={campaignId} />}
       </Paper>
 
       <OddsPopup
@@ -148,71 +130,8 @@ export default function OddsDevPage() {
         onClose={() => setOpen(false)}
         anchor={opener}
         check={check}
-        onRoll={mode =>
-          tab === 'fake'
-            ? fakeRoll(check, mode)
-            : rollD20({
-                campaignId,
-                kind: check.kind,
-                label: check.label,
-                bonus: check.bonus,
-                target: check.target,
-                mode,
-              }).then(roll => {
-                // our own roll refreshes the log at once; realtime brings everyone else's
-                void client.invalidateQueries({ queryKey: rollsKey(campaignId) });
-                return roll;
-              })
-        }
+        onRoll={mode => fakeRoll(check, mode)}
       />
     </main>
-  );
-}
-
-function RealRollSettings({ campaignId, onCampaign }: { campaignId: string; onCampaign: (id: string) => void }) {
-  const id = useId();
-  const { session } = useAuth();
-  const campaigns = useCampaigns();
-  if (!session) return <p className={styles.note}>Sign in to roll through the server.</p>;
-  return (
-    <>
-      <label htmlFor={`${id}-campaign`}>Test campaign (the roll is logged there)</label>
-      <select
-        id={`${id}-campaign`}
-        value={campaignId}
-        onChange={e => onCampaign(e.target.value)}
-        className={styles.select}
-      >
-        <option value="">Choose a campaign</option>
-        {(campaigns.data ?? []).map(c => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-    </>
-  );
-}
-
-/** The campaign's roll log, live: new rolls arrive through realtime. */
-function RollLog({ campaignId }: { campaignId: string }) {
-  const client = useQueryClient();
-  const rolls = useQuery({ queryKey: rollsKey(campaignId), queryFn: () => listRecentRolls(campaignId, 10) });
-  useEffect(
-    () => subscribeToRolls(campaignId, () => client.invalidateQueries({ queryKey: rollsKey(campaignId) })),
-    [campaignId, client],
-  );
-  return (
-    <section aria-label="Roll log" className={styles.log}>
-      <h2 className={styles.logTitle}>Roll log</h2>
-      <ol>
-        {(rolls.data ?? []).map(r => (
-          <li key={r.id}>
-            {`${r.label}: ${r.dice.join(' & ')} → ${r.total}${r.target === null ? '' : ` vs ${r.target}`}`}
-            {r.success === null ? '' : r.crit ? ' (critical hit)' : r.success ? ' (success)' : ' (failure)'}
-          </li>
-        ))}
-      </ol>
-    </section>
   );
 }

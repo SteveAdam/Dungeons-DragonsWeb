@@ -1,6 +1,7 @@
 // P1-6: the odds popup. Every number comes from the rules engine (resolveRollMode, successChanceWithDice,
 // critChance, formatPercent and friends); this file only lays them out. The dice are rolled by the server
-// through onRoll.
+// through onRoll. For a character's roll the server's preview (P2-2) is passed in as check.server, and the popup
+// shows exactly that mode and chance: what the player sees is what the server rolls with.
 import {
   critChance,
   formatPercent,
@@ -10,6 +11,7 @@ import {
   successChanceWithDice,
   type BonusDie,
   type RollMode,
+  type RollModeReason,
 } from '@dnd-manager/rules-engine';
 import { Dices, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
@@ -39,6 +41,8 @@ export interface OddsCheck {
   /** Reasons, e.g. "you watch from high ground". */
   advantage?: string[];
   disadvantage?: string[];
+  /** The server's own mode and odds (a character's roll). When set, advantage and disadvantage are not used. */
+  server?: { mode: RollMode; reasons: RollModeReason[]; chance: number; critChance: number };
 }
 
 export interface OddsPopupProps {
@@ -49,6 +53,10 @@ export interface OddsPopupProps {
   onRoll: (mode: RollMode) => Promise<RollRow>;
   /** On wide screens the card sits next to this element; on phones the popup is a bottom sheet. */
   anchor?: HTMLElement | null;
+  /** Shown while the odds are being fetched; the Roll button waits. */
+  waiting?: string;
+  /** Why this roll cannot be made (shown as an alert; the Roll button is disabled). */
+  problem?: string;
 }
 
 const KIND_WORD = { check: 'check', save: 'saving throw', attack: 'attack' } as const;
@@ -75,7 +83,7 @@ export function OddsPopup(props: OddsPopupProps) {
   return props.open ? <OddsDialog {...props} /> : null;
 }
 
-function OddsDialog({ onClose, check, onRoll, anchor }: OddsPopupProps) {
+function OddsDialog({ onClose, check, onRoll, anchor, waiting, problem }: OddsPopupProps) {
   const id = useId();
   const dialog = useRef<HTMLElement>(null);
   const rollButton = useRef<HTMLButtonElement>(null);
@@ -92,12 +100,14 @@ function OddsDialog({ onClose, check, onRoll, anchor }: OddsPopupProps) {
   }, []);
 
   const bonusDice = check.bonusDice ?? [];
-  const { mode, reasons } = resolveRollMode({
-    advantage: check.advantage ?? [],
-    disadvantage: check.disadvantage ?? [],
-  });
+  const { mode, reasons } =
+    check.server ??
+    resolveRollMode({
+      advantage: check.advantage ?? [],
+      disadvantage: check.disadvantage ?? [],
+    });
   const base = { kind: check.kind, bonus: check.bonus, target: check.target };
-  const odds = successChanceWithDice({ ...base, mode, bonusDice });
+  const chance = check.server?.chance ?? successChanceWithDice({ ...base, mode, bonusDice }).final;
   const withoutMode = successChanceWithDice({ ...base, mode: 'normal', bonusDice });
   const targetLabel = check.targetLabel ?? (check.kind === 'attack' ? 'AC' : 'DC');
   const subtitle = [
@@ -172,7 +182,12 @@ function OddsDialog({ onClose, check, onRoll, anchor }: OddsPopupProps) {
               );
             })}
           </div>
-          <Button ref={rollButton} className={iconClasses.host} disabled={rolling} onClick={doRoll}>
+          <Button
+            ref={rollButton}
+            className={iconClasses.host}
+            disabled={rolling || !!waiting || !!problem}
+            onClick={doRoll}
+          >
             <Dices {...ICON_PROPS} className={iconClasses.icon} />
             {rolling ? 'Rolling…' : roll ? 'Roll again' : 'Roll'}
           </Button>
@@ -197,7 +212,7 @@ function OddsDialog({ onClose, check, onRoll, anchor }: OddsPopupProps) {
 
         <div className={styles.chanceRow}>
           <p className={styles.chance}>
-            <span className={styles.percent}>{formatPercent(odds.final)}</span>
+            <span className={styles.percent}>{waiting ? '…' : formatPercent(chance)}</span>
             <span className={styles.chanceLabel}>chance to succeed</span>
           </p>
           <div className={styles.why}>
@@ -208,7 +223,7 @@ function OddsDialog({ onClose, check, onRoll, anchor }: OddsPopupProps) {
           </div>
         </div>
         <div className={styles.bar} aria-hidden="true">
-          <div className={styles.fill} style={{ width: `${odds.final * 100}%` }} />
+          <div className={styles.fill} style={{ width: `${waiting ? 0 : chance * 100}%` }} />
         </div>
 
         {reasons.length > 0 && (
@@ -244,15 +259,18 @@ function OddsDialog({ onClose, check, onRoll, anchor }: OddsPopupProps) {
         )}
 
         {check.kind === 'attack' && (
-          <p className={styles.line}>{`Critical hit chance: ${formatPercent(critChance(mode))}`}</p>
+          <p
+            className={styles.line}
+          >{`Critical hit chance: ${formatPercent(check.server?.critChance ?? critChance(mode))}`}</p>
         )}
 
         <div role="status" aria-live="polite" className={styles.result}>
+          {waiting && !roll && <p className={styles.line}>{waiting}</p>}
           {roll && <RollResult roll={roll} check={check} targetLabel={targetLabel} />}
         </div>
-        {error && (
+        {(error ?? problem) && (
           <p role="alert" className={styles.error}>
-            {error}
+            {error ?? problem}
           </p>
         )}
       </Paper>

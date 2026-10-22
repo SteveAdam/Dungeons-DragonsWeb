@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T34) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T37) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(211);
+select plan(229);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -33,6 +33,16 @@ begin
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
   perform set_config('request.jwt.claim.sub', '', true);
   set local role anon;
+end $$;
+
+-- Act as the service role, which is how the roll Edge Function calls roll_d20 (P2-2). It has no auth.uid(), so
+-- roll_d20 is told who is rolling (p_actor).
+grant usage on schema tests to service_role;
+create function tests.act_as_service() returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', '{"role":"service_role"}', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+  set local role service_role;
 end $$;
 
 -- FIXTURE (built as the database owner, so row level security does not apply) ------
@@ -359,13 +369,16 @@ reset role;
 -- T19 to T24: server dice and the append-only roll log (P1-5, 0004_rolls.sql) ----------
 
 -- T19: members roll, strangers cannot, and nobody rolls for someone else's character
+-- (since P2-2 every roll comes through the Edge Function, as the service role, naming the roller as p_actor)
+select tests.act_as_service();
+select lives_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), null, 'check', 'Perception', 3, 14, 'normal') $$, 'T19: a member can roll');
+select throws_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), tests.u('someone-elses-character'), 'check', 'Stealth', 2, 12, 'normal') $$, '42501', 'You can only roll for your own character', 'T19: a player cannot roll for another character');
+select throws_ok($$ select roll_d20(tests.u('user:outsider'), tests.u('campaign'), null, 'check', 'Perception', 3, 14, 'normal') $$, '42501', 'Only members of this campaign can roll here', 'T19: a non-member cannot roll');
+reset role;
 select tests.act_as('player');
-select lives_ok($$ select roll_d20(tests.u('campaign'), null, 'check', 'Perception', 3, 14, 'normal') $$, 'T19: a member can roll');
 select is((select count(*)::int from rolls where label = 'Perception'), 1, 'T19: and sees the roll in the log');
-select throws_ok($$ select roll_d20(tests.u('campaign'), tests.u('someone-elses-character'), 'check', 'Stealth', 2, 12, 'normal') $$, '42501', 'You can only roll for your own character', 'T19: a player cannot roll for another character');
 reset role;
 select tests.act_as('outsider');
-select throws_ok($$ select roll_d20(tests.u('campaign'), null, 'check', 'Perception', 3, 14, 'normal') $$, '42501', 'Only members of this campaign can roll here', 'T19: a non-member cannot roll');
 select is((select count(*)::int from rolls), 0, 'T19: a non-member reads no rolls');
 reset role;
 
@@ -388,11 +401,11 @@ values (tests.u('campaign2'), tests.u('user:outsider'), 'check', 'Doomed', 0, 'n
 select lives_ok($$ delete from campaigns where id = tests.u('campaign2') $$, 'T20: deleting a whole campaign still removes its rolls');
 
 -- T21: hidden rolls are for the DM alone
-select tests.act_as('player');
-select throws_ok($$ select roll_d20(tests.u('campaign'), null, 'check', 'Sneaky', 3, 14, 'normal', true) $$, '42501', 'Only the DM can make a hidden roll', 'T21: a player cannot make a hidden roll');
+select tests.act_as_service();
+select throws_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), null, 'check', 'Sneaky', 3, 14, 'normal', true) $$, '42501', 'Only the DM can make a hidden roll', 'T21: a player cannot make a hidden roll');
+select lives_ok($$ select roll_d20(tests.u('user:dm'), tests.u('campaign'), null, 'save', 'Secret save', 2, 15, 'normal', true) $$, 'T21: a DM can make a hidden roll');
 reset role;
 select tests.act_as('dm');
-select lives_ok($$ select roll_d20(tests.u('campaign'), null, 'save', 'Secret save', 2, 15, 'normal', true) $$, 'T21: a DM can make a hidden roll');
 select is((select count(*)::int from rolls where hidden), 1, 'T21: the DM sees the hidden roll');
 reset role;
 select tests.act_as('player');
@@ -401,11 +414,11 @@ select is((select count(*)::int from rolls), 1, 'T21: but still see the open one
 reset role;
 
 -- T22: the dice follow the roll mode, and the outcome follows the rules
-select tests.act_as('dm');
-select ok((select cardinality(dice) = 1 and kept = dice[1] from roll_d20(tests.u('campaign'), null, 'check', 'Normal', 0, null, 'normal')), 'T22: a normal roll has one die');
-select ok((select cardinality(dice) = 2 and kept = greatest(dice[1], dice[2]) from roll_d20(tests.u('campaign'), null, 'check', 'Advantage', 0, null, 'advantage')), 'T22: advantage keeps the higher of two dice');
-select ok((select cardinality(dice) = 2 and kept = least(dice[1], dice[2]) from roll_d20(tests.u('campaign'), null, 'check', 'Disadvantage', 0, null, 'disadvantage')), 'T22: disadvantage keeps the lower of two dice');
-select ok((select total = kept + 4 from roll_d20(tests.u('campaign'), null, 'check', 'Total', 4, null, 'normal')), 'T22: total is the kept die plus the bonus');
+select tests.act_as_service();
+select ok((select cardinality(dice) = 1 and kept = dice[1] from roll_d20(tests.u('user:dm'), tests.u('campaign'), null, 'check', 'Normal', 0, null, 'normal')), 'T22: a normal roll has one die');
+select ok((select cardinality(dice) = 2 and kept = greatest(dice[1], dice[2]) from roll_d20(tests.u('user:dm'), tests.u('campaign'), null, 'check', 'Advantage', 0, null, 'advantage')), 'T22: advantage keeps the higher of two dice');
+select ok((select cardinality(dice) = 2 and kept = least(dice[1], dice[2]) from roll_d20(tests.u('user:dm'), tests.u('campaign'), null, 'check', 'Disadvantage', 0, null, 'disadvantage')), 'T22: disadvantage keeps the lower of two dice');
+select ok((select total = kept + 4 from roll_d20(tests.u('user:dm'), tests.u('campaign'), null, 'check', 'Total', 4, null, 'normal')), 'T22: total is the kept die plus the bonus');
 select is((select kept from roll_outcome('check', 'advantage', '{5,17}', 0, 10)), 17, 'T22: advantage of 5 and 17 keeps 17');
 select is((select kept from roll_outcome('check', 'disadvantage', '{5,17}', 0, 10)), 5, 'T22: disadvantage of 5 and 17 keeps 5');
 select is((select (success, crit, fumble)::text from roll_outcome('attack', 'normal', '{20}', 0, 30)), '(t,t,f)', 'T22: an attack with a natural 20 is a critical hit, whatever the AC');
@@ -418,11 +431,13 @@ reset role;
 -- T23: at most 30 rolls a minute per person
 insert into auth.users (id, email) values (tests.u('user:roller'), 'roller@test.local');
 insert into members (campaign_id, user_id, role) values (tests.u('campaign'), tests.u('user:roller'), 'player');
-select tests.act_as('roller');
+select tests.act_as_service();
 select lives_ok($$ do $do$ begin
-    for i in 1..30 loop perform roll_d20(tests.u('campaign'), null, 'other', 'Spam', 0, null, 'normal'); end loop;
+    for i in 1..30 loop perform roll_d20(tests.u('user:roller'), tests.u('campaign'), null, 'other', 'Spam', 0, null, 'normal'); end loop;
   end $do$ $$, 'T23: 30 rolls in a minute are fine');
-select throws_ok($$ select roll_d20(tests.u('campaign'), null, 'other', 'Spam', 0, null, 'normal') $$, 'PT429', 'Too many rolls in the last minute. Wait a moment and roll again.', 'T23: the 31st roll within a minute is refused');
+select throws_ok($$ select roll_d20(tests.u('user:roller'), tests.u('campaign'), null, 'other', 'Spam', 0, null, 'normal') $$, 'PT429', 'Too many rolls in the last minute. Wait a moment and roll again.', 'T23: the 31st roll within a minute is refused');
+reset role;
+select tests.act_as('roller');
 select throws_ok($$ select d20() $$, '42501', null, 'T23: the die itself cannot be called directly, only through roll_d20');
 reset role;
 
@@ -458,19 +473,17 @@ select tests.act_as('dm');
 select is((select count(*)::int from characters), 2, 'T25: the DM reads every character');
 reset role;
 
--- T26: owners edit their own sheet, but only the DM changes XP
+-- T26: only the DM changes XP or the sheet; players do not create characters directly (P2-2: the server
+-- computes roll bonuses from the sheet, so a player editing it would be the same as sending a bonus)
 select tests.act_as('player');
-select lives_ok($$ do $do$ begin
-    update characters set sheet = sheet || '{"inspiration":true}' where id = tests.u('char:brannoc');
-    if not found then raise exception 'update did not apply'; end if;
-  end $do$ $$, 'T26: a player edits their own sheet');
+select throws_ok($$ update characters set sheet = sheet || '{"abilityScores":{"str":30}}' where id = tests.u('char:brannoc') $$, 'P0001', 'Only the DM can change a character sheet', 'T26: a player cannot edit their own sheet');
 select lives_ok($$ do $do$ begin
     update characters set name = 'Stolen' where id = tests.u('char:sera');
     if found then raise exception 'update applied'; end if;
   end $do$ $$, 'T26: a player cannot edit another player''s character');
 select throws_ok($$ update characters set xp = 99999 where id = tests.u('char:brannoc') $$, 'P0001', 'Only the DM can change XP', 'T26: a player cannot change their own XP');
 select throws_ok($$ insert into characters (campaign_id, name, xp) values (tests.u('campaign'), 'Instant hero', 355000) $$, 'P0001', 'Only the DM can change XP', 'T26: a player cannot create a character with XP');
-select lives_ok($$ insert into characters (campaign_id, name) values (tests.u('campaign'), 'Fresh recruit') $$, 'T26: a player can create a character of their own at 0 XP');
+select throws_ok($$ insert into characters (campaign_id, name, sheet) values (tests.u('campaign'), 'Fresh recruit', '{"abilityScores":{"str":30}}') $$, '42501', null, 'T26: a player cannot create a character directly, even at 0 XP');
 select throws_ok($$ insert into characters (campaign_id, owner_id, name) values (tests.u('campaign'), tests.u('user:roller'), 'Puppet') $$, '42501', null, 'T26: a player cannot create a character for someone else');
 reset role;
 select tests.act_as('dm');
@@ -502,12 +515,12 @@ select lives_ok($$ do $do$ begin
 reset role;
 
 -- T28: rolls name characters: your own, or any for the DM; deleting a character keeps its rolls
-select tests.act_as('player');
-select lives_ok($$ select roll_d20(tests.u('campaign'), tests.u('char:brannoc'), 'check', 'Athletics', 6, 15, 'normal') $$, 'T28: a player rolls for their own character');
-select throws_ok($$ select roll_d20(tests.u('campaign'), tests.u('char:sera'), 'check', 'Arcana', 5, 15, 'normal') $$, '42501', 'You can only roll for your own character', 'T28: a player cannot roll for another player''s character');
+select tests.act_as_service();
+select lives_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), tests.u('char:brannoc'), 'check', 'Athletics', 6, 15, 'normal') $$, 'T28: a player rolls for their own character');
+select throws_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), tests.u('char:sera'), 'check', 'Arcana', 5, 15, 'normal') $$, '42501', 'You can only roll for your own character', 'T28: a player cannot roll for another player''s character');
+select lives_ok($$ select roll_d20(tests.u('user:dm'), tests.u('campaign'), tests.u('char:sera'), 'save', 'Wisdom save', 3, 13, 'normal') $$, 'T28: the DM can roll for any character');
 reset role;
 select tests.act_as('dm');
-select lives_ok($$ select roll_d20(tests.u('campaign'), tests.u('char:sera'), 'save', 'Wisdom save', 3, 13, 'normal') $$, 'T28: the DM can roll for any character');
 select lives_ok($$ delete from characters where id = tests.u('char:sera') $$, 'T28: a character with rolls can still be deleted');
 reset role;
 select is((select count(*)::int from rolls where label = 'Wisdom save' and character_id is null), 1, 'T28: its rolls stay in the log, unlinked');
@@ -615,6 +628,57 @@ select lives_ok($$ do $do$ begin
     if found then raise exception 'delete applied'; end if;
   end $do$ $$, 'T34: a player cannot change entities or links directly');
 select is((select count(*)::int from entity_folders), 0, 'T34: a player sees no folders');
+reset role;
+
+-- T35 to T37: the server computes the roll bonus (P2-2, 0008_roll_security.sql) -------------------------
+
+-- T35: roll_d20 is for the service role (the roll Edge Function) alone; the bonus matches its breakdown
+select tests.act_as('player');
+select throws_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), null, 'check', 'Inflated', 30, 10, 'normal') $$, '42501', null, 'T35: a player cannot call roll_d20 directly');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ select roll_d20(tests.u('user:dm'), tests.u('campaign'), null, 'check', 'Inflated', 30, 10, 'normal') $$, '42501', null, 'T35: nor can a DM');
+reset role;
+select tests.act_as_anon();
+select throws_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), null, 'check', 'Inflated', 30, 10, 'normal') $$, '42501', null, 'T35: nor a signed-out visitor');
+reset role;
+select ok(not has_function_privilege('authenticated', 'public.roll_d20(uuid, uuid, uuid, text, text, int, int, text, boolean, jsonb)', 'execute'), 'T35: authenticated has no execute grant on roll_d20');
+select hasnt_function('public', 'roll_d20', array['uuid', 'uuid', 'text', 'text', 'integer', 'integer', 'text', 'boolean'], 'T35: the Phase 1 roll_d20, which took the bonus from the browser, is gone');
+select tests.act_as_service();
+select lives_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), tests.u('char:brannoc'), 'check', 'Athletics check', 6, 14, 'normal', false, '[{"label":"Strength","value":3},{"label":"Proficiency","value":3}]') $$, 'T35: the service role rolls for a player, with the breakdown');
+select throws_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), null, 'check', 'Padded', 30, 14, 'normal', false, '[{"label":"Strength","value":3}]') $$, '22023', 'The bonus must add up to its breakdown', 'T35: a bonus that does not match its breakdown is refused');
+select throws_ok($$ select roll_d20(null, tests.u('campaign'), null, 'check', 'Nobody', 0, 14, 'normal') $$, '42501', 'Sign in first', 'T35: a roll must name who is rolling');
+reset role;
+select is((select bonus_breakdown from rolls where label = 'Athletics check'), '[{"label":"Strength","value":3},{"label":"Proficiency","value":3}]'::jsonb, 'T35: the breakdown is stored with the roll');
+
+-- T36: conditions and exhaustion are the DM's to set, and only real ones
+select tests.act_as('player');
+select throws_ok($$ update characters set conditions = '{invisible}' where id = tests.u('char:brannoc') $$, 'P0001', 'Only the DM can change a character sheet', 'T36: a player cannot give themself a condition');
+select throws_ok($$ update characters set exhaustion = 1 where id = tests.u('char:brannoc') $$, 'P0001', 'Only the DM can change a character sheet', 'T36: a player cannot change their own exhaustion');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ do $do$ begin
+    update characters set conditions = '{poisoned,prone}', exhaustion = 2 where id = tests.u('char:brannoc');
+    if not found then raise exception 'update did not apply'; end if;
+  end $do$ $$, 'T36: the DM sets conditions and exhaustion');
+select throws_ok($$ update characters set conditions = '{sleepy}' where id = tests.u('char:brannoc') $$, '23514', null, 'T36: a condition must be one of the SRD conditions');
+select throws_ok($$ update characters set exhaustion = 7 where id = tests.u('char:brannoc') $$, '23514', null, 'T36: exhaustion runs from 0 to 6');
+reset role;
+
+-- T37: the game clock starts at 0 and only the DM moves it
+select is((select game_seconds from campaigns where id = tests.u('campaign')), 0::bigint, 'T37: the game clock starts at 0');
+select tests.act_as('player');
+select lives_ok($$ do $do$ begin
+    update campaigns set game_seconds = 999999 where id = tests.u('campaign');
+    if found then raise exception 'update applied'; end if;
+  end $do$ $$, 'T37: a player cannot move the game clock');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ do $do$ begin
+    update campaigns set game_seconds = 3600 where id = tests.u('campaign');
+    if not found then raise exception 'update did not apply'; end if;
+  end $do$ $$, 'T37: the DM moves the game clock');
+select throws_ok($$ update campaigns set game_seconds = -1 where id = tests.u('campaign') $$, '23514', null, 'T37: the game clock never runs below 0');
 reset role;
 
 select * from finish();

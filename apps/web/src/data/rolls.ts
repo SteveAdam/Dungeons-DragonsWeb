@@ -1,4 +1,4 @@
-import type { RollMode } from '@dnd-manager/rules-engine';
+import type { RollMode, RollModeReason } from '@dnd-manager/rules-engine';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database';
 import { DataError, toDataError } from './errors';
@@ -6,7 +6,7 @@ import { DataError, toDataError } from './errors';
 export const ROLL_KINDS = ['check', 'save', 'attack', 'damage', 'initiative', 'death_save', 'other'] as const;
 export type RollKindName = (typeof ROLL_KINDS)[number];
 
-/** A row of the roll log. The dice were rolled on the server; bonus and target came from the client (Phase 1). */
+/** A row of the roll log. The dice and (since P2-2) the bonus come from the server; the target from the roller. */
 export interface RollRow {
   id: string;
   campaignId: string;
@@ -15,6 +15,8 @@ export interface RollRow {
   kind: RollKindName;
   label: string;
   bonus: number;
+  /** Where the bonus came from; null for rolls made before P2-2. */
+  bonusBreakdown: { label: string; value: number }[] | null;
   target: number | null;
   mode: RollMode;
   /** The d20 results: one for a normal roll, two with advantage or disadvantage. */
@@ -29,16 +31,34 @@ export interface RollRow {
   createdAt: string;
 }
 
-export interface RollParams {
+/** A roll for a character. The server works out the bonus; nothing here can change it. */
+export interface CharacterRollRequest {
   campaignId: string;
-  characterId?: string | null;
-  kind: RollKindName;
-  label: string;
-  bonus: number;
-  target?: number | null;
-  mode: RollMode;
+  characterId: string;
+  kind: 'check' | 'save' | 'attack';
+  /** A skill key ('athletics'), an ability key ('str') or a weapon id. */
+  key: string;
+  /** The DC, or the armour class for an attack. */
+  target: number;
+  /** DMs only: the server ignores a player's mode. */
+  mode?: RollMode;
   /** DMs only: a roll players never see. */
   hidden?: boolean;
+}
+
+/** What the server will use for the roll: the bonus and its parts, the mode and why, and the odds. */
+export interface RollPreview {
+  label: string;
+  bonus: number;
+  bonusBreakdown: { label: string; value: number }[];
+  mode: RollMode;
+  reasons: RollModeReason[];
+  /** The chance to meet the target, 0 to 1. */
+  chance: number;
+  critChance: number;
+  /** Set when a condition makes the roll fail whatever the dice say. */
+  autoFail: string | null;
+  notes: string[];
 }
 
 type Row = Database['public']['Tables']['rolls']['Row'];
@@ -51,6 +71,7 @@ const toRoll = (r: Row): RollRow => ({
   kind: r.kind as RollKindName,
   label: r.label,
   bonus: r.bonus,
+  bonusBreakdown: (r.bonus_breakdown as RollRow['bonusBreakdown']) ?? null,
   target: r.target,
   mode: r.mode as RollMode,
   dice: r.dice,
@@ -63,28 +84,49 @@ const toRoll = (r: Row): RollRow => ({
   createdAt: r.created_at,
 });
 
-/** Rolls a d20 on the server (roll_d20) and returns the logged roll. At most 30 rolls a minute per person. */
-export async function rollD20(params: RollParams): Promise<RollRow> {
-  const label = params.label.trim();
-  if (label.length < 1 || label.length > 80) {
-    throw new DataError('validation', 'Name the roll in 1 to 80 characters.');
+/**
+ * Turns a failed call to the roll function into a DataError, keeping the server's own explanation (for example
+ * "You can only roll for your own character" or "cannot use the Greatsword yet: Strength 17 needed").
+ */
+async function functionError(error: unknown): Promise<DataError> {
+  const e = (error ?? {}) as { name?: string; context?: Response };
+  if (e.name === 'FunctionsHttpError' && e.context) {
+    const status = e.context.status;
+    const message = await e.context
+      .json()
+      .then((body: { error?: unknown }) => (typeof body?.error === 'string' ? body.error : undefined))
+      .catch(() => undefined);
+    if (status === 401) return new DataError('signed-out');
+    if (status === 429) return new DataError('rate-limited');
+    if (status === 403) return new DataError('forbidden', message);
+    if (status === 404 && !message) return new DataError('unknown', DICE_SERVER_DOWN);
+    if ([400, 404, 409, 422].includes(status)) return new DataError('validation', message);
+    return new DataError('unknown');
   }
-  if (!Number.isInteger(params.bonus) || params.bonus < -20 || params.bonus > 40) {
-    throw new DataError('validation', 'The bonus must be a whole number from -20 to +40.');
+  if (e.name === 'FunctionsRelayError' || e.name === 'FunctionsFetchError') {
+    return new DataError('unknown', DICE_SERVER_DOWN);
   }
-  const { data, error } = await supabase.rpc('roll_d20', {
-    p_campaign: params.campaignId,
-    // the generated types say these two are never null, but the function accepts null for "no character/target"
-    p_character: (params.characterId ?? null) as string,
-    p_kind: params.kind,
-    p_label: label,
-    p_bonus: params.bonus,
-    p_target: (params.target ?? null) as number,
-    p_mode: params.mode,
-    p_hidden: params.hidden ?? false,
-  });
-  if (error) throw toDataError(error);
-  return toRoll(data as Row);
+  return toDataError(error);
+}
+const DICE_SERVER_DOWN = 'The dice server is not answering. Try again in a moment.';
+
+async function callRoll<T>(action: 'preview' | 'roll', request: CharacterRollRequest): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('roll', { body: { action, ...request } });
+  if (error) throw await functionError(error);
+  return data as T;
+}
+
+/** The odds the server will use for this roll: what the player sees is what the server rolls with. */
+export function previewRoll(request: CharacterRollRequest): Promise<RollPreview> {
+  return callRoll<RollPreview>('preview', request);
+}
+
+/**
+ * Rolls for a character through the roll Edge Function, which computes the bonus from the stored sheet, effects
+ * and conditions, rolls the d20 and logs it. At most 30 rolls a minute per person.
+ */
+export async function rollForCharacter(request: CharacterRollRequest): Promise<RollRow> {
+  return toRoll(await callRoll<Row>('roll', request));
 }
 
 /** The newest rolls in a campaign, newest first. Row level security leaves out hidden rolls for players. */

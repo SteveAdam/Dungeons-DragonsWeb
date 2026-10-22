@@ -42,11 +42,14 @@ pnpm dev                                # http://localhost:5173
 | `pnpm check:tokens`                          | Fails if a CSS file other than `tokens.css` contains a hex colour  |
 | `pnpm db:start` / `db:stop`                  | Starts or stops the local Supabase stack                           |
 | `pnpm db:reset`                              | Rebuilds the local database from `migrations/` and `seed.sql`      |
-| `pnpm db:test`                               | pgTAP row level security suite (211 assertions)                    |
-| `pnpm db:test:mutations`                     | Removes each protection in turn; all 30 must be caught             |
+| `pnpm db:test`                               | pgTAP row level security suite (229 assertions)                    |
+| `pnpm db:test:mutations`                     | Removes each protection in turn; all 34 must be caught             |
 | `pnpm db:seed:dev <email>`                   | Gives that local player account Brannoc (P1-7 golden fixture)      |
 | `pnpm db:types`                              | Regenerates `apps/web/src/types/database.ts` from the local schema |
 | `pnpm db:push`                               | Applies new migrations to the linked hosted project                |
+| `pnpm functions:serve`                       | Runs the roll Edge Function on the local stack (needs Docker)      |
+| `pnpm test:functions` / `functions:check`    | Deno tests, type check and lint for the Edge Functions             |
+| `pnpm engine:sync` / `engine:check`          | Copies the rules engine into the Edge Functions / checks the copy  |
 
 ## Hosted Supabase projects
 
@@ -169,12 +172,37 @@ BSD-2-Clause; icons are lucide (ISC).
 ## Dice and the roll log (P1-5)
 
 Every d20 is rolled on the server by `roll_d20` (`0004_rolls.sql`), with pgcrypto's `gen_random_bytes` and rejection
-sampling, never `random()`. In Phase 1 the bonus and target come from the client and are stored with the roll, so
-the DM can see them. The log is append-only: there are no write policies, and a trigger refuses any update, delete
+sampling, never `random()`. Since P2-2 the bonus is worked out on the server too (see below); the target comes from
+the roller and is stored with the roll. The log is append-only: there are no write policies, and a trigger refuses any update, delete
 or truncate, even by the database owner (deleting a whole campaign still removes its rolls). Hidden rolls are for
 the DM only, each person can roll at most 30 times a minute (the API answers 429), and new rolls arrive live
-through Supabase realtime. The client side is `apps/web/src/data/rolls.ts` (`rollD20`, `listRecentRolls`,
-`subscribeToRolls`).
+through Supabase realtime. The client side is `apps/web/src/data/rolls.ts` (`previewRoll`, `rollForCharacter`,
+`listRecentRolls`, `subscribeToRolls`).
+
+## Server-computed roll bonus (P2-2)
+
+A player can no longer roll with a bonus of their own choosing. Every roll goes through the Edge Function
+`supabase/functions/roll` (`0008_roll_security.sql` closes the rest):
+
+- `preview` and `roll` take `{ campaignId, characterId, kind, key, target }`. The function checks the caller's token,
+  loads the character, its effects, its conditions and exhaustion, and the campaign's game clock, and computes the
+  bonus, its breakdown, the roll mode and the odds with `computeSheet`. A `bonus` or `advantage` in the request is
+  never read. Only a DM may set the mode (or make a hidden roll). The owner or a DM may roll; anyone else gets 403.
+- `roll_d20` is executable by the service role only; the function calls it naming the roller (`p_actor`), and it
+  refuses a bonus that does not add up to its breakdown, which is stored with the roll (`rolls.bonus_breakdown`).
+- Only a DM (or a server function) changes a character's sheet, conditions or exhaustion, and players no longer insert
+  characters directly (the creation wizard, P2-9, gets its own function). Otherwise a player could set Strength 30
+  and the server would honestly compute +10.
+- `campaigns.game_seconds` is the game clock effects are measured against, on the server and on the sheet (the clock
+  UI is P2-8). It starts at 0; Phase 1 effects timed in real time were converted to it.
+- The odds popup shows the server's preview, so what the player sees is what the server rolls with.
+- **One engine, two runtimes.** Deno needs `.ts` on relative imports and deploys only what is inside
+  `supabase/functions`, so `scripts/sync-engine.mjs` copies `packages/rules-engine/src` (tests left out) into
+  `supabase/functions/_shared/rules-engine`, adding the extensions. Run `pnpm engine:sync` after changing the engine;
+  CI fails (`pnpm engine:check`) if the copy is stale. Deno itself is a pinned dev dependency (`deno` on npm).
+- Locally: `pnpm db:start`, then `pnpm functions:serve` (the app calls `/functions/v1/roll`). Tests:
+  `pnpm test:functions`. Deploy to the hosted project: `pnpm exec supabase functions deploy roll` (after
+  `pnpm db:push`).
 
 ## Odds popup (P1-6)
 
@@ -182,23 +210,23 @@ through Supabase realtime. The client side is `apps/web/src/data/rolls.ts` (`rol
 advantage and disadvantage (cancelled ones struck through), bonus dice such as Bless, the critical hit chance for
 attacks, and the server roll with the kept die highlighted. Every number comes from the rules engine. It is a card next
 to the button on wide screens and a bottom sheet under 600 px; Escape closes it and focus returns where it was. The
-server rolls only the d20 in Phase 1, so with bonus dice the result may say "roll Bless and add it". In development,
-`/dev/odds` tries it with a pretend roll or a real one through `roll_d20` (choose a campaign; the roll log updates).
+server rolls only the d20, so with bonus dice the result may say "roll Bless and add it". In development, `/dev/odds`
+tries it with a pretend roll in memory (real rolls come only from a character's sheet since P2-2).
 
 ## Characters and the Sheet tab (P1-7)
 
 `/campaigns/<id>/characters/<character id>` (or the hub's Characters tab) shows the read-only Sheet tab. Every
 number comes from `computeSheet` in the rules engine; a test (`apps/web/src/noRulesMaths.test.ts`) fails if a component
 or page computes a modifier, proficiency bonus or odds itself. Tapping a save, skill or attack opens the odds popup
-with the DC or armour class typed above the lists ("Ask your DM"; empty means DC 15 or AC 13) and rolls on the server
-for that character.
+with the DC or armour class typed above the lists ("Ask your DM"; empty means DC 15 or AC 13), shows the server's
+preview, and rolls through the roll function for that character.
 
-- Players read only their own characters and effects; the DM reads all. Owners edit their sheet, but only the DM
-  changes XP, so level-ups are the DM's call. Effects are applied by the DM, and `effect_secrets` (hidden details)
+- Players read only their own characters and effects; the DM reads all. Only the DM changes the sheet and XP (P2-2),
+  so level-ups are the DM's call. Effects are applied by the DM, and `effect_secrets` (hidden details)
   never reach players.
 - The sheet is stored as JSON and validated with zod in `apps/web/src/data/characterSchema.ts` (the rules engine stays
   free of dependencies).
-- Game time is real time in Phase 1: a one-hour potion lasts a real hour.
+- Effects are timed on the campaign's game clock (`game_seconds`, P2-2), which stands still until the DM moves it.
 - Development: `pnpm db:seed:dev <player email>` gives a local player Brannoc; a DM in DM mode can switch the Potion of
   Hill Giant Strength on from the sheet to watch Strength become 21 and the greatsword unlock.
 

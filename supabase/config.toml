@@ -425,3 +425,11 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+# P2-2: every roll goes through this function, which works the bonus out on the server.
+# The engine it imports is a copy made by scripts/sync-engine.mjs (pnpm engine:sync).
+[functions.roll]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+entrypoint = "./functions/roll/index.ts"

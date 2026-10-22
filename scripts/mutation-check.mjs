@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T18) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T37) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -188,19 +188,64 @@ create policy "read characters" on characters for select using (is_member(campai
   {
     name: 'roll_d20 lets anyone roll for any character',
     why: "a player could roll in another player's name",
-    sql: `create or replace function roll_d20(p_campaign uuid, p_character uuid, p_kind text, p_label text, p_bonus int, p_target int, p_mode text, p_hidden boolean default false)
+    sql: `create or replace function roll_d20(p_actor uuid, p_campaign uuid, p_character uuid, p_kind text, p_label text, p_bonus int, p_target int, p_mode text, p_hidden boolean default false, p_breakdown jsonb default null)
 returns rolls language plpgsql volatile security definer set search_path = public as $f$
 declare dice int[]; o record; result rolls;
 begin
-  if not is_member(p_campaign) then raise exception 'Only members of this campaign can roll here' using errcode = '42501'; end if;
+  if p_actor is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  if not exists (select 1 from members where campaign_id = p_campaign and user_id = p_actor) then raise exception 'Only members of this campaign can roll here' using errcode = '42501'; end if;
   dice := case when p_mode = 'normal' then array[d20()] else array[d20(), d20()] end;
   o := roll_outcome(p_kind, p_mode, dice, p_bonus, p_target);
-  insert into rolls (campaign_id, character_id, rolled_by, kind, label, bonus, target, mode, dice, kept, total, success, crit, fumble, hidden)
-  values (p_campaign, p_character, auth.uid(), p_kind, p_label, p_bonus, p_target, p_mode, dice, o.kept, o.total, o.success, o.crit, o.fumble, coalesce(p_hidden, false))
+  insert into rolls (campaign_id, character_id, rolled_by, kind, label, bonus, bonus_breakdown, target, mode, dice, kept, total, success, crit, fumble, hidden)
+  values (p_campaign, p_character, p_actor, p_kind, p_label, p_bonus, p_breakdown, p_target, p_mode, dice, o.kept, o.total, o.success, o.crit, o.fumble, coalesce(p_hidden, false))
   returning * into result;
   return result;
 end $f$;`,
     fails: ['T28'],
+  },
+  {
+    name: 'roll_d20 open to signed-in users again (P2-2)',
+    why: 'a player could skip the Edge Function and send their own bonus',
+    sql: `grant execute on function roll_d20(uuid, uuid, uuid, text, text, int, int, text, boolean, jsonb) to authenticated;`,
+    fails: ['T35'],
+  },
+  {
+    name: 'roll_d20 no longer checks the bonus against its breakdown (P2-2)',
+    why: 'the log could show a breakdown that does not explain the bonus',
+    sql: `create or replace function roll_d20(p_actor uuid, p_campaign uuid, p_character uuid, p_kind text, p_label text, p_bonus int, p_target int, p_mode text, p_hidden boolean default false, p_breakdown jsonb default null)
+returns rolls language plpgsql volatile security definer set search_path = public as $f$
+declare dice int[]; o record; result rolls;
+begin
+  if p_actor is null then raise exception 'Sign in first' using errcode = '42501'; end if;
+  if not exists (select 1 from members where campaign_id = p_campaign and user_id = p_actor) then raise exception 'Only members of this campaign can roll here' using errcode = '42501'; end if;
+  if p_character is not null and not exists (select 1 from characters where id = p_character and campaign_id = p_campaign and (owner_id = p_actor or exists (select 1 from members where campaign_id = p_campaign and user_id = p_actor and role = 'dm'))) then
+    raise exception 'You can only roll for your own character' using errcode = '42501'; end if;
+  dice := case when p_mode = 'normal' then array[d20()] else array[d20(), d20()] end;
+  o := roll_outcome(p_kind, p_mode, dice, p_bonus, p_target);
+  insert into rolls (campaign_id, character_id, rolled_by, kind, label, bonus, bonus_breakdown, target, mode, dice, kept, total, success, crit, fumble, hidden)
+  values (p_campaign, p_character, p_actor, p_kind, p_label, p_bonus, p_breakdown, p_target, p_mode, dice, o.kept, o.total, o.success, o.crit, o.fumble, coalesce(p_hidden, false))
+  returning * into result;
+  return result;
+end $f$;`,
+    fails: ['T35'],
+  },
+  {
+    name: 'sheet lock removed: only XP is guarded again (P2-2)',
+    why: 'a player could set their Strength to 30, and the server would compute a +10 from it',
+    sql: `create or replace function characters_guard() returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if auth.uid() is not null and not is_dm(new.campaign_id) and tg_op = 'UPDATE' and new.xp is distinct from old.xp then
+    raise exception 'Only the DM can change XP';
+  end if;
+  return new;
+end $f$;`,
+    fails: ['T26', 'T36'],
+  },
+  {
+    name: 'players create their own characters directly again (P2-2)',
+    why: 'a player could create a character with any ability scores they like',
+    sql: `create policy "members create their own characters" on characters for insert to authenticated with check (is_member(campaign_id) and owner_id = auth.uid());`,
+    fails: ['T26'],
   },
   {
     name: 'hidden entities readable by members',

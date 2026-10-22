@@ -28,6 +28,7 @@ const rollRow = (over: Partial<RollRow>): RollRow => ({
   kind: 'check',
   label: 'Search the undergrowth',
   bonus: 3,
+  bonusBreakdown: null,
   target: 14,
   mode: 'normal',
   dice: [12],

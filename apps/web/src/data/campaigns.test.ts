@@ -11,6 +11,7 @@ const row = {
   name: 'The Sunken Crown',
   rules_edition: '2024',
   next_session_at: null,
+  game_seconds: 3600,
   created_at: '2026-10-18T10:00:00Z',
 };
 const from = (result: { data: unknown; error: unknown }) => {
@@ -30,6 +31,7 @@ describe('listCampaigns', () => {
         name: 'The Sunken Crown',
         rulesEdition: '2024',
         nextSessionAt: null,
+        gameSeconds: 3600,
         createdAt: '2026-10-18T10:00:00Z',
       },
       {
@@ -37,6 +39,7 @@ describe('listCampaigns', () => {
         name: 'The Sunken Crown',
         rulesEdition: '2014',
         nextSessionAt: null,
+        gameSeconds: 3600,
         createdAt: '2026-10-18T10:00:00Z',
       },
     ]);

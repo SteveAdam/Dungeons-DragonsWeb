@@ -26,6 +26,7 @@ const campaign: Campaign = {
   name: 'The Sunken Crown',
   rulesEdition: '2024',
   nextSessionAt: null,
+  gameSeconds: 0,
   createdAt: '2026-10-18T10:00:00Z',
 };
 const members: Member[] = [

@@ -135,6 +135,7 @@ function signInAs(role: 'dm' | 'player') {
     name: 'The Sunken Crown',
     rulesEdition: '2024',
     nextSessionAt: null,
+    gameSeconds: 0,
     createdAt: '',
   });
   vi.mocked(mapsApi.getMap).mockResolvedValue(map);

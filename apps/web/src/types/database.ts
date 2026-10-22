@@ -27,28 +27,28 @@ isOneToOne: true
                   ]
                 },"campaigns": {
                   Row: {
-                    "created_at": string,"id": string,"name": string,"next_session_at": string | null,"owner_id": string,"rules_edition": string,"settings": NonNullable<Json>
+                    "created_at": string,"game_seconds": number,"id": string,"name": string,"next_session_at": string | null,"owner_id": string,"rules_edition": string,"settings": NonNullable<Json>
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"name": string,"next_session_at"?: string | null,"owner_id"?: string,"rules_edition"?: string,"settings"?: NonNullable<Json>
+                    "created_at"?: string,"game_seconds"?: number,"id"?: string,"name": string,"next_session_at"?: string | null,"owner_id"?: string,"rules_edition"?: string,"settings"?: NonNullable<Json>
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"name"?: string,"next_session_at"?: string | null,"owner_id"?: string,"rules_edition"?: string,"settings"?: NonNullable<Json>
+                    "created_at"?: string,"game_seconds"?: number,"id"?: string,"name"?: string,"next_session_at"?: string | null,"owner_id"?: string,"rules_edition"?: string,"settings"?: NonNullable<Json>
                   }
                   Relationships: [
                     
                   ]
                 },"characters": {
                   Row: {
-                    "campaign_id": string,"created_at": string,"entity_id": string | null,"id": string,"name": string,"owner_id": string,"sheet": NonNullable<Json>,"xp": number
+                    "campaign_id": string,"conditions": (string)[],"created_at": string,"entity_id": string | null,"exhaustion": number,"id": string,"name": string,"owner_id": string,"sheet": NonNullable<Json>,"xp": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "campaign_id": string,"created_at"?: string,"entity_id"?: string | null,"id"?: string,"name": string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
+                    "campaign_id": string,"conditions"?: (string)[],"created_at"?: string,"entity_id"?: string | null,"exhaustion"?: number,"id"?: string,"name": string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
                   }
                   Update: {
-                    "campaign_id"?: string,"created_at"?: string,"entity_id"?: string | null,"id"?: string,"name"?: string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
+                    "campaign_id"?: string,"conditions"?: (string)[],"created_at"?: string,"entity_id"?: string | null,"exhaustion"?: number,"id"?: string,"name"?: string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
                   }
                   Relationships: [
                     {
@@ -407,14 +407,14 @@ isOneToOne: false
                   ]
                 },"rolls": {
                   Row: {
-                    "bonus": number,"campaign_id": string,"character_id": string | null,"created_at": string,"crit": boolean,"dice": (number)[],"fumble": boolean,"hidden": boolean,"id": string,"kept": number,"kind": string,"label": string,"mode": string,"rolled_by": string,"success": boolean | null,"target": number | null,"total": number
+                    "bonus": number,"bonus_breakdown": Json | null,"campaign_id": string,"character_id": string | null,"created_at": string,"crit": boolean,"dice": (number)[],"fumble": boolean,"hidden": boolean,"id": string,"kept": number,"kind": string,"label": string,"mode": string,"rolled_by": string,"success": boolean | null,"target": number | null,"total": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "bonus": number,"campaign_id": string,"character_id"?: string | null,"created_at"?: string,"crit"?: boolean,"dice": (number)[],"fumble"?: boolean,"hidden"?: boolean,"id"?: string,"kept": number,"kind": string,"label": string,"mode": string,"rolled_by"?: string,"success"?: boolean | null,"target"?: number | null,"total": number
+                    "bonus": number,"bonus_breakdown"?: Json | null,"campaign_id": string,"character_id"?: string | null,"created_at"?: string,"crit"?: boolean,"dice": (number)[],"fumble"?: boolean,"hidden"?: boolean,"id"?: string,"kept": number,"kind": string,"label": string,"mode": string,"rolled_by"?: string,"success"?: boolean | null,"target"?: number | null,"total": number
                   }
                   Update: {
-                    "bonus"?: number,"campaign_id"?: string,"character_id"?: string | null,"created_at"?: string,"crit"?: boolean,"dice"?: (number)[],"fumble"?: boolean,"hidden"?: boolean,"id"?: string,"kept"?: number,"kind"?: string,"label"?: string,"mode"?: string,"rolled_by"?: string,"success"?: boolean | null,"target"?: number | null,"total"?: number
+                    "bonus"?: number,"bonus_breakdown"?: Json | null,"campaign_id"?: string,"character_id"?: string | null,"created_at"?: string,"crit"?: boolean,"dice"?: (number)[],"fumble"?: boolean,"hidden"?: boolean,"id"?: string,"kept"?: number,"kind"?: string,"label"?: string,"mode"?: string,"rolled_by"?: string,"success"?: boolean | null,"target"?: number | null,"total"?: number
                   }
                   Relationships: [
                     {
@@ -628,8 +628,9 @@ isOneToOne: false
         isSetofReturn: false
       } },
 "roll_d20":
-{ Args: { "p_bonus": number,"p_campaign": string,"p_character": string,"p_hidden"?: boolean,"p_kind": string,"p_label": string,"p_mode": string,"p_target": number }; Returns: {
+{ Args: { "p_actor": string,"p_bonus": number,"p_breakdown"?: Json,"p_campaign": string,"p_character": string,"p_hidden"?: boolean,"p_kind": string,"p_label": string,"p_mode": string,"p_target": number }; Returns: {
               "bonus": number,
+"bonus_breakdown": Json | null,
 "campaign_id": string,
 "character_id": string | null,
 "created_at": string,

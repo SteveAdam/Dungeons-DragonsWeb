@@ -19,10 +19,22 @@
     "check:tokens": "node scripts/check-tokens.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:seed:dev": "node scripts/seed-dev.mjs"
+    "db:seed:dev": "node scripts/seed-dev.mjs",
+    "engine:sync": "node scripts/sync-engine.mjs",
+    "engine:check": "node scripts/sync-engine.mjs --check",
+    "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/roll && deno lint --config supabase/functions/deno.json supabase/functions/roll",
+    "functions:serve": "supabase functions serve roll",
+    "test:functions": "deno test --no-prompt --config supabase/functions/deno.json supabase/functions"
   },
   "devDependencies": {
     "prettier": "^3.9.10",
     "supabase": "^2.0.0"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "deno",
+      "version": "2.9.6",
+      "onFail": "download"
+    }
   }
 }

@@ -1,4 +1,4 @@
-// Development only: an in-memory stand-in for the server's roll_d20, so the odds popup can be tried without a
+// Development only: an in-memory stand-in for the server's roll, so the odds popup can be tried without a
 // database. The verdict comes from the rules engine's rollOutcome, the same rules as the server.
 import { rollOutcome, type RollMode } from '@dnd-manager/rules-engine';
 import type { RollRow } from '../../data/rolls';
@@ -19,6 +19,7 @@ export async function fakeRoll(check: OddsCheck, mode: RollMode): Promise<RollRo
     kind: check.kind,
     label: check.label,
     bonus: check.bonus,
+    bonusBreakdown: check.bonusBreakdown ?? null,
     target: check.target,
     mode,
     dice,

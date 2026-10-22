@@ -14,6 +14,7 @@ export const queryKeys = {
   characters: (campaignId: string) => ['campaigns', campaignId, 'characters'] as const,
   character: (characterId: string) => ['characters', characterId] as const,
   characterEffects: (characterId: string) => ['characters', characterId, 'effects'] as const,
+  rollPreview: (characterId: string, request: object) => ['characters', characterId, 'roll-preview', request] as const,
   effectSecrets: (characterId: string, effectIds: string[]) =>
     ['characters', characterId, 'effect-secrets', effectIds.join(',')] as const,
   registry: (campaignId: string) => ['campaigns', campaignId, 'registry'] as const,

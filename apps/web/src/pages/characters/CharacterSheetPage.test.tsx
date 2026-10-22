@@ -26,7 +26,7 @@ const brannoc: Character = {
   sheet: BRANNOC,
   createdAt: '',
 };
-const now = () => Math.floor(Date.now() / 1000);
+// the potions below are drunk at game time 0, where the campaign's game clock (gameSeconds) stands
 
 function setUp(role: 'dm' | 'player', effects = [] as ReturnType<typeof hillGiantStrength>[]) {
   vi.mocked(membersApi.getMyRole).mockResolvedValue(role);
@@ -38,6 +38,7 @@ function setUp(role: 'dm' | 'player', effects = [] as ReturnType<typeof hillGian
     name: 'The Sunken Crown',
     rulesEdition: '2024',
     nextSessionAt: null,
+    gameSeconds: 0,
     createdAt: '',
   });
   vi.mocked(charactersApi.getCharacter).mockResolvedValue(brannoc);
@@ -115,7 +116,7 @@ describe('Sheet tab for Brannoc (acceptance 2)', () => {
   });
 
   it('with Hill Giant Strength: Str 21, Athletics +8, Longsword +9 for 1d8+6, the greatsword usable for an hour', async () => {
-    setUp('player', [hillGiantStrength(now())]);
+    setUp('player', [hillGiantStrength(0)]);
     const sheet = await renderSheet();
     await waitFor(() => expect(row(sheet, /^Athletics \+8/)).toBeInTheDocument());
     const abilities = within(sheet).getByRole('region', { name: 'Ability scores' });
@@ -133,7 +134,7 @@ describe('Sheet tab for Brannoc (acceptance 2)', () => {
   });
 
   it('players never ask for, or see, the hidden details of effects', async () => {
-    setUp('player', [hillGiantStrength(now())]);
+    setUp('player', [hillGiantStrength(0)]);
     const sheet = await renderSheet();
     await within(sheet).findByText('Potion of Hill Giant Strength · 1 hour left');
     expect(charactersApi.getEffectSecrets).not.toHaveBeenCalled();
@@ -141,7 +142,7 @@ describe('Sheet tab for Brannoc (acceptance 2)', () => {
   });
 
   it('a DM in DM mode sees them', async () => {
-    setUp('dm', [hillGiantStrength(now())]);
+    setUp('dm', [hillGiantStrength(0)]);
     const sheet = await renderSheet();
     expect(await within(sheet).findByText('DM only: Brewed by a hag')).toBeInTheDocument();
   });
@@ -157,9 +158,63 @@ describe('Sheet tab for Brannoc (acceptance 2)', () => {
 });
 
 describe('rolling from the sheet', () => {
-  it('a skill opens the odds with its bonus, using the DC the DM gave, and rolls for the character', async () => {
+  const athletics = {
+    label: 'Athletics check',
+    bonus: 6,
+    bonusBreakdown: [
+      { label: 'Strength', value: 3 },
+      { label: 'Proficiency', value: 3 },
+    ],
+    mode: 'normal' as const,
+    reasons: [],
+    chance: 0.65,
+    critChance: 0.05,
+    autoFail: null,
+    notes: [],
+  };
+
+  it("acceptance 3: the popup shows the server preview's chance for Brannoc's Athletics (+6) against DC 14", async () => {
     setUp('player');
-    vi.mocked(rollsApi.rollD20).mockResolvedValue({
+    vi.mocked(rollsApi.previewRoll).mockResolvedValue(athletics);
+    const user = userEvent.setup();
+    const sheet = await renderSheet();
+    await user.type(within(sheet).getByRole('spinbutton', { name: 'DC' }), '14');
+    await user.click(row(sheet, /^Athletics \+6/));
+    const dialog = screen.getByRole('dialog', { name: 'Athletics check' });
+    expect(await within(dialog).findByText('65%')).toBeInTheDocument();
+    expect(rollsApi.previewRoll).toHaveBeenCalledWith({
+      campaignId: 'c1',
+      characterId: 'ch1',
+      kind: 'check',
+      key: 'athletics',
+      target: 14,
+    });
+    expect(within(dialog).getByText('Athletics check, DC 14, your bonus +6')).toBeInTheDocument();
+    expect(within(dialog).getByText('Strength +3 · Proficiency +3')).toBeInTheDocument();
+  });
+
+  it("uses the server's mode and odds, not its own: a poisoned character's check shows disadvantage", async () => {
+    setUp('player');
+    vi.mocked(rollsApi.previewRoll).mockResolvedValue({
+      ...athletics,
+      mode: 'disadvantage',
+      reasons: [{ text: 'Poisoned: disadvantage on ability checks', kind: 'disadvantage', cancelled: false }],
+      chance: 0.4225,
+    });
+    const user = userEvent.setup();
+    const sheet = await renderSheet();
+    await user.type(within(sheet).getByRole('spinbutton', { name: 'DC' }), '14');
+    await user.click(row(sheet, /^Athletics \+6/));
+    const dialog = screen.getByRole('dialog', { name: 'Athletics check' });
+    expect(await within(dialog).findByText('42%')).toBeInTheDocument();
+    expect(within(dialog).getByText('Disadvantage: Poisoned: disadvantage on ability checks')).toBeInTheDocument();
+  });
+
+  it('rolls through the server with what to roll, never a bonus, and waits for the preview first', async () => {
+    setUp('player');
+    let answer: (p: typeof athletics) => void = () => {};
+    vi.mocked(rollsApi.previewRoll).mockReturnValue(new Promise(resolve => (answer = resolve)));
+    vi.mocked(rollsApi.rollForCharacter).mockResolvedValue({
       id: 'r1',
       campaignId: 'c1',
       characterId: 'ch1',
@@ -167,6 +222,7 @@ describe('rolling from the sheet', () => {
       kind: 'check',
       label: 'Athletics check',
       bonus: 6,
+      bonusBreakdown: athletics.bonusBreakdown,
       target: 12,
       mode: 'normal',
       dice: [9],
@@ -183,30 +239,56 @@ describe('rolling from the sheet', () => {
     await user.type(within(sheet).getByRole('spinbutton', { name: 'DC' }), '12');
     await user.click(row(sheet, /^Athletics \+6/));
     const dialog = screen.getByRole('dialog', { name: 'Athletics check' });
-    expect(within(dialog).getByText('Athletics check, DC 12, your bonus +6')).toBeInTheDocument();
-    expect(within(dialog).getByText('Strength +3 · Proficiency +3')).toBeInTheDocument();
-    expect(within(dialog).getByText('75%')).toBeInTheDocument(); // need 6: 15/20
+    expect(within(dialog).getByText('Asking the server for the odds…')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Roll' })).toBeDisabled();
+    answer({ ...athletics, chance: 0.75 });
+    expect(await within(dialog).findByText('75%')).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Roll' }));
-    expect(rollsApi.rollD20).toHaveBeenCalledWith({
+    expect(rollsApi.rollForCharacter).toHaveBeenCalledWith({
       campaignId: 'c1',
       characterId: 'ch1',
       kind: 'check',
-      label: 'Athletics check',
-      bonus: 6,
+      key: 'athletics',
       target: 12,
-      mode: 'normal',
     });
     expect(await within(dialog).findByText('Success')).toBeInTheDocument();
   });
 
+  it("shows the server's reason when it will not roll", async () => {
+    setUp('player');
+    vi.mocked(rollsApi.previewRoll).mockRejectedValue(
+      new DataError('forbidden', 'You can only roll for your own character'),
+    );
+    const user = userEvent.setup();
+    const sheet = await renderSheet();
+    await user.click(row(sheet, /^Athletics \+6/));
+    const dialog = screen.getByRole('dialog', { name: 'Athletics check' });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('You can only roll for your own character');
+    expect(within(dialog).getByRole('button', { name: 'Roll' })).toBeDisabled();
+  });
+
   it('an attack asks for the target armour class', async () => {
     setUp('player');
+    vi.mocked(rollsApi.previewRoll).mockResolvedValue({
+      ...athletics,
+      label: 'Longsword +1 attack',
+      bonus: 7,
+      bonusBreakdown: [
+        { label: 'Strength', value: 3 },
+        { label: 'Proficiency', value: 3 },
+        { label: 'Magic', value: 1 },
+      ],
+      chance: 0.6,
+    });
     const user = userEvent.setup();
     const sheet = await renderSheet();
     await user.type(within(sheet).getByRole('spinbutton', { name: 'Target armour class' }), '16');
     await user.click(within(sheet).getByRole('button', { name: /^Longsword \+1/ }));
     const dialog = screen.getByRole('dialog', { name: 'Longsword +1' });
     expect(within(dialog).getByText('Longsword +1 attack, AC 16, your bonus +7')).toBeInTheDocument();
-    expect(within(dialog).getByText('Critical hit chance: 5%')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Critical hit chance: 5%')).toBeInTheDocument();
+    expect(rollsApi.previewRoll).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'attack', key: 'longsword', target: 16 }),
+    );
   });
 });

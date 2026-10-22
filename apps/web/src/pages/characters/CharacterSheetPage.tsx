@@ -1,5 +1,6 @@
 // P1-7: the read-only Sheet tab. Every number comes from computeSheet in the rules engine; this page only lays
-// them out. Tapping a save, skill or attack opens the odds popup and can roll on the server.
+// them out. Tapping a save, skill or attack opens the odds popup, which shows the server's own preview of the roll
+// (P2-2) and rolls through the roll Edge Function: the bonus is never sent from here.
 import { computeSheet, hillGiantStrength, type ComputedRoll } from '@dnd-manager/rules-engine';
 import { Backpack, BookOpen, ChevronRight, Dices, ScrollText, Swords, UserRound } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
@@ -8,7 +9,7 @@ import { ErrorNotice } from '../../components/ErrorNotice';
 import { OddsPopup, type OddsCheck } from '../../components/odds/OddsPopup';
 import { ICON_PROPS, IconLink, Input, Paper, RibbonTabs, Tag, Toggle } from '../../components/ui';
 import { friendlyMessage } from '../../data/errors';
-import { rollD20 } from '../../data/rolls';
+import { rollForCharacter, type CharacterRollRequest } from '../../data/rolls';
 import { useCampaign } from '../../hooks/useCampaigns';
 import {
   useAddEffect,
@@ -16,10 +17,11 @@ import {
   useCharacterEffects,
   useEffectSecrets,
   useRemoveEffect,
+  useRollPreview,
 } from '../../hooks/useCharacters';
 import { useDmMode } from '../../hooks/useDmMode';
 import { useMembers } from '../../hooks/useMembers';
-import { durationText, timeLeft, useGameClock } from '../../lib/gameClock';
+import { durationText, timeLeft } from '../../lib/gameClock';
 import { useShowDmIndicator } from '../../state/dmIndicator';
 import styles from './CharacterSheetPage.module.css';
 
@@ -44,10 +46,13 @@ export function CharacterSheetPage() {
   const effectIds = useMemo(() => (effects.data ?? []).map(e => e.id), [effects.data]);
   const secrets = useEffectSecrets(characterId, effectIds, dmMode);
   const members = useMembers(campaignId);
-  const clock = useGameClock();
+  const gameSeconds = campaign.data?.gameSeconds ?? 0;
+  const clock = useMemo(() => ({ seconds: gameSeconds }), [gameSeconds]);
   const [dc, setDc] = useState('');
   const [ac, setAc] = useState('');
-  const [odds, setOdds] = useState<{ check: OddsCheck; anchor: HTMLElement } | null>(null);
+  const [odds, setOdds] = useState<{ request: CharacterRollRequest; check: OddsCheck; anchor: HTMLElement } | null>(
+    null,
+  );
 
   const sheet = useMemo(
     () => (character.data ? computeSheet(character.data.sheet, effects.data ?? [], clock) : null),
@@ -90,16 +95,26 @@ export function CharacterSheetPage() {
   const dcValue = Number(dc) || 15;
   const acValue = Number(ac) || 13;
 
-  function open(anchor: HTMLElement, label: string, kind: OddsCheck['kind'], skill: string, roll: ComputedRoll) {
+  function open(
+    anchor: HTMLElement,
+    label: string,
+    kind: OddsCheck['kind'],
+    skill: string,
+    key: string,
+    roll: ComputedRoll,
+  ) {
+    const target = kind === 'attack' ? acValue : dcValue;
     setOdds({
       anchor,
+      request: { campaignId, characterId, kind, key, target },
+      // shown until the server's preview arrives, which then replaces the bonus, mode and odds
       check: {
         label,
         kind,
         skill,
         bonus: roll.bonus,
         bonusBreakdown: roll.breakdown,
-        target: kind === 'attack' ? acValue : dcValue,
+        target,
       },
     });
   }
@@ -179,7 +194,7 @@ export function CharacterSheetPage() {
             <RollList
               title="Saving throws"
               rows={sheet.saves.map(s => ({ key: s.ability, label: s.label, roll: s, marks: s.proficient ? 1 : 0 }))}
-              onPick={(anchor, row) => open(anchor, `${row.label} saving throw`, 'save', row.label, row.roll)}
+              onPick={(anchor, row) => open(anchor, `${row.label} saving throw`, 'save', row.label, row.key, row.roll)}
             />
             <RollList
               title="Skills"
@@ -190,7 +205,7 @@ export function CharacterSheetPage() {
                 roll: s,
                 marks: s.expertise ? 2 : s.proficient ? 1 : 0,
               }))}
-              onPick={(anchor, row) => open(anchor, `${row.label} check`, 'check', row.label, row.roll)}
+              onPick={(anchor, row) => open(anchor, `${row.label} check`, 'check', row.label, row.key, row.roll)}
             />
           </div>
 
@@ -225,7 +240,7 @@ export function CharacterSheetPage() {
                       <button
                         type="button"
                         className={styles.attack}
-                        onClick={e => open(e.currentTarget, a.name, 'attack', a.name, a)}
+                        onClick={e => open(e.currentTarget, a.name, 'attack', a.name, a.id, a)}
                       >
                         <span>
                           {a.name}
@@ -296,26 +311,43 @@ export function CharacterSheetPage() {
         </div>
       </Paper>
 
-      {odds && (
-        <OddsPopup
-          open
-          check={odds.check}
-          anchor={odds.anchor}
-          onClose={() => setOdds(null)}
-          onRoll={mode =>
-            rollD20({
-              campaignId,
-              characterId,
-              kind: odds.check.kind,
-              label: odds.check.label,
-              bonus: odds.check.bonus,
-              target: odds.check.target,
-              mode,
-            })
-          }
-        />
-      )}
+      {odds && <ServerOdds {...odds} onClose={() => setOdds(null)} />}
     </main>
+  );
+}
+
+/** The odds popup for a character's roll: the server's preview, then the server's roll. */
+function ServerOdds({
+  request,
+  check,
+  anchor,
+  onClose,
+}: {
+  request: CharacterRollRequest;
+  check: OddsCheck;
+  anchor: HTMLElement;
+  onClose: () => void;
+}) {
+  const preview = useRollPreview(request);
+  const p = preview.data;
+  const shown: OddsCheck = p
+    ? {
+        ...check,
+        bonus: p.bonus,
+        bonusBreakdown: p.bonusBreakdown,
+        server: { mode: p.mode, reasons: p.reasons, chance: p.chance, critChance: p.critChance },
+      }
+    : check;
+  return (
+    <OddsPopup
+      open
+      check={shown}
+      anchor={anchor}
+      onClose={onClose}
+      waiting={preview.isPending ? 'Asking the server for the odds…' : undefined}
+      problem={preview.isError ? friendlyMessage(preview.error) : (p?.autoFail ?? undefined)}
+      onRoll={() => rollForCharacter(request)}
+    />
   );
 }
 

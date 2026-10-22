@@ -6,6 +6,8 @@ export interface Campaign {
   name: string;
   rulesEdition: '2014' | '2024';
   nextSessionAt: string | null;
+  /** The in-game clock in seconds (P2-2). Effect durations are measured against it, not real time. */
+  gameSeconds: number;
   createdAt: string;
 }
 
@@ -14,16 +16,18 @@ interface CampaignRow {
   name: string;
   rules_edition: string;
   next_session_at: string | null;
+  game_seconds: number;
   created_at: string;
 }
 
-const COLUMNS = 'id, name, rules_edition, next_session_at, created_at';
+const COLUMNS = 'id, name, rules_edition, next_session_at, game_seconds, created_at';
 
 const toCampaign = (r: CampaignRow): Campaign => ({
   id: r.id,
   name: r.name,
   rulesEdition: r.rules_edition === '2014' ? '2014' : '2024',
   nextSessionAt: r.next_session_at,
+  gameSeconds: Number(r.game_seconds ?? 0),
   createdAt: r.created_at,
 });
 

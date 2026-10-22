@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '../lib/supabase';
 import { fakeQuery } from '../test/fakeQuery';
-import { listRecentRolls, rollD20, subscribeToRolls } from './rolls';
+import { listRecentRolls, previewRoll, rollForCharacter, subscribeToRolls } from './rolls';
 
 const channel = { on: vi.fn(), subscribe: vi.fn() };
 vi.mock('../lib/supabase', () => ({
-  supabase: { from: vi.fn(), rpc: vi.fn(), channel: vi.fn(), removeChannel: vi.fn() },
+  supabase: { from: vi.fn(), rpc: vi.fn(), channel: vi.fn(), removeChannel: vi.fn(), functions: { invoke: vi.fn() } },
 }));
 
 const row = {
@@ -16,6 +16,7 @@ const row = {
   kind: 'check',
   label: 'Perception',
   bonus: 3,
+  bonus_breakdown: null,
   target: 14,
   mode: 'advantage',
   dice: [7, 15],
@@ -35,6 +36,7 @@ const roll = {
   kind: 'check',
   label: 'Perception',
   bonus: 3,
+  bonusBreakdown: null,
   target: 14,
   mode: 'advantage',
   dice: [7, 15],
@@ -54,52 +56,80 @@ beforeEach(() => {
   vi.mocked(supabase.channel).mockReturnValue(channel as never);
 });
 
-describe('rollD20', () => {
-  it('asks the server to roll and returns the logged roll', async () => {
-    vi.mocked(supabase.rpc).mockResolvedValue({ data: row, error: null } as never);
-    const result = await rollD20({
-      campaignId: 'c1',
-      kind: 'check',
-      label: ' Perception ',
-      bonus: 3,
-      target: 14,
-      mode: 'advantage',
+const request = {
+  campaignId: 'c1',
+  characterId: 'ch1',
+  kind: 'check' as const,
+  key: 'athletics',
+  target: 14,
+};
+const breakdown = [
+  { label: 'Strength', value: 3 },
+  { label: 'Proficiency', value: 3 },
+];
+// what supabase-js gives back when the function answers with an error status
+const httpError = (status: number, body: unknown) => ({
+  name: 'FunctionsHttpError',
+  context: new Response(JSON.stringify(body), { status }),
+});
+
+describe('previewRoll and rollForCharacter (P2-2: through the roll Edge Function)', () => {
+  it('asks the function for a preview, sending what to roll but no bonus', async () => {
+    const preview = { label: 'Athletics check', bonus: 6, bonusBreakdown: breakdown, mode: 'normal', chance: 0.65 };
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({ data: preview, error: null } as never);
+    expect(await previewRoll(request)).toEqual(preview);
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('roll', { body: { action: 'preview', ...request } });
+  });
+
+  it('rolls through the function and returns the logged roll, with its breakdown', async () => {
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: { ...row, character_id: 'ch1', bonus: 6, bonus_breakdown: breakdown },
+      error: null,
+    } as never);
+    const result = await rollForCharacter(request);
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('roll', { body: { action: 'roll', ...request } });
+    expect(result).toEqual({ ...roll, characterId: 'ch1', bonus: 6, bonusBreakdown: breakdown });
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
+  it("keeps the server's reason when a roll is refused", async () => {
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: null,
+      error: httpError(403, { error: 'You can only roll for your own character' }),
+    } as never);
+    await expect(rollForCharacter(request)).rejects.toMatchObject({
+      kind: 'forbidden',
+      message: 'You can only roll for your own character',
     });
-    expect(supabase.rpc).toHaveBeenCalledWith('roll_d20', {
-      p_campaign: 'c1',
-      p_character: null,
-      p_kind: 'check',
-      p_label: 'Perception',
-      p_bonus: 3,
-      p_target: 14,
-      p_mode: 'advantage',
-      p_hidden: false,
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: null,
+      error: httpError(409, { error: 'Brannoc cannot use the Greatsword yet: Strength 17 needed, you have 16' }),
+    } as never);
+    await expect(previewRoll(request)).rejects.toMatchObject({
+      kind: 'validation',
+      message: 'Brannoc cannot use the Greatsword yet: Strength 17 needed, you have 16',
     });
-    expect(result).toEqual(roll);
   });
 
   it('turns the rate limit into a plain message', async () => {
-    vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: { code: 'PT429', message: 'Too many' } } as never);
-    await expect(
-      rollD20({ campaignId: 'c1', kind: 'other', label: 'x', bonus: 0, mode: 'normal' }),
-    ).rejects.toMatchObject({
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: null,
+      error: httpError(429, { error: 'Too many rolls in the last minute.' }),
+    } as never);
+    await expect(rollForCharacter(request)).rejects.toMatchObject({
       kind: 'rate-limited',
       message: 'Too many rolls in the last minute. Wait a moment and roll again.',
     });
   });
 
-  it('checks the label and bonus before calling the server', async () => {
-    await expect(
-      rollD20({ campaignId: 'c1', kind: 'check', label: ' ', bonus: 0, mode: 'normal' }),
-    ).rejects.toMatchObject({
-      kind: 'validation',
+  it('says so when the function is not running', async () => {
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: null,
+      error: { name: 'FunctionsRelayError', message: 'Relay Error invoking the Edge Function' },
+    } as never);
+    await expect(previewRoll(request)).rejects.toMatchObject({
+      message: 'The dice server is not answering. Try again in a moment.',
     });
-    await expect(
-      rollD20({ campaignId: 'c1', kind: 'check', label: 'x', bonus: 41, mode: 'normal' }),
-    ).rejects.toMatchObject({
-      kind: 'validation',
-    });
-    expect(supabase.rpc).not.toHaveBeenCalled();
   });
 });
 

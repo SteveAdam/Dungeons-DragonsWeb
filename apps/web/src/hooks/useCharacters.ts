@@ -8,6 +8,7 @@ import {
   listEffects,
   removeEffect,
 } from '../data/characters';
+import { previewRoll, type CharacterRollRequest } from '../data/rolls';
 import { queryKeys } from './queryKeys';
 
 export const useCharacter = (characterId: string | undefined) =>
@@ -54,3 +55,12 @@ export function useRemoveEffect(characterId: string) {
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.characterEffects(characterId) }),
   });
 }
+
+/** The server's bonus, mode and odds for a roll (P2-2). Fetched fresh each time the odds popup opens. */
+export const useRollPreview = (request: CharacterRollRequest | null) =>
+  useQuery({
+    queryKey: queryKeys.rollPreview(request?.characterId ?? '', request ?? {}),
+    queryFn: () => previewRoll(request as CharacterRollRequest),
+    enabled: !!request,
+    retry: false,
+  });

@@ -21,6 +21,10 @@ jobs:
       - run: pnpm check:tokens
       - run: pnpm typecheck
       - run: pnpm test
+      # the roll Edge Function (P2-2): its copy of the rules engine is current, it type-checks, and its tests pass
+      - run: pnpm engine:check
+      - run: pnpm functions:check
+      - run: pnpm test:functions
       - run: pnpm build
 
   db-tests:
