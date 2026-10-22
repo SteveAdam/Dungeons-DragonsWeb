@@ -1,13 +1,14 @@
-// /dev/classes (development builds only): browse the SRD classes as imported into the database, levels 1 to 3,
-// so each can be checked against the SRD: core traits, the class table, every feature's text and the subclass.
+// /dev/classes (development builds only): browse the SRD classes and species as imported into the database, so each
+// can be checked against the SRD: a class's core traits, table, features (levels 1 to 3) and subclass; a species'
+// creature type, size, speed and traits.
 import { useQuery } from '@tanstack/react-query';
-import { classProgression, type ClassFeature } from '@dnd-manager/rules-engine';
-import type { SrdClass } from '@dnd-manager/srd-data';
+import { classProgression } from '@dnd-manager/rules-engine';
+import type { SrdClass, SrdFeature, SrdSpecies } from '@dnd-manager/srd-data';
 import { useId, useState } from 'react';
 import { useAuth } from '../../auth/authContext';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { Paper, RibbonTabs, Tag } from '../../components/ui';
-import { listSrdClasses } from '../../data/srd';
+import { listSrdClasses, listSrdSpecies } from '../../data/srd';
 import styles from './SrdDevPage.module.css';
 
 const ABILITY = {
@@ -20,10 +21,12 @@ const ABILITY = {
 };
 const SKILL_LABELS: Record<string, string> = { animalHandling: 'Animal Handling', sleightOfHand: 'Sleight of Hand' };
 const skillLabel = (key: string) => SKILL_LABELS[key] ?? key.charAt(0).toUpperCase() + key.slice(1);
+const SPECIES_TAB = 'species';
 
 export default function ClassesDevPage() {
   const { session } = useAuth();
   const classes = useQuery({ queryKey: ['srd', 'classes'], queryFn: listSrdClasses, enabled: !!session });
+  const species = useQuery({ queryKey: ['srd', 'species'], queryFn: listSrdSpecies, enabled: !!session });
   const [picked, setPicked] = useState<string | null>(null);
 
   if (!session) {
@@ -54,16 +57,26 @@ export default function ClassesDevPage() {
       </main>
     );
   }
-  const current = classes.data.find(c => c.id === picked) ?? classes.data[0];
+  const current = picked === SPECIES_TAB ? null : (classes.data.find(c => c.id === picked) ?? classes.data[0]);
   return (
     <main className={styles.page}>
       <RibbonTabs
-        aria-label="Classes"
-        tabs={classes.data.map(c => ({ id: c.id, label: c.name }))}
-        value={current.id}
+        aria-label="Classes and species"
+        tabs={[...classes.data.map(c => ({ id: c.id, label: c.name })), { id: SPECIES_TAB, label: 'Species' }]}
+        value={current?.id ?? SPECIES_TAB}
         onChange={setPicked}
       />
-      <ClassView key={current.id} cls={current} />
+      {current ? (
+        <ClassView key={current.id} cls={current} />
+      ) : species.isError ? (
+        <ErrorNotice error={species.error} onRetry={() => void species.refetch()} />
+      ) : species.isPending ? (
+        <p role="status">Gathering the peoples…</p>
+      ) : species.data.length === 0 ? (
+        <p>No species imported yet. Run pnpm srd:import.</p>
+      ) : (
+        species.data.map(s => <SpeciesView key={s.id} species={s} />)
+      )}
     </main>
   );
 }
@@ -136,6 +149,13 @@ function ClassView({ cls }: { cls: SrdClass }) {
           ))}
       </Paper>
 
+      {cls.sidebars?.map(s => (
+        <Paper key={s.title} as="aside" texture="flat" aria-label={s.title} className={styles.card}>
+          <h2 className={styles.title}>{s.title}</h2>
+          <Text text={s.text} />
+        </Paper>
+      ))}
+
       {cls.subclasses.map(s => (
         <Paper key={s.id} as="section" texture="flat" aria-labelledby={`${id}-${s.id}`} className={styles.card}>
           <h2 id={`${id}-${s.id}`} className={styles.title}>
@@ -154,6 +174,27 @@ function ClassView({ cls }: { cls: SrdClass }) {
   );
 }
 
+function SpeciesView({ species }: { species: SrdSpecies }) {
+  const id = useId();
+  return (
+    <Paper as="section" texture="flat" aria-labelledby={`${id}-name`} className={styles.card}>
+      <h2 id={`${id}-name`} className={styles.title}>
+        {species.name} <Tag>{species.source}</Tag>
+      </h2>
+      <table className={styles.table}>
+        <tbody>
+          <Trait label="Creature Type">{species.creatureType}</Trait>
+          <Trait label="Size">{species.sizeText}</Trait>
+          <Trait label="Speed">{`${species.speed} feet`}</Trait>
+        </tbody>
+      </table>
+      {species.traits.map(t => (
+        <Feature key={t.name} feature={t} />
+      ))}
+    </Paper>
+  );
+}
+
 function Trait({ label, children }: { label: string; children: string }) {
   return (
     <tr>
@@ -163,14 +204,40 @@ function Trait({ label, children }: { label: string; children: string }) {
   );
 }
 
-function Feature({ feature }: { feature: ClassFeature }) {
+/** A class feature ("Level 1: Rage") or a species trait ("Darkvision"), with its text and tables. */
+function Feature({ feature }: { feature: SrdFeature | SrdSpecies['traits'][number] }) {
+  const title = 'level' in feature ? `Level ${feature.level}: ${feature.name}` : feature.name;
   return (
-    <section aria-label={`Level ${feature.level}: ${feature.name}`}>
+    <section aria-label={title}>
       <h3 className={styles.group}>
-        {`Level ${feature.level}: ${feature.name} `}
+        {`${title} `}
         {feature.mechanics === 'later' && <Tag>mechanics later</Tag>}
       </h3>
       <Text text={feature.description} />
+      {feature.tables?.map(table => (
+        <table key={table.title} className={styles.table}>
+          <caption className={styles.group}>{table.title}</caption>
+          <thead>
+            <tr>
+              {table.columns.map(c => (
+                <th scope="col" key={c}>
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map(([level, ...cells]) => (
+              <tr key={level}>
+                <th scope="row">{level}</th>
+                {cells.map((cell, i) => (
+                  <td key={i}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ))}
     </section>
   );
 }

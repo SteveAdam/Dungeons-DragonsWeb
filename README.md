@@ -272,7 +272,7 @@ Only SRD 5.2.1 content (CC-BY-4.0) is bundled, and none of it is typed in from m
 
 ## SRD classes, species and backgrounds, levels 1 to 3 (P2-4)
 
-Classes are added one at a time, each checked against the SRD before the next. Done so far: **Barbarian**.
+Classes were added one at a time, each checked against the SRD before the next. All twelve are done: **Barbarian**, **Bard**, **Cleric**, **Druid**, **Fighter**, **Monk**, **Paladin**, **Ranger**, **Rogue**, **Sorcerer**, **Warlock**, **Wizard**. The nine species are done too; backgrounds come next.
 
 - Each class's SRD pages are kept in `packages/srd-data/source/classes` twice: `<id>.flow.txt` (`pdftotext`, which
   keeps paragraphs whole) for the Core Traits table and the feature text, and `<id>.raw.txt` (`pdftotext -raw`, one
@@ -280,8 +280,15 @@ Classes are added one at a time, each checked against the SRD before the next. D
   abilities, saves, skill choices, weapon and armour training, starting equipment, the level 1 to 3 rows of the class
   table with their extra columns, every feature's text in the SRD's words, and the subclass to level 3. The build
   fails if a feature in the table has no text, or a described feature is missing from the table.
+- Species come from `source/species.*.txt` (`src/convertSpecies.ts`): creature type, size and speed, and every trait
+  in the SRD's words, with the Draconic Ancestors, Elven Lineages and Fiendish Legacies tables read as rows.
+  `src/speciesSources.ts` names each species' traits (so trait lines are not confused with option lines such as
+  "Forest Gnome.") and decides their mechanics.
 - `src/classSources.ts` says which pages hold a class, names its table's extra columns, and decides for every level
-  1 to 3 feature whether it has game mechanics the app does not run yet (`mechanics: 'later'`). Those are listed in
+  1 to 3 feature whether it has game mechanics (it can also name the tables inside a feature, such as Life
+  Domain Spells or Wild Shape's Beast Shapes, which are then read as rows from the raw text and removed from the
+  feature's text) and the sidebar boxes that land inside a feature's text, which are moved to the class's
+  `sidebars`) the app does not run yet (`mechanics: 'later'`). Those are listed in
   `docs/features-pending.md`, generated with the data.
 - `0010_srd_characters.sql` adds `srd_species`, `srd_classes` and `srd_backgrounds` (read-only, like 0009);
   `pnpm srd:import` loads them.

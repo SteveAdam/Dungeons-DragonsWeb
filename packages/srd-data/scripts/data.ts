@@ -9,7 +9,9 @@ import type { ZodTypeAny } from 'zod';
 import { CLASS_SOURCES } from '../src/classSources.ts';
 import { convertArmor, convertCurrency, convertWeapons } from '../src/convert.ts';
 import { convertClass } from '../src/convertClass.ts';
+import { convertSpecies } from '../src/convertSpecies.ts';
 import { featuresPending } from '../src/featuresPending.ts';
+import { SPECIES_SOURCES } from '../src/speciesSources.ts';
 import {
   armorSchema,
   backgroundSchema,
@@ -34,8 +36,17 @@ const sets: { file: string; records: unknown; schema: ZodTypeAny }[] = [
     ),
     schema: classSchema.array(),
   },
-  // species and backgrounds arrive in later P2-4 batches
-  { file: 'data/species.json', records: [], schema: speciesSchema.array() },
+  {
+    file: 'data/species.json',
+    records: convertSpecies(
+      SPECIES_SOURCES,
+      read('source/species.raw.txt'),
+      read('source/species.flow.txt'),
+      read('source/species.layout.txt'),
+    ),
+    schema: speciesSchema.array(),
+  },
+  // backgrounds arrive in the last P2-4 batch
   { file: 'data/backgrounds.json', records: [], schema: backgroundSchema.array() },
 ];
 
@@ -53,7 +64,12 @@ for (const { file, records, schema } of sets) {
 }
 if (!failed) {
   const classes = classSchema.array().parse(sets.find(s => s.file === 'data/classes.json')!.records);
-  outputs.push({ file: '../../docs/features-pending.md', text: featuresPending(classes), count: 'generated' });
+  const species = speciesSchema.array().parse(sets.find(s => s.file === 'data/species.json')!.records);
+  outputs.push({
+    file: '../../docs/features-pending.md',
+    text: featuresPending(classes, species),
+    count: 'generated',
+  });
 }
 
 for (const { file, text, count } of outputs) {

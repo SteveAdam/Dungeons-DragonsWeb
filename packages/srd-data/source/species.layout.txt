@@ -1,0 +1,283 @@
+    Character Origins                                       Sage
+
+    Character Backgrounds                                   Ability Scores: Constitution, Intelligence, Wisdom
+                                                            Feat: Magic Initiate (Wizard) (see “Feats”)
+    Your character’s background is a collection of char-    Skill Proficiencies: Arcana and History
+    acteristics that represent the place and occupation     Tool Proficiency: Calligrapher’s Supplies
+    that were most formative before your character em-      Equipment: Choose A or B: (A) Quarterstaff, Callig-
+    barked on a life of adventure.
+                                                              rapher’s Supplies, Book (history), Parchment (8
+    Parts of a Background                                     sheets), Robe, 8 GP; or (B) 50 GP
+
+    A background includes the following parts.              Soldier
+
+    Ability Scores                                          Ability Scores: Strength, Dexterity, Constitution
+                                                            Feat: Savage Attacker (see “Feats”)
+    A background lists three of your character’s ability    Skill Proficiencies: Athletics and Intimidation
+    scores. Increase one by 2 and another one by 1, or      Tool Proficiency: Choose one kind of Gaming Set (see
+    increase all three by 1. None of these increases can
+    raise a score above 20.                                   “Equipment”)
+                                                            Equipment: Choose A or B: (A) Spear, Shortbow, 20
+    Feat
+                                                              Arrows, Gaming Set (same as above), Healer’s Kit,
+    A background gives your character a specified Ori-        Quiver, Traveler’s Clothes, 14 GP; or (B) 50 GP
+    gin feat (described in “Feats”).
+                                                            Character Species
+    Skill Proficiencies
+                                                            When you choose your character’s species, you
+    A background gives your character proficiency in        determine whether your character is a human or a
+    two specified skills.                                   member of a fantastical species, such as dragonborn
+                                                            or gnome.
+    Tool Proficiency
+                                                              The peoples of the multiverse hail from different
+    Each background gives a character proficiency with      worlds and include many kinds of sapient life forms.
+    one tool—either a specific tool or one chosen from      A player character’s species is the set of game traits
+    the Artisan’s Tools category. Tools are detailed in     that an adventurer gains from being one of those
+    “Equipment.”                                            life forms.
+
+    Equipment                                                 Some species can trace their origin to a single
+                                                            world, plane of existence, or god, while other spe-
+    Each background offers a choice between a package       cies first appeared in multiple realms at once.
+    of equipment and 50 GP.                                 Whatever a species’ genesis, its members have
+                                                            spread across the multiverse and contribute to
+    Background Descriptions                                 many different cultures.
+
+    Acolyte                                                   Members of most species live for about 80 years,
+                                                            with exceptions noted in the text about the spe-
+    Ability Scores: Intelligence, Wisdom, Charisma          cies in “Character Origins.” Regardless of life span,
+    Feat: Magic Initiate (Cleric) (see “Feats”)             members of all species reach physical maturity at
+    Skill Proficiencies: Insight and Religion               about the same age. Your character can be any age
+    Tool Proficiency: Calligrapher’s Supplies               that isn’t beyond their species’ normal life span.
+    Equipment: Choose A or B: (A) Calligrapher’s Supplies,
+                                                            Parts of a Species
+      Book (prayers), Holy Symbol, Parchment (10 sheets),
+      Robe, 8 GP; or (B) 50 GP                              A species includes the following parts.
+
+    Criminal                                                Creature Type
+
+    Ability Scores: Dexterity, Constitution, Intelligence   A character’s species determines the character’s
+    Feat: Alert (see “Feats”)                               creature type, which is described in “Rules Glos-
+    Skill Proficiencies: Sleight of Hand and Stealth        sary.” Every species in “Character Origins” is Hu-
+    Tool Proficiency: Thieves’ Tools                        manoid; playable non-Humanoid species appear in
+    Equipment: Choose A or B: (A) 2 Daggers, Thieves’       other books.
+
+      Tools, Crowbar, 2 Pouches, Traveler’s Clothes,        Size
+      16 GP; or (B) 50 GP
+                                                            Your character’s species determines the character’s
+                                                            size. Individuals within a species cover a wide range
+                                                            of heights, and some species include such diversity
+
+83  System Reference Document 5.2.1
+    of size that you can choose whether your character           Darkvision. You have Darkvision with a range of
+    is Small or Medium.                                        60 feet.
+
+    Speed                                                        Draconic Flight. When you reach character level
+                                                               5, you can channel draconic magic to give yourself
+    Your character’s species determines the character’s        temporary flight. As a Bonus Action, you sprout
+    Speed.                                                     spectral wings on your back that last for 10 minutes
+                                                               or until you retract the wings (no action required)
+    Special Traits                                             or have the Incapacitated condition. During that
+                                                               time, you have a Fly Speed equal to your Speed. Your
+    Each species gives a character special traits—             wings appear to be made of the same energy as your
+    unique characteristics based on the species’ physi-        Breath Weapon. Once you use this trait, you can’t
+    ology or magical nature. When you choose a species,        use it again until you finish a Long Rest.
+    your character gets all the special traits listed for it.
+    Some traits involve making a choice from a handful         Dwarf
+    of options.
+                                                               Creature Type: Humanoid
+    Species Descriptions                                       Size: Medium (about 4–5 feet tall)
+                                                               Speed: 30 feet
+    Dragonborn
+                                                               As a Dwarf, you have these special traits.
+    Creature Type: Humanoid                                      Darkvision. You have Darkvision with a range of
+    Size: Medium (about 5–7 feet tall)
+    Speed: 30 feet                                             120 feet.
+                                                                 Dwarven Resilience. You have Resistance to
+    As a Dragonborn, you have these special traits.
+      Draconic Ancestry. Your lineage stems from a             Poison damage. You also have Advantage on sav-
+                                                               ing throws you make to avoid or end the Poisoned
+    dragon progenitor. Choose the kind of dragon from          condition.
+    the Draconic Ancestors table. Your choice affects
+    your Breath Weapon and Damage Resistance traits              Dwarven Toughness. Your Hit Point maximum
+    as well as your appearance.                                increases by 1, and it increases by 1 again whenever
+                                                               you gain a level.
+    Draconic Ancestors   Dragon Damage Type
+                         Gold Fire                               Stonecunning. As a Bonus Action, you gain Trem-
+     Dragon Damage Type  Green Poison                          orsense with a range of 60 feet for 10 minutes. You
+     Black Acid          Red Fire                              must be on a stone surface or touching a stone sur-
+     Blue Lightning      Silver Cold                           face to use this Tremorsense. The stone can be natu-
+     Brass Fire          White Cold                            ral or worked.
+     Bronze Lightning
+     Copper Acid                                                 You can use this Bonus Action a number of times
+                                                               equal to your Proficiency Bonus, and you regain all
+      Breath Weapon. When you take the Attack action           expended uses when you finish a Long Rest.
+    on your turn, you can replace one of your attacks
+    with an exhalation of magical energy in either a           Elf
+    15-foot Cone or a 30-foot Line that is 5 feet wide
+    (choose the shape each time). Each creature in that        Creature Type: Humanoid
+    area must make a Dexterity saving throw (DC 8 plus         Size: Medium (about 5–6 feet tall)
+    your Constitution modifier and Proficiency Bonus).         Speed: 30 feet
+    On a failed save, a creature takes 1d10 damage of
+    the type determined by your Draconic Ancestry              As an Elf, you have these special traits.
+    trait. On a successful save, a creature takes half as        Darkvision. You have Darkvision with a range of
+    much damage. This damage increases by 1d10 when
+    you reach character levels 5 (2d10), 11 (3d10), and        60 feet.
+    17 (4d10).                                                   Elven Lineage. You are part of a lineage that
+
+      You can use this Breath Weapon a number of               grants you supernatural abilities. Choose a lineage
+    times equal to your Proficiency Bonus, and you re-         from the Elven Lineages table. You gain the level 1
+    gain all expended uses when you finish a Long Rest.        benefit of that lineage.
+
+      Damage Resistance. You have Resistance to the              When you reach character levels 3 and 5, you
+    damage type determined by your Draconic Ances-             learn a higher-level spell, as shown on the table.
+    try trait.                                                 You always have that spell prepared. You can cast it
+                                                               once without a spell slot, and you regain the ability
+                                                               to cast it in that way when you finish a Long Rest.
+                                                               You can also cast the spell using any spell slots you
+                                                               have of the appropriate level.
+
+84  System Reference Document 5.2.1
+    Elven Lineages
+
+    Lineage Level 1                                                       Level 3       Level 5
+                                                                          Faerie Fire   Darkness
+    Drow      The range of your Darkvision increases to 120 feet. ​       Detect Magic  Misty Step
+              You also know the Dancing Lights cantrip.
+                                                                          Longstrider   Pass without Trace
+    High Elf  You know the Prestidigitation cantrip. Whenever you finish
+              a Long Rest, you can replace that cantrip with a different
+              cantrip from the Wizard spell list.
+
+    Wood Elf Your Speed increases to 35 feet. You also know the
+                    Druidcraft cantrip.
+
+      Intelligence, Wisdom, or Charisma is your spell-         effect whenever you or another creature takes a
+    casting ability for the spells you cast with this trait    Bonus Action to activate it with a touch. If the cho-
+    (choose the ability when you select the lineage).          sen effect has options within it, you choose one of
+                                                               those options for the device when you create it.
+      Fey Ancestry. You have Advantage on saving               For example, if you choose the spell’s ignite-extin-
+    throws you make to avoid or end the Charmed                guish effect, you determine whether the device
+    condition.                                                 ignites or extinguishes fire; the device doesn’t do
+                                                               both. You can have three such devices in existence
+      Keen Senses. You have proficiency in the Insight,        at a time, and each falls apart 8 hours after its
+    Perception, or Survival skill.                             creation or when you dismantle it with a touch as
+                                                               a Utilize action.
+      Trance. You don’t need to sleep, and magic can’t
+    put you to sleep. You can finish a Long Rest in 4        Goliath
+    hours if you spend those hours in a trancelike medi-
+    tation, during which you retain consciousness.           Creature Type: Humanoid
+                                                             Size: Medium (about 7–8 feet tall)
+    Gnome                                                    Speed: 35 feet
+
+    Creature Type: Humanoid                                  As a Goliath, you have these special traits.
+    Size: Small (about 3–4 feet tall)                          Giant Ancestry. You are descended from Giants.
+    Speed: 30 feet
+                                                             Choose one of the following benefits—a supernatu-
+    As a Gnome, you have these special traits.               ral boon from your ancestry; you can use the chosen
+      Darkvision. You have Darkvision with a range of        benefit a number of times equal to your Proficiency
+                                                             Bonus, and you regain all expended uses when you
+    60 feet.                                                 finish a Long Rest:
+      Gnomish Cunning. You have Advantage on Intelli-
+                                                             Cloud’s Jaunt (Cloud Giant). As a Bonus Action, you
+    gence, Wisdom, and Charisma saving throws.                 magically teleport up to 30 feet to an unoccupied
+      Gnomish Lineage. You are part of a lineage that          space you can see.
+
+    grants you supernatural abilities. Choose one of the     Fire’s Burn (Fire Giant). When you hit a target
+    following options; whichever one you choose, Intel-        with an attack roll and deal damage to it, you can
+    ligence, Wisdom, or Charisma is your spellcasting          also deal 1d10 Fire damage to that target.
+    ability for the spells you cast with this trait (choose
+    the ability when you select the lineage):                Frost’s Chill (Frost Giant). When you hit a target
+                                                               with an attack roll and deal damage to it, you
+    Forest Gnome. You know the Minor Illusion cantrip.         can also deal 1d6 Cold damage to that target and
+      You also always have the Speak with Animals spell        reduce its Speed by 10 feet until the start of your
+      prepared. You can cast it without a spell slot a         next turn.
+      number of times equal to your Proficiency Bonus,
+      and you regain all expended uses when you finish       Hill’s Tumble (Hill Giant). When you hit a Large
+      a Long Rest. You can also use any spell slots you        or smaller creature with an attack roll and deal
+      have to cast the spell.                                  damage to it, you can give that target the Prone
+                                                               condition.
+    Rock Gnome. You know the Mending and Presti-
+      digitation cantrips. In addition, you can spend 10     Stone’s Endurance (Stone Giant). When you take
+      minutes casting Prestidigitation to create a Tiny        damage, you can take a Reaction to roll 1d12. Add
+      clockwork device (AC 5, 1 HP), such as a toy, fire       your Constitution modifier to the number rolled
+      starter, or music box. When you create the device,       and reduce the damage by that total.
+      you determine its function by choosing one effect
+      from Prestidigitation; the device produces that
+
+85  System Reference Document 5.2.1
+    Storm’s Thunder (Storm Giant). When you take            Orc
+      damage from a creature within 60 feet of you, you
+      can take a Reaction to deal 1d8 Thunder damage        Creature Type: Humanoid
+      to that creature.                                     Size: Medium (about 6–7 feet tall)
+                                                            Speed: 30 feet
+      Large Form. Starting at character level 5, you can
+    change your size to Large as a Bonus Action if you’re   As an Orc, you have these special traits.
+    in a big enough space. This transformation lasts for      Adrenaline Rush. You can take the Dash action as
+    10 minutes or until you end it (no action required).
+    For that duration, you have Advantage on Strength       a Bonus Action. When you do so, you gain a number
+    checks, and your Speed increases by 10 feet. Once       of Temporary Hit Points equal to your Proficiency
+    you use this trait, you can’t use it again until you    Bonus.
+    finish a Long Rest.
+                                                              You can use this trait a number of times equal
+      Powerful Build. You have Advantage on any abil-       to your Proficiency Bonus, and you regain all ex-
+    ity check you make to end the Grappled condition.       pended uses when you finish a Short or Long Rest.
+    You also count as one size larger when determining
+    your carrying capacity.                                   Darkvision. You have Darkvision with a range of
+                                                            120 feet.
+    Halfling
+                                                              Relentless Endurance. When you are reduced to
+    Creature Type: Humanoid                                 0 Hit Points but not killed outright, you can drop to
+    Size: Small (about 2–3 feet tall)                       1 Hit Point instead. Once you use this trait, you can’t
+    Speed: 30 feet                                          do so again until you finish a Long Rest.
+
+    As a Halfling, you have these special traits.           Tiefling
+      Brave. You have Advantage on saving throws you
+                                                            Creature Type: Humanoid
+    make to avoid or end the Frightened condition.          Size: Medium (about 4–7 feet tall) or Small (about 3–4
+      Halfling Nimbleness. You can move through the
+                                                              feet tall), chosen when you select this species
+    space of any creature that is a size larger than you,   Speed: 30 feet
+    but you can’t stop in the same space.
+                                                            As a Tiefling, you have the following special traits.
+      Luck. When you roll a 1 on the d20 of a D20 Test,       Darkvision. You have Darkvision with a range of
+    you can reroll the die, and you must use the new
+    roll.                                                   60 feet.
+                                                              Fiendish Legacy. You are the recipient of a legacy
+      Naturally Stealthy. You can take the Hide action
+    even when you are obscured only by a creature that      that grants you supernatural abilities. Choose a leg-
+    is at least one size larger than you.                   acy from the Fiendish Legacies table. You gain the
+                                                            level 1 benefit of the chosen legacy.
+    Human
+                                                              When you reach character levels 3 and 5, you
+    Creature Type: Humanoid                                 learn a higher-level spell, as shown on the table.
+    Size: Medium (about 4–7 feet tall) or Small (about 2–4  You always have that spell prepared. You can cast it
+                                                            once without a spell slot, and you regain the ability
+      feet tall), chosen when you select this species       to cast it in that way when you finish a Long Rest.
+    Speed: 30 feet                                          You can also cast the spell using any spell slots you
+                                                            have of the appropriate level.
+    As a Human, you have these special traits.
+      Resourceful. You gain Heroic Inspiration when-          Intelligence, Wisdom, or Charisma is your spell-
+                                                            casting ability for the spells you cast with this trait
+    ever you finish a Long Rest.                            (choose the ability when you select the legacy).
+      Skillful. You gain proficiency in one skill of your
+                                                              Otherworldly Presence. You know the Thauma-
+    choice.                                                 turgy cantrip. When you cast it with this trait, the
+      Versatile. You gain an Origin feat of your choice     spell uses the same spellcasting ability you use for
+                                                            your Fiendish Legacy trait.
+    (see “Feats”). Skilled is recommended.
+
+    Fiendish Legacies
+
+    Legacy    Level 1                                       Level 3          Level 5
+                                                            Ray of Sickness  Hold Person
+    Abyssal   You have Resistance to Poison damage.
+              You also know the Poison Spray cantrip.       False Life       Ray of Enfeeblement
+
+    Chthonic  You have Resistance to Necrotic damage.       Hellish Rebuke   Darkness
+              You also know the Chill Touch cantrip.
+
+    Infernal  You have Resistance to Fire damage.
+              You also know the Fire Bolt cantrip.
+
+86  System Reference Document 5.2.1
+

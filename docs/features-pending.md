@@ -16,4 +16,170 @@ not run yet. Levels 1 to 3 only.
 | 3 | Primal Knowledge | Barbarian |
 | 3 | Frenzy | Path of the Berserker |
 
-7 features in all.
+## Bard
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Bardic Inspiration | Bard |
+| 1 | Spellcasting | Bard |
+| 2 | Expertise | Bard |
+| 2 | Jack of All Trades | Bard |
+| 3 | Bonus Proficiencies | College of Lore |
+| 3 | Cutting Words | College of Lore |
+
+## Cleric
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Spellcasting | Cleric |
+| 1 | Divine Order | Cleric |
+| 2 | Channel Divinity | Cleric |
+| 3 | Disciple of Life | Life Domain |
+| 3 | Life Domain Spells | Life Domain |
+| 3 | Preserve Life | Life Domain |
+
+## Druid
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Spellcasting | Druid |
+| 1 | Druidic | Druid |
+| 1 | Primal Order | Druid |
+| 2 | Wild Shape | Druid |
+| 2 | Wild Companion | Druid |
+| 3 | Circle of the Land Spells | Circle of the Land |
+| 3 | Land’s Aid | Circle of the Land |
+
+## Fighter
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Fighting Style | Fighter |
+| 1 | Second Wind | Fighter |
+| 1 | Weapon Mastery | Fighter |
+| 2 | Action Surge | Fighter |
+| 2 | Tactical Mind | Fighter |
+| 3 | Improved Critical | Champion |
+| 3 | Remarkable Athlete | Champion |
+
+## Monk
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Martial Arts | Monk |
+| 1 | Unarmored Defense | Monk |
+| 2 | Monk’s Focus | Monk |
+| 2 | Unarmored Movement | Monk |
+| 2 | Uncanny Metabolism | Monk |
+| 3 | Deflect Attacks | Monk |
+| 3 | Open Hand Technique | Warrior of the Open Hand |
+
+## Paladin
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Lay On Hands | Paladin |
+| 1 | Spellcasting | Paladin |
+| 1 | Weapon Mastery | Paladin |
+| 2 | Fighting Style | Paladin |
+| 2 | Paladin’s Smite | Paladin |
+| 3 | Channel Divinity | Paladin |
+| 3 | Oath of Devotion Spells | Oath of Devotion |
+| 3 | Sacred Weapon | Oath of Devotion |
+
+## Ranger
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Spellcasting | Ranger |
+| 1 | Favored Enemy | Ranger |
+| 1 | Weapon Mastery | Ranger |
+| 2 | Deft Explorer | Ranger |
+| 2 | Fighting Style | Ranger |
+| 3 | Hunter’s Lore | Hunter |
+| 3 | Hunter’s Prey | Hunter |
+
+## Rogue
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Expertise | Rogue |
+| 1 | Sneak Attack | Rogue |
+| 1 | Thieves’ Cant | Rogue |
+| 1 | Weapon Mastery | Rogue |
+| 2 | Cunning Action | Rogue |
+| 3 | Steady Aim | Rogue |
+| 3 | Fast Hands | Thief |
+| 3 | Second-Story Work | Thief |
+
+## Sorcerer
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Spellcasting | Sorcerer |
+| 1 | Innate Sorcery | Sorcerer |
+| 2 | Font of Magic | Sorcerer |
+| 2 | Metamagic | Sorcerer |
+| 3 | Draconic Resilience | Draconic Sorcery |
+| 3 | Draconic Spells | Draconic Sorcery |
+
+## Warlock
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Eldritch Invocations | Warlock |
+| 1 | Pact Magic | Warlock |
+| 2 | Magical Cunning | Warlock |
+| 3 | Dark One’s Blessing | Fiend Patron |
+| 3 | Fiend Spells | Fiend Patron |
+
+## Wizard
+
+| Level | Feature | From |
+| ----- | ------- | ---- |
+| 1 | Spellcasting | Wizard |
+| 1 | Ritual Adept | Wizard |
+| 1 | Arcane Recovery | Wizard |
+| 2 | Scholar | Wizard |
+| 3 | Evocation Savant | Evoker |
+| 3 | Potent Cantrip | Evoker |
+
+## Species traits
+
+| Species | Trait |
+| ------- | ----- |
+| Dragonborn | Draconic Ancestry |
+| Dragonborn | Breath Weapon |
+| Dragonborn | Damage Resistance |
+| Dragonborn | Darkvision |
+| Dragonborn | Draconic Flight |
+| Dwarf | Darkvision |
+| Dwarf | Dwarven Resilience |
+| Dwarf | Dwarven Toughness |
+| Dwarf | Stonecunning |
+| Elf | Darkvision |
+| Elf | Elven Lineage |
+| Elf | Fey Ancestry |
+| Elf | Keen Senses |
+| Elf | Trance |
+| Gnome | Darkvision |
+| Gnome | Gnomish Cunning |
+| Gnome | Gnomish Lineage |
+| Goliath | Giant Ancestry |
+| Goliath | Large Form |
+| Goliath | Powerful Build |
+| Halfling | Brave |
+| Halfling | Halfling Nimbleness |
+| Halfling | Luck |
+| Halfling | Naturally Stealthy |
+| Human | Resourceful |
+| Human | Skillful |
+| Human | Versatile |
+| Orc | Adrenaline Rush |
+| Orc | Darkvision |
+| Orc | Relentless Endurance |
+| Tiefling | Darkvision |
+| Tiefling | Fiendish Legacy |
+| Tiefling | Otherworldly Presence |
+
+80 class features and 33 species traits in all.

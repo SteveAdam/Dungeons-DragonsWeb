@@ -1,13 +1,15 @@
-import { SRD_CLASSES } from '@dnd-manager/srd-data';
+import { SRD_CLASSES, SRD_SPECIES } from '@dnd-manager/srd-data';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthState } from '../../auth/authContext';
 import * as srdApi from '../../data/srd';
 import { axeViolations } from '../../test/axe';
 import ClassesDevPage from './ClassesDevPage';
 
 vi.mock('../../data/srd');
+beforeEach(() => vi.mocked(srdApi.listSrdSpecies).mockResolvedValue(SRD_SPECIES));
 
 function show(session: AuthState['session']) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -37,6 +39,27 @@ describe('/dev/classes', () => {
     // the Rage bullets are a list
     expect(within(screen.getByRole('region', { name: 'Level 1: Rage' })).getAllByRole('listitem')).toHaveLength(3);
     expect(await axeViolations(container)).toEqual([]);
+  });
+
+  it("shows a feature's own table, such as Life Domain Spells", async () => {
+    vi.mocked(srdApi.listSrdClasses).mockResolvedValue(SRD_CLASSES.filter(c => c.id === 'cleric'));
+    show(signedIn);
+    const table = await screen.findByRole('table', { name: 'Life Domain Spells' });
+    expect(
+      within(table).getByRole('row', { name: '3 Aid, Bless, Cure Wounds, Lesser Restoration' }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the imported species on their own tab, with traits and tables', async () => {
+    vi.mocked(srdApi.listSrdClasses).mockResolvedValue(SRD_CLASSES);
+    const user = userEvent.setup();
+    show(signedIn);
+    await user.click(await screen.findByRole('tab', { name: 'Species' }));
+    const elf = await screen.findByRole('region', { name: 'Elf srd-5.2' });
+    expect(within(elf).getByRole('row', { name: 'Speed 30 feet' })).toBeInTheDocument();
+    const lineages = within(elf).getByRole('table', { name: 'Elven Lineages' });
+    expect(within(lineages).getByRole('row', { name: /^High Elf .* Detect Magic Misty Step$/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent)).toHaveLength(9);
   });
 
   it('says what to run when nothing has been imported', async () => {

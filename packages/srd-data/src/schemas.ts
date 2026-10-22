@@ -124,6 +124,16 @@ export const featureSchema = z
     /** Paragraphs separated by a blank line; bullet lines start with "• ". */
     description: z.string().min(1),
     mechanics,
+    /** Tables inside the feature, e.g. Life Domain Spells or Beast Shapes: one row per level. */
+    tables: z
+      .array(
+        z
+          .object({ title: z.string(), columns: z.array(z.string()).min(2), rows: z.array(z.array(z.string())).min(1) })
+          .strict()
+          .refine(t => t.rows.every(r => r.length === t.columns.length), 'every row has a cell per column'),
+      )
+      .min(1)
+      .optional(),
   })
   .strict();
 
@@ -136,7 +146,14 @@ export const classSchema = z
     primaryAbilities: z.array(ability).min(1),
     hitDie: z.enum(['d6', 'd8', 'd10', 'd12']),
     saveProficiencies: z.array(ability).length(2),
-    skillChoices: z.object({ count: z.number().int().positive(), from: z.array(skill).min(1) }).strict(),
+    skillChoices: z
+      .object({
+        count: z.number().int().positive(),
+        from: z.array(skill).min(1),
+        /** As printed, e.g. "Choose any 3 skills (see “Playing the Game”)". */
+        text: z.string(),
+      })
+      .strict(),
     weaponProficiencies: z.string(),
     toolProficiencies: z.string().optional(),
     armorTraining: z
@@ -161,6 +178,8 @@ export const classSchema = z
           .strict(),
       )
       .length(3),
+    /** The SRD's sidebar boxes in the class's pages, e.g. "Breaking Your Oath". */
+    sidebars: z.array(z.object({ title: z.string(), text: z.string().min(1) }).strict()).optional(),
     subclasses: z
       .array(
         z

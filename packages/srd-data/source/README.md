@@ -12,6 +12,18 @@ matches.
 | `armor.txt`       | Equipment, page 92: the Armor table                 |
 | `coins.txt`       | Equipment, page 89: Coins and the Coin Values table |
 | `classes/barbarian.flow.txt`, `.raw.txt` | Classes, pages 28 to 30: Barbarian and the Path of the Berserker |
+| `classes/bard.flow.txt`, `.raw.txt` | Classes, pages 31 to 35: Bard, its spell list and the College of Lore |
+| `classes/cleric.flow.txt`, `.raw.txt` | Classes, pages 36 to 40: Cleric, its spell list and the Life Domain |
+| `classes/druid.flow.txt`, `.raw.txt` | Classes, pages 41 to 46: Druid, its spell list and the Circle of the Land |
+| `classes/fighter.flow.txt`, `.raw.txt` | Classes, pages 47 to 49: Fighter and the Champion |
+| `classes/monk.flow.txt`, `.raw.txt` | Classes, pages 49 to 52: Monk and the Warrior of the Open Hand |
+| `classes/paladin.flow.txt`, `.raw.txt` | Classes, pages 53 to 57: Paladin, its spell list and the Oath of Devotion |
+| `classes/ranger.flow.txt`, `.raw.txt` | Classes, pages 57 to 61: Ranger, its spell list and the Hunter |
+| `classes/rogue.flow.txt`, `.raw.txt` | Classes, pages 61 to 64: Rogue and the Thief |
+| `classes/sorcerer.flow.txt`, `.raw.txt` | Classes, pages 64 to 70: Sorcerer, Metamagic options, spell list and Draconic Sorcery |
+| `classes/warlock.flow.txt`, `.raw.txt` | Classes, pages 70 to 76: Warlock, Eldritch Invocation options, spell list and the Fiend Patron |
+| `classes/wizard.flow.txt`, `.raw.txt` | Classes, pages 77 to 82: Wizard, its spell list and the Evoker |
+| `species.raw.txt`, `.flow.txt`, `.layout.txt` | Character Origins, pages 83 to 86: the nine species (raw for the traits, flow for where paragraphs end, layout for where table cells split) |
 
 One change from the PDF text: in `attribution.txt` the licence URL was broken over two lines in the PDF
 (`4.0/ legalcode`); the space is removed.

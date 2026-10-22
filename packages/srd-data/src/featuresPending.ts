@@ -1,8 +1,8 @@
-// P2-4: docs/features-pending.md, made from the data: every level 1 to 3 feature marked mechanics: 'later',
+// P2-4: docs/features-pending.md, made from the data: every level 1 to 3 feature and species trait marked 'later',
 // shown as text only for now, so the work of running them can be scheduled.
-import type { SrdClass } from './schemas';
+import type { SrdClass, SrdSpecies } from './schemas';
 
-export function featuresPending(classes: SrdClass[]): string {
+export function featuresPending(classes: SrdClass[], species: SrdSpecies[] = []): string {
   const lines = [
     '# Features shown as text only (mechanics later)',
     '',
@@ -23,6 +23,12 @@ export function featuresPending(classes: SrdClass[]): string {
     for (const f of rows.sort((a, b) => a.level - b.level)) lines.push(`| ${f.level} | ${f.name} | ${f.from} |`);
     lines.push('');
   }
-  lines.push(`${total} features in all.`, '');
+  const traits = species.flatMap(s => s.traits.filter(t => t.mechanics === 'later').map(t => ({ ...t, from: s.name })));
+  if (traits.length) {
+    lines.push('## Species traits', '', '| Species | Trait |', '| ------- | ----- |');
+    for (const t of traits) lines.push(`| ${t.from} | ${t.name} |`);
+    lines.push('');
+  }
+  lines.push(`${total} class features and ${traits.length} species traits in all.`, '');
   return lines.join('\n');
 }
