@@ -17,11 +17,20 @@ describe('golden fixture: Brannoc (P1-7)', () => {
     expect(s.xp).toEqual({
       total: 6900,
       level: 5,
+      pending: 0,
       levelStartsAt: 6500,
       nextLevelAt: 14000,
       intoLevel: 400,
       toNext: 7100,
     });
+  });
+
+  it('stays at its applied level when XP has gone further: levels pending, proficiency unchanged (P2-6)', () => {
+    const built = computeSheet({ ...BRANNOC, xp: 900, levelApplied: 1 }, [], clock);
+    expect([built.level, built.proficiencyBonus, built.xp.level, built.xp.pending]).toEqual([1, 2, 3, 2]);
+    expect([built.xp.levelStartsAt, built.xp.nextLevelAt, built.xp.toNext]).toEqual([900, 2700, 1800]);
+    const caughtUp = computeSheet({ ...BRANNOC, levelApplied: 5 }, [], clock);
+    expect([caughtUp.level, caughtUp.xp.pending]).toEqual([5, 0]);
   });
 
   it('modifiers +3 +1 +2 -1 0 0', () => {

@@ -2,17 +2,21 @@
 // Development seed (P1-7): gives a player account Brannoc, the golden-fixture fighter, in the first campaign
 // that player has joined. Local stack only: it refuses any URL that is not 127.0.0.1 or localhost.
 //
-//   pnpm db:seed:dev <player email>
+//   pnpm db:seed:dev <player email> [character name]
 //
-// Sign up the player in the app and join a campaign first. Running it again does nothing if Brannoc is there.
+// Sign up the player in the app and join a campaign first. Running it again does nothing if the character is there.
+// With a name (P2-6), the character is a level 1 copy of Brannoc's sheet at 0 XP, for testing awards and the
+// Party with a second player. Brannoc himself is built to level 5, his level by XP, so no level-up is pending.
 // The Potion of Hill Giant Strength is not seeded: a DM switches it on from the sheet (DM mode, development
 // builds only) to watch the numbers change and the greatsword unlock.
 import { execSync } from 'node:child_process';
+import { levelFromXp } from '../packages/rules-engine/src/core.ts';
 import { BRANNOC } from '../packages/rules-engine/src/fixtures.ts';
 
 const email = process.argv[2];
+const characterName = process.argv[3] ?? BRANNOC.name;
 if (!email) {
-  console.error('Usage: pnpm db:seed:dev <player email>');
+  console.error('Usage: pnpm db:seed:dev <player email> [character name]');
   process.exit(2);
 }
 
@@ -51,20 +55,28 @@ if (!membership) throw new Error(`${email} has not joined a campaign as a player
 const campaignId = membership.campaign_id;
 
 const existing = await get(
-  `/rest/v1/characters?owner_id=eq.${player.id}&campaign_id=eq.${campaignId}&name=eq.Brannoc&select=id`,
+  `/rest/v1/characters?owner_id=eq.${player.id}&campaign_id=eq.${campaignId}&name=eq.${encodeURIComponent(characterName)}&select=id`,
 );
 let id = existing[0]?.id;
 if (!id) {
-  const { name, xp, ...sheet } = BRANNOC;
+  const { name: _name, xp: brannocXp, ...sheet } = BRANNOC;
+  const xp = characterName === BRANNOC.name ? brannocXp : 0;
   const r = await fetch(`${api}/rest/v1/characters`, {
     method: 'POST',
     headers: { ...headers, Prefer: 'return=representation' },
-    body: JSON.stringify({ campaign_id: campaignId, owner_id: player.id, name, xp, sheet }),
+    body: JSON.stringify({
+      campaign_id: campaignId,
+      owner_id: player.id,
+      name: characterName,
+      xp,
+      level_applied: levelFromXp(xp),
+      sheet,
+    }),
   });
   if (!r.ok) throw new Error(`insert: ${r.status} ${await r.text()}`);
   id = (await r.json())[0].id;
-  console.log(`Brannoc created for ${email}.`);
+  console.log(`${characterName} created for ${email}.`);
 } else {
-  console.log(`Brannoc already exists for ${email}.`);
+  console.log(`${characterName} already exists for ${email}.`);
 }
 console.log(`Open http://localhost:5173/campaigns/${campaignId}/characters/${id}`);

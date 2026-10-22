@@ -29,7 +29,7 @@ const deps: RollDeps = {
     const row = orThrow(
       await admin
         .from('characters')
-        .select('id, campaign_id, owner_id, name, sheet, xp, conditions, exhaustion')
+        .select('id, campaign_id, owner_id, name, sheet, xp, level_applied, conditions, exhaustion')
         .eq('id', characterId)
         .maybeSingle(),
     );
@@ -41,6 +41,7 @@ const deps: RollDeps = {
           name: row.name,
           sheet: row.sheet,
           xp: row.xp,
+          levelApplied: row.level_applied,
           conditions: row.conditions,
           exhaustion: row.exhaustion,
         }

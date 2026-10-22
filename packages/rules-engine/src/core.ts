@@ -54,6 +54,42 @@ export function xpToNext(xp: number): number {
   return level === 20 ? 0 : XP_THRESHOLDS[level] - xp;
 }
 
+/** Where a character stands: the level XP has reached, the level the sheet is built to, and the way to the next. */
+export interface LevelProgress {
+  total: number;
+  /** levelFromXp(total). */
+  level: number;
+  /** Levels reached by XP but not yet applied to the sheet (the level-up flow applies them). */
+  pending: number;
+  levelStartsAt: number;
+  nextLevelAt: number | null;
+  intoLevel: number;
+  toNext: number;
+}
+
+/** Progress for a total XP, with levelApplied the level the sheet is built to (P2-6). */
+export function levelProgress(xp: number, levelApplied: number): LevelProgress {
+  const level = levelFromXp(xp);
+  const levelStartsAt = XP_THRESHOLDS[level - 1];
+  const nextLevelAt = level === 20 ? null : XP_THRESHOLDS[level];
+  return {
+    total: xp,
+    level,
+    pending: Math.max(0, level - levelApplied),
+    levelStartsAt,
+    nextLevelAt,
+    intoLevel: xp - levelStartsAt,
+    toNext: nextLevelAt === null ? 0 : nextLevelAt - xp,
+  };
+}
+
+/** An award shared by n: each gets the whole-number share; the remainder is what is left over. */
+export function shareEvenly(amount: number, n: number): { each: number; remainder: number } {
+  if (!Number.isInteger(n) || n < 1) throw new RangeError(`Share among 1 or more, got ${n}`);
+  const each = Math.floor(amount / n);
+  return { each, remainder: amount - each * n };
+}
+
 export interface RollModeReason {
   text: string;
   /** Which side the reason is on. */

@@ -4,9 +4,11 @@ import {
   critChance,
   formatPercent,
   levelFromXp,
+  levelProgress,
   proficiencyBonus,
   rangeBand,
   resolveRollMode,
+  shareEvenly,
   successChance,
   xpForLevel,
   xpToNext,
@@ -184,5 +186,28 @@ describe('formatPoints and rollOutcome', () => {
     expect(rollOutcome({ kind: 'check', mode: 'normal', dice: [20], bonus: 0, target: 25 }).success).toBe(false);
     expect(rollOutcome({ kind: 'save', mode: 'normal', dice: [1], bonus: 10, target: 5 }).success).toBe(true);
     expect(rollOutcome({ kind: 'check', mode: 'normal', dice: [12], bonus: 3, target: null }).success).toBeNull();
+  });
+});
+
+describe('levels by XP and applied levels (P2-6)', () => {
+  it('900 XP on a sheet built to level 1 is level 3 by XP, with two levels pending', () => {
+    expect(levelProgress(900, 1)).toEqual({
+      total: 900,
+      level: 3,
+      pending: 2,
+      levelStartsAt: 900,
+      nextLevelAt: 2700,
+      intoLevel: 0,
+      toNext: 1800,
+    });
+    expect(levelProgress(900, 3).pending).toBe(0);
+    expect(levelProgress(400000, 20)).toMatchObject({ level: 20, nextLevelAt: null, toNext: 0, pending: 0 });
+  });
+
+  it('shares an award evenly and says what is left over', () => {
+    expect(shareEvenly(100, 3)).toEqual({ each: 33, remainder: 1 });
+    expect(shareEvenly(900, 3)).toEqual({ each: 300, remainder: 0 });
+    expect(shareEvenly(2, 3)).toEqual({ each: 0, remainder: 2 });
+    expect(() => shareEvenly(10, 0)).toThrow(RangeError);
   });
 });

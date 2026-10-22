@@ -4,7 +4,7 @@ import type { Database, Json } from '../types/database';
 import { characterSheetSchema, effectDurationSchema } from './characterSchema';
 import { DataError, toDataError } from './errors';
 
-/** A stored character: the sheet (validated) with XP from its own column, which only a DM can change. */
+/** A stored character: the sheet (validated) with XP and the applied level from their columns, which only a DM changes. */
 export interface Character {
   id: string;
   campaignId: string;
@@ -20,14 +20,21 @@ export interface CharacterSummary {
   ownerId: string;
   name: string;
   xp: number;
+  /** The level the sheet is built to; levels above it that XP has reached are pending (P2-6). */
+  levelApplied: number;
 }
 
 type CharacterRow = Database['public']['Tables']['characters']['Row'];
 type EffectRow = Database['public']['Tables']['effects']['Row'];
 
 function toCharacter(r: CharacterRow): Character {
-  // the xp column is the truth (the DM-only guard protects it); the sheet's own copy is ignored
-  const parsed = characterSheetSchema.safeParse({ ...(r.sheet as object), name: r.name, xp: r.xp });
+  // the xp and level_applied columns are the truth (the DM-only guard protects them); the sheet's copies are ignored
+  const parsed = characterSheetSchema.safeParse({
+    ...(r.sheet as object),
+    name: r.name,
+    xp: r.xp,
+    levelApplied: r.level_applied,
+  });
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     throw new DataError(
@@ -71,11 +78,18 @@ export async function getCharacter(characterId: string): Promise<Character> {
 export async function listCharacters(campaignId: string): Promise<CharacterSummary[]> {
   const { data, error } = await supabase
     .from('characters')
-    .select('id, campaign_id, owner_id, name, xp')
+    .select('id, campaign_id, owner_id, name, xp, level_applied')
     .eq('campaign_id', campaignId)
     .order('name');
   if (error) throw toDataError(error);
-  return (data ?? []).map(r => ({ id: r.id, campaignId: r.campaign_id, ownerId: r.owner_id, name: r.name, xp: r.xp }));
+  return (data ?? []).map(r => ({
+    id: r.id,
+    campaignId: r.campaign_id,
+    ownerId: r.owner_id,
+    name: r.name,
+    xp: r.xp,
+    levelApplied: r.level_applied,
+  }));
 }
 
 /** The effects on a character (the owner and the DM can read them). */

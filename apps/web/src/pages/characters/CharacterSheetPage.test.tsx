@@ -68,6 +68,30 @@ beforeEach(() => {
   useDmModeStore.setState({ dmMode: true });
 });
 
+describe('pending levels (P2-6)', () => {
+  it('shows the XP level and a "Level up available" badge, with the level-up button disabled until P2-10', async () => {
+    setUp('player');
+    vi.mocked(charactersApi.getCharacter).mockResolvedValue({
+      ...brannoc,
+      sheet: { ...BRANNOC, xp: 14000, levelApplied: 5 },
+    });
+    const sheet = await renderSheet();
+    expect(within(sheet).getByText('Fighter 5')).toBeInTheDocument();
+    expect(within(sheet).getByText('14,000 of 23,000 for Level 7')).toBeInTheDocument();
+    expect(within(sheet).getByText('Level up available: 1 level (level 6 by XP)')).toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: 'Level up' })).toBeDisabled();
+    // proficiency stays at the applied level's +3
+    expect(row(sheet, /^Strength \+6, proficient/)).toBeInTheDocument();
+  });
+
+  it('shows no badge when the sheet is up to date', async () => {
+    setUp('player');
+    vi.mocked(charactersApi.getCharacter).mockResolvedValue({ ...brannoc, sheet: { ...BRANNOC, levelApplied: 5 } });
+    const sheet = await renderSheet();
+    expect(within(sheet).queryByText(/Level up available/)).toBeNull();
+  });
+});
+
 describe('Sheet tab for Brannoc (acceptance 2)', () => {
   it('shows exactly the expected numbers', async () => {
     setUp('player');

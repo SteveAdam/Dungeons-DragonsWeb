@@ -23,6 +23,9 @@ export const queryKeys = {
   entityFolders: (campaignId: string) => ['campaigns', campaignId, 'registry', 'folders'] as const,
   entityLinks: (campaignId: string, includeHidden: boolean) =>
     ['campaigns', campaignId, 'registry', 'links', { includeHidden }] as const,
+  party: (campaignId: string) => ['campaigns', campaignId, 'party'] as const,
+  wallets: (campaignId: string) => ['campaigns', campaignId, 'party', 'wallets'] as const,
+  ledger: (campaignId: string) => ['campaigns', campaignId, 'party', 'ledger'] as const,
   pinNotes: (pinId: string) => ['pins', pinId, 'notes'] as const,
   mapImage: (path: string) => ['map-image', path] as const,
 };

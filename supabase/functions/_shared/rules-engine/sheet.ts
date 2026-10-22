@@ -2,7 +2,15 @@
 // P1-7: the computed character sheet. Every number a sheet shows is worked out here, from the stored sheet,
 // the active effects and the game clock, so the screens never do rules maths themselves.
 import { CONDITION_INFO, type CharacterState } from './conditions.ts';
-import { abilityModifier, ABILITY_KEYS, levelFromXp, proficiencyBonus, XP_THRESHOLDS, type Ability } from './core.ts';
+import {
+  abilityModifier,
+  ABILITY_KEYS,
+  levelFromXp,
+  levelProgress,
+  proficiencyBonus,
+  type Ability,
+  type LevelProgress,
+} from './core.ts';
 import { effectiveStat, isActive, type Effect, type GameClock } from './effects.ts';
 import { checkRequirements, type AbilityScores, type Requirement, type RequirementResult } from './requirements.ts';
 
@@ -81,7 +89,11 @@ export interface SheetArmor {
   strReq?: number;
 }
 
-/** A character as stored (the sheet jsonb, plus xp). Level is never stored: it comes from XP. */
+/**
+ * A character as stored (the sheet jsonb, plus xp and level_applied). Levels come from XP; levelApplied is the
+ * level the sheet has actually been built to (P2-6). When XP has gone past it, level-ups are pending, and the
+ * sheet's numbers stay at the applied level until the level-up flow builds the new one.
+ */
 export interface CharacterSheet {
   name: string;
   species: string;
@@ -89,6 +101,8 @@ export interface CharacterSheet {
   background: string;
   alignment: string;
   xp: number;
+  /** The level the sheet has been built to; without it, the level from XP (Phase 1 sheets). */
+  levelApplied?: number;
   abilityScores: AbilityScores;
   skillProficiencies: SkillKey[];
   expertise: SkillKey[];
@@ -165,14 +179,7 @@ export interface ComputedSheet {
   hp: CharacterSheet['hp'];
   hitDice: CharacterSheet['hitDice'] & { remaining: number };
   attacks: ComputedAttack[];
-  xp: {
-    total: number;
-    level: number;
-    levelStartsAt: number;
-    nextLevelAt: number | null;
-    intoLevel: number;
-    toNext: number;
-  };
+  xp: LevelProgress;
   /** Effects active now. */
   activeEffects: Effect[];
   /** One line per condition (conditions do not change the sheet's numbers; they change individual rolls). */
@@ -192,7 +199,7 @@ export function computeSheet(
   clock: GameClock,
   state: CharacterState = { conditions: [], exhaustion: 0 },
 ): ComputedSheet {
-  const level = levelFromXp(sheet.xp);
+  const level = sheet.levelApplied ?? levelFromXp(sheet.xp);
   const pb = proficiencyBonus(level);
 
   const abilities = Object.fromEntries(
@@ -293,9 +300,6 @@ export function computeSheet(
     };
   });
 
-  const levelStartsAt = XP_THRESHOLDS[level - 1];
-  const nextLevelAt = level === 20 ? null : XP_THRESHOLDS[level];
-
   return {
     name: sheet.name,
     level,
@@ -315,14 +319,7 @@ export function computeSheet(
     hp: { ...sheet.hp },
     hitDice: { ...sheet.hitDice, remaining: Math.max(0, sheet.hitDice.total - sheet.hitDice.spent) },
     attacks,
-    xp: {
-      total: sheet.xp,
-      level,
-      levelStartsAt,
-      nextLevelAt,
-      intoLevel: sheet.xp - levelStartsAt,
-      toNext: nextLevelAt === null ? 0 : nextLevelAt - sheet.xp,
-    },
+    xp: levelProgress(sheet.xp, level),
     activeEffects: effects.filter(e => isActive(e, clock)),
     conditionNotes: [...new Set(state.conditions)].map(c => `${c[0].toUpperCase()}${c.slice(1)}: ${CONDITION_INFO[c]}`),
   };

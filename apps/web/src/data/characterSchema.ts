@@ -24,6 +24,7 @@ export const characterSheetSchema = z.object({
   background: z.string().max(80),
   alignment: z.string().max(40),
   xp: z.number().int().min(0),
+  levelApplied: z.number().int().min(1).max(20).optional(),
   abilityScores: z.object({ str: score, dex: score, con: score, int: score, wis: score, cha: score }),
   skillProficiencies: z.array(skill),
   expertise: z.array(skill),

@@ -18,6 +18,7 @@ const SERA: CharacterRecord = {
   name: 'Sera',
   sheet: brannocSheet,
   xp: 900,
+  levelApplied: 3,
   conditions: [],
   exhaustion: 0,
 };
@@ -38,6 +39,7 @@ function world(
       name: 'Brannoc',
       sheet: brannocSheet,
       xp: 6900,
+      levelApplied: 5,
       conditions: [],
       exhaustion: 0,
       ...over.brannoc,
@@ -99,6 +101,17 @@ Deno.test(
     assert.equal(body.chance, successChance({ kind: 'check', bonus: 6, target: 14, mode: 'normal' }).final);
     assert.equal(body.chance, 0.65);
     assert.equal(body.label, 'Athletics check');
+  },
+);
+
+Deno.test(
+  'pending levels do not count: 14000 XP (level 6) on a sheet built to level 5 keeps proficiency +3; level 9 applied gives +4',
+  async () => {
+    const { deps } = world({ brannoc: { xp: 14000, levelApplied: 5 } });
+    const { body } = await call(deps, 'token-player', { action: 'preview', ...athletics });
+    assert.equal(body.bonus, 6);
+    const levelled = world({ brannoc: { xp: 48000, levelApplied: 9 } });
+    assert.equal((await call(levelled.deps, 'token-player', { action: 'preview', ...athletics })).body.bonus, 7);
   },
 );
 

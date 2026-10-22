@@ -103,6 +103,19 @@ export function pay(purse: Purse, price: Price | number): Purse | null {
   return left;
 }
 
+/** A purse shared by n, coin by coin (no change is made): each share, and what is left over. */
+export function splitPurse(purse: Purse, n: number): { each: Purse; remainder: Purse } {
+  if (!Number.isInteger(n) || n < 1) throw new RangeError(`Share among 1 or more, got ${n}`);
+  const each: Purse = {};
+  const remainder: Purse = {};
+  for (const coin of COINS) {
+    const have = purse[coin] ?? 0;
+    if (Math.floor(have / n)) each[coin] = Math.floor(have / n);
+    if (have % n) remainder[coin] = have % n;
+  }
+  return { each, remainder };
+}
+
 /** "12 GP, 5 SP, 3 CP", largest coin first; an empty purse is "0 GP". */
 export function formatPurse(purse: Purse): string {
   const parts = COINS.filter(c => (purse[c] ?? 0) > 0).map(

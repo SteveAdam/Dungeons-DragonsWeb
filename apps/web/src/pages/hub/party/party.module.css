@@ -1,0 +1,186 @@
+/* P2-6: the Party tab. Sections sit two to a row on wide screens, one on narrow ones. */
+.layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.section {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+}
+
+.label {
+  margin: 0;
+  padding: 0;
+  color: var(--gold-dark);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.member {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 0.75rem;
+}
+
+.xpText {
+  color: var(--ink-faded);
+  font-size: 0.95rem;
+}
+
+.bar {
+  grid-column: 1 / -1;
+  height: 0.55rem;
+  overflow: hidden;
+  border: 1px solid var(--gold-dark);
+  border-radius: 2px;
+  background: var(--paper-aged);
+}
+
+.fill {
+  height: 100%;
+  background: var(--verdigris);
+}
+
+.purse {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: start;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--ink-wash);
+}
+
+.purses {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.form {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  padding: 0.75rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--paper);
+}
+
+.formTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+}
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.grow {
+  flex: 1 1 12rem;
+}
+
+.select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.coins {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.coins legend {
+  margin-bottom: 0.25rem;
+}
+
+.coin {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.95rem;
+}
+
+.done {
+  margin: 0;
+  color: var(--verdigris);
+  font-weight: 700;
+}
+
+.ledger {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--gold-dark);
+}
+
+.when,
+.source {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}
+
+.when {
+  color: var(--ink-faded);
+}
+
+.who {
+  font-family: var(--font-heading);
+}
+
+.source {
+  color: var(--gold-dark);
+  text-transform: capitalize;
+}
+
+.note {
+  flex-basis: 100%;
+  color: var(--ink-faded);
+  font-style: italic;
+}

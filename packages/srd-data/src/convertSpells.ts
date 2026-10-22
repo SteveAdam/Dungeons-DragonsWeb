@@ -165,7 +165,18 @@ export function convertSpells(rawText: string, flowText: string): SrdSpell[] {
       paragraphs[paragraphs.length - 1].push(line);
     }
     // an em dash at the end of a line picks up a space in the join ("Fiend— which")
-    const all = paragraphs.map(p => join(p).replace(/— /g, '—'));
+    // bullets the raw text runs together on one line get a line each ("• 1 Exhaustion level • The Charmed ...")
+    const all = paragraphs
+      .map(p => join(p).replace(/— /g, '—'))
+      .map(p =>
+        p.startsWith('• ')
+          ? p
+              .split(/ ?• /)
+              .filter(Boolean)
+              .map(b => `• ${b}`)
+              .join('\n')
+          : p,
+      );
     const upgrade = all.findIndex(p => /^(Using a Higher-Level Spell Slot|Cantrip Upgrade)\. /.test(p));
     const text = (upgrade < 0 ? all : all.slice(0, upgrade)).join('\n\n');
     const higherLevels = upgrade < 0 ? undefined : all.slice(upgrade).join('\n\n');

@@ -41,14 +41,14 @@ isOneToOne: true
                   ]
                 },"characters": {
                   Row: {
-                    "campaign_id": string,"conditions": (string)[],"created_at": string,"entity_id": string | null,"exhaustion": number,"id": string,"name": string,"owner_id": string,"sheet": NonNullable<Json>,"xp": number
+                    "campaign_id": string,"conditions": (string)[],"created_at": string,"entity_id": string | null,"exhaustion": number,"id": string,"level_applied": number,"name": string,"owner_id": string,"sheet": NonNullable<Json>,"xp": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "campaign_id": string,"conditions"?: (string)[],"created_at"?: string,"entity_id"?: string | null,"exhaustion"?: number,"id"?: string,"name": string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
+                    "campaign_id": string,"conditions"?: (string)[],"created_at"?: string,"entity_id"?: string | null,"exhaustion"?: number,"id"?: string,"level_applied"?: number,"name": string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
                   }
                   Update: {
-                    "campaign_id"?: string,"conditions"?: (string)[],"created_at"?: string,"entity_id"?: string | null,"exhaustion"?: number,"id"?: string,"name"?: string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
+                    "campaign_id"?: string,"conditions"?: (string)[],"created_at"?: string,"entity_id"?: string | null,"exhaustion"?: number,"id"?: string,"level_applied"?: number,"name"?: string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
                   }
                   Relationships: [
                     {
@@ -215,6 +215,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"ledger": {
+                  Row: {
+                    "amount": NonNullable<Json>,"campaign_id": string,"created_at": string,"created_by": string | null,"id": string,"kind": string,"note": string,"seq": number,"source": string,"target_id": string,"target_type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": NonNullable<Json>,"campaign_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"kind": string,"note"?: string,"seq"?: never,"source": string,"target_id": string,"target_type": string
+                  }
+                  Update: {
+                    "amount"?: NonNullable<Json>,"campaign_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"kind"?: string,"note"?: string,"seq"?: never,"source"?: string,"target_id"?: string,"target_type"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ledger_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"links": {
                   Row: {
                     "campaign_id": string,"created_at": string,"from_pin_id": string,"id": string,"label": string,"to_pin_id": string
@@ -323,6 +343,58 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "folders"
       referencedColumns: ["id"]
+    }
+                  ]
+                },"parties": {
+                  Row: {
+                    "campaign_id": string,"entity_id": string,"is_official": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"entity_id": string,"is_official"?: boolean
+                  }
+                  Update: {
+                    "campaign_id"?: string,"entity_id"?: string,"is_official"?: boolean
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "parties_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "parties_entity_id_fkey"
+      columns: ["entity_id"]
+isOneToOne: true
+      referencedRelation: "entities"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"party_members": {
+                  Row: {
+                    "character_id": string,"joined_at": string,"party_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "character_id": string,"joined_at"?: string,"party_id": string
+                  }
+                  Update: {
+                    "character_id"?: string,"joined_at"?: string,"party_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "party_members_character_id_fkey"
+      columns: ["character_id"]
+isOneToOne: false
+      referencedRelation: "characters"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "party_members_party_id_fkey"
+      columns: ["party_id"]
+isOneToOne: false
+      referencedRelation: "parties"
+      referencedColumns: ["entity_id"]
     }
                   ]
                 },"pin_secrets": {
@@ -515,6 +587,26 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"wallets": {
+                  Row: {
+                    "campaign_id": string,"cp": number,"gp": number,"id": string,"owner_id": string,"owner_type": string,"pp": number,"sp": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"cp"?: number,"gp"?: number,"id"?: string,"owner_id": string,"owner_type": string,"pp"?: number,"sp"?: number
+                  }
+                  Update: {
+                    "campaign_id"?: string,"cp"?: number,"gp"?: number,"id"?: string,"owner_id"?: string,"owner_type"?: string,"pp"?: number,"sp"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "wallets_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -538,11 +630,25 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"award_coins":
+{ Args: { "p_coins": Json,"p_note"?: string,"p_source"?: string,"p_target_id": string,"p_target_type": string }; Returns: undefined
+                           },
+"award_xp":
+{ Args: { "p_amount": number,"p_note"?: string,"p_source": string,"p_target_id": string,"p_target_type": string }; Returns: undefined
+                           },
 "can_read_map_image":
 { Args: { "object_name": string }; Returns: boolean
                            },
 "character_campaign":
 { Args: { "c": string }; Returns: string
+                           },
+"check_source":
+{ Args: { "p_source": string }; Returns: undefined
+                           },
+"coins_of":
+{ Args: { "p_coins": Json }; Returns: {
+              "cp": number,"gp": number,"pp": number,"sp": number
+            }[]
                            },
 "create_entity":
 { Args: { "p_campaign": string,"p_folder"?: string,"p_name": string,"p_type": Database["public"]['Enums']["entity_type"],"p_visible"?: boolean }; Returns: {
@@ -577,6 +683,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"create_official_party":
+{ Args: { "c": string }; Returns: string
+                           },
 "d20":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
@@ -585,6 +694,9 @@ isOneToOne: false
                            },
 "delete_folder":
 { Args: { "p_folder": string }; Returns: undefined
+                           },
+"deposit_to_party":
+{ Args: { "p_character": string,"p_coins": Json,"p_note"?: string }; Returns: undefined
                            },
 "entity_campaign":
 { Args: { "e": string }; Returns: string
@@ -607,11 +719,23 @@ isOneToOne: false
 "join_campaign":
 { Args: { "code": string }; Returns: string
                            },
+"ledger_note":
+{ Args: { "fallback": string }; Returns: string
+                           },
+"ledger_reason":
+{ Args: { "p_note": string,"p_source": string }; Returns: undefined
+                           },
+"ledger_source":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
 "map_campaign":
 { Args: { "m": string }; Returns: string
                            },
 "map_is_revealed":
 { Args: { "m": string }; Returns: boolean
+                           },
+"move_coins":
+{ Args: { "p_cp": number,"p_gp": number,"p_note": string,"p_owner_id": string,"p_owner_type": string,"p_pp": number,"p_sign": number,"p_source": string,"p_sp": number }; Returns: undefined
                            },
 "move_entity":
 { Args: { "p_entity": string,"p_folder": string,"p_sort_order"?: number }; Returns: {
@@ -646,8 +770,14 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"official_party":
+{ Args: { "c": string }; Returns: string
+                           },
 "owns_character":
 { Args: { "c": string }; Returns: boolean
+                           },
+"party_campaign":
+{ Args: { "p": string }; Returns: string
                            },
 "pin_campaign":
 { Args: { "p": string }; Returns: string
@@ -761,6 +891,15 @@ isOneToOne: false
       } },
 "shares_campaign":
 { Args: { "other": string }; Returns: boolean
+                           },
+"split_party_gold":
+{ Args: { "p_party": string }; Returns: undefined
+                           },
+"target_campaign":
+{ Args: { "p_target_id": string,"p_target_type": string }; Returns: string
+                           },
+"withdraw_from_party":
+{ Args: { "p_character": string,"p_coins": Json,"p_note"?: string }; Returns: undefined
                            }
           }
           Enums: {

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { canAfford, COIN_VALUE_CP, formatPurse, makeChange, pay, priceInCopper, totalInCopper } from './currency';
+import {
+  canAfford,
+  COIN_VALUE_CP,
+  formatPurse,
+  makeChange,
+  pay,
+  priceInCopper,
+  splitPurse,
+  totalInCopper,
+} from './currency';
 
 describe('coins (SRD 5.2.1 Coin Values)', () => {
   it('values every coin against the gold piece as the SRD does: CP 1/100, SP 1/10, EP 1/2, GP 1, PP 10', () => {
@@ -59,5 +68,13 @@ describe('coins (SRD 5.2.1 Coin Values)', () => {
     expect(formatPurse({ cp: 3, gp: 12, sp: 5 })).toBe('12 GP, 5 SP, 3 CP');
     expect(formatPurse({ gp: 1500 })).toBe('1,500 GP');
     expect(formatPurse({})).toBe('0 GP');
+  });
+});
+
+describe('splitting a purse (P2-6)', () => {
+  it('shares coin by coin, without making change, and keeps what does not divide', () => {
+    expect(splitPurse({ gp: 7, sp: 1 }, 3)).toEqual({ each: { gp: 2 }, remainder: { gp: 1, sp: 1 } });
+    expect(splitPurse({ pp: 3, cp: 9 }, 3)).toEqual({ each: { pp: 1, cp: 3 }, remainder: {} });
+    expect(() => splitPurse({ gp: 1 }, 0)).toThrow(RangeError);
   });
 });

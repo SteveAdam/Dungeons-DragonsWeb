@@ -303,9 +303,9 @@ Classes were added one at a time, each checked against the SRD before the next. 
 
 ## Spells and spellcasting (P2-5)
 
-Spells are imported in batches by level, each checked against the SRD before the next. Done so far: **cantrips**
-(all 27), **level 1** (all 57) and **level 2** (all 57). Levels 1 to 3 follow, then Greater Restoration and Regenerate (Cure Wounds, Lesser Restoration and Revivify
-come with their levels).
+Spells were imported in batches by level, each checked against the SRD before the next. All are in: the 27 cantrips,
+the 57 level 1, 57 level 2 and 42 level 3 spells, and Greater Restoration and Regenerate for the library mockups (185
+in all; Cure Wounds, Lesser Restoration and Revivify came with their levels).
 
 - `packages/srd-data/source/spells.*.txt` is the whole Spell Descriptions chapter; `src/convertSpells.ts` reads all
   339 spells (level, school, class list, casting time, range, components with any cost and whether it is consumed,
@@ -323,6 +323,31 @@ come with their levels).
   only; 10 minutes longer; no slot) and `spellbookCopy` (2 hours and 50 GP per level; 1 hour and 10 GP to copy your
   own).
 - `/dev/classes` has a Spells tab listing the imported spells by level, with the mechanics read from each.
+
+## The Party, XP and coins (P2-6)
+
+Levels are automatic: a character's level is `levelFromXp(xp)`. `characters.level_applied` is the level the sheet
+has been built to; when XP has gone past it, level-ups are pending. The sheet's numbers (and the roll function's
+bonuses) stay at the applied level, and the Sheet tab shows a _Level up available_ badge (the level-up flow is
+P2-10).
+
+- `0012_party_ledger.sql` adds `parties` (every campaign gets one official Party, an entity of type `party`, made
+  with the campaign), `party_members` (new characters join the official Party unless
+  `campaigns.settings.autoJoinParty` is false), `wallets` (copper, silver, gold and platinum; never negative) and
+  `ledger`, which is append-only for every role. The ledger is written by triggers on `characters.xp` and on
+  wallets, so every change is in it, whichever way it was made, and the totals always equal its sum.
+- DM-only functions: `award_xp` (to the Party it is shared evenly among the members, and a note row records the
+  remainder, which nobody gets), `award_coins`, `split_party_gold` (coin by coin; what does not divide stays in the
+  pool) and `withdraw_from_party`. Players call `deposit_to_party` from their own character's wallet.
+- Players read their own wallets, the party pool and the ledger rows about their characters and the Party; DMs
+  read everything. Nobody writes wallets, the ledger or XP directly except the DM (XP set directly is recorded as
+  _XP set directly_).
+- Existing data is carried over: each campaign gets its Party, each character a wallet, a place in the Party, an
+  applied level matching its XP, and an opening _XP before the ledger_ entry.
+- The hub's **Party** tab: the DM sees members with level and XP progress, the pool and every purse, the award
+  forms, the split button and the ledger with filters; a player sees their own characters and purses, the pool
+  (read-only) and a deposit form. `pnpm db:seed:dev <email> <name>` seeds a second, level 1 character for testing.
+- Manual test with two players: [docs/p2-6-manual-test.md](docs/p2-6-manual-test.md).
 
 ## Rules content licence
 

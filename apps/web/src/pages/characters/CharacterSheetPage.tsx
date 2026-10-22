@@ -148,9 +148,21 @@ export function CharacterSheetPage() {
             <span className={styles.muted}>
               {sheet.xp.nextLevelAt === null
                 ? `${thousands(sheet.xp.total)}: the highest level`
-                : `${thousands(sheet.xp.total)} of ${thousands(sheet.xp.nextLevelAt)} for Level ${sheet.level + 1}`}
+                : `${thousands(sheet.xp.total)} of ${thousands(sheet.xp.nextLevelAt)} for Level ${sheet.xp.level + 1}`}
             </span>
           </div>
+          {sheet.xp.pending > 0 && (
+            <div className={styles.levelUp}>
+              <Tag>{`Level up available: ${sheet.xp.pending} ${sheet.xp.pending === 1 ? 'level' : 'levels'} (level ${sheet.xp.level} by XP)`}</Tag>
+              {/* the level-up flow is P2-10; until then the button is a placeholder */}
+              <button type="button" disabled aria-describedby="level-up-soon" className={styles.levelUpButton}>
+                Level up
+              </button>
+              <span id="level-up-soon" className={styles.small}>
+                Levelling up arrives in a later update. The sheet stays at level {sheet.level} until then.
+              </span>
+            </div>
+          )}
           <Bar label="Experience" value={sheet.xp.intoLevel} max={sheet.xp.intoLevel + sheet.xp.toNext} />
         </div>
 

@@ -38,6 +38,8 @@ export interface CharacterRecord {
   /** The sheet jsonb, as stored. Checked before use. */
   sheet: unknown;
   xp: number;
+  /** The level the sheet is built to (P2-6): bonuses use it, not the level XP has reached. */
+  levelApplied: number;
   conditions: string[];
   exhaustion: number;
 }
@@ -160,7 +162,7 @@ export function parseInput(body: unknown): RollInput {
 const isInt = (v: unknown) => Number.isInteger(v);
 const isStringArray = (v: unknown) => Array.isArray(v) && v.every(s => typeof s === 'string');
 
-/** The stored sheet, checked enough that computeSheet cannot trip over it. Name and XP come from their columns. */
+/** The stored sheet, checked enough that computeSheet cannot trip over it. Name, XP and level come from columns. */
 export function sheetOf(c: CharacterRecord): CharacterSheet {
   const s = (c.sheet ?? {}) as Record<string, unknown>;
   const scores = (s.abilityScores ?? {}) as Record<string, unknown>;
@@ -178,7 +180,7 @@ export function sheetOf(c: CharacterRecord): CharacterSheet {
     (s.armor === null || typeof s.armor === 'object') &&
     typeof s.shield === 'boolean';
   if (!ok) throw new HttpError(422, 'This character sheet is damaged, so the server cannot work out the bonus');
-  return { ...(s as unknown as CharacterSheet), name: c.name, xp: c.xp };
+  return { ...(s as unknown as CharacterSheet), name: c.name, xp: c.xp, levelApplied: c.levelApplied };
 }
 
 /** An effects row as the engine's Effect (the same mapping as the browser's data layer). */

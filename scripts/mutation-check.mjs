@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T40) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T46) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -268,6 +268,82 @@ create policy "anyone writes srd classes" on srd_classes for all to authenticate
     sql: `grant insert, update, delete on srd_spells to authenticated;
 create policy "anyone writes srd spells" on srd_spells for all to authenticated using (true) with check (true);`,
     fails: ['T40'],
+  },
+  {
+    name: 'award_xp no longer checks for the DM (P2-6)',
+    why: 'a player could award themself XP',
+    sql: `create or replace function require_dm(c uuid) returns void language plpgsql stable security definer set search_path = public as $f$
+begin
+  if c is null or not is_member(c) then raise exception 'Only the DM can do that' using errcode = '42501'; end if;
+end $f$;`,
+    fails: ['T41'],
+  },
+  {
+    name: 'party XP given in full to every member (P2-6)',
+    why: '100 XP to three members would become 300',
+    sql: `create or replace function award_xp(p_target_type text, p_target_id uuid, p_amount int, p_source text, p_note text default '')
+returns void language plpgsql security definer set search_path = public as $f$
+begin
+  perform require_dm(target_campaign(p_target_type, p_target_id));
+  perform check_source(p_source);
+  if p_amount is null or p_amount < 1 or p_amount > 1000000 then raise exception 'Award from 1 to 1,000,000 XP' using errcode = '22023'; end if;
+  perform ledger_reason(p_source, p_note);
+  if p_target_type = 'character' then
+    update characters set xp = xp + p_amount where id = p_target_id;
+  else
+    update characters set xp = xp + p_amount where id in (select character_id from party_members where party_id = p_target_id);
+  end if;
+  perform ledger_reason(null, null);
+end $f$;`,
+    fails: ['T42'],
+  },
+  {
+    name: 'ledger no longer append-only (P2-6)',
+    why: 'the service role or the database owner could rewrite the record of awards',
+    sql: `drop trigger ledger_append_only_trg on ledger;`,
+    fails: ['T43'],
+  },
+  {
+    name: 'wallet balance check removed from move_coins (P2-6)',
+    why: 'a deposit larger than the wallet would only be stopped by the check constraint, with no clear message',
+    sql: `create or replace function move_coins(p_owner_type text, p_owner_id uuid, p_cp int, p_sp int, p_gp int, p_pp int, p_sign int, p_source text, p_note text)
+returns void language plpgsql security definer set search_path = public as $f$
+begin
+  perform ledger_reason(p_source, p_note);
+  update wallets set cp = cp + p_sign * p_cp, sp = sp + p_sign * p_sp, gp = gp + p_sign * p_gp, pp = pp + p_sign * p_pp
+   where owner_type = p_owner_type and owner_id = p_owner_id;
+  perform ledger_reason(null, null);
+end $f$;`,
+    fails: ['T44'],
+  },
+  {
+    name: 'every wallet readable by members (P2-6)',
+    why: 'players would see each other’s purses',
+    sql: `drop policy "read wallets" on wallets;
+create policy "read wallets" on wallets for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T44'],
+  },
+  {
+    name: 'one-official-party index dropped (P2-6)',
+    why: 'a campaign could have two official parties, and awards would not know which to use',
+    sql: `drop index parties_one_official_key;`,
+    fails: ['T45'],
+  },
+  {
+    name: 'applied level no longer guarded (P2-6)',
+    why: 'a player could apply levels they have not been given',
+    sql: `create or replace function characters_guard() returns trigger language plpgsql security definer set search_path = public as $f$
+declare by_player boolean := auth.uid() is not null and not is_dm(new.campaign_id);
+begin
+  if by_player and ((tg_op = 'INSERT' and new.xp <> 0) or (tg_op = 'UPDATE' and new.xp is distinct from old.xp)) then
+    raise exception 'Only the DM can change XP';
+  end if;
+  if by_player and tg_op = 'UPDATE' and (new.sheet is distinct from old.sheet or new.conditions is distinct from old.conditions or new.exhaustion is distinct from old.exhaustion) then
+    raise exception 'Only the DM can change a character sheet';
+  end if;
+  return new;
+end $f$;`,
+    fails: ['T46'],
   },
   {
     name: 'hidden entities readable by members',

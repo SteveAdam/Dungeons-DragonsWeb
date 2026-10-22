@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T40) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T46) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(253);
+select plan(309);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -547,6 +547,7 @@ reset role;
 -- T30 to T34: the entity registry (P2-1, 0007_entities.sql) -------------------------------------------
 -- fixture, as the database owner: Mira and Port Vellum are visible, the Cult is hidden; one open link, one
 -- hidden link, and one open link that touches the hidden Cult
+-- (each campaign also has its official Party entity from P2-6, which these counts leave out)
 select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
 insert into entities (id, campaign_id, type, name, visible_to_players) values
   (tests.u('ent:mira'), tests.u('campaign'), 'npc', 'Mira', true),
@@ -559,14 +560,14 @@ insert into entity_links (id, campaign_id, a_id, b_id, label_ab, label_ba, hidde
 
 -- T30: players see visible entities only; strangers see none
 select tests.act_as('player');
-select is((select count(*)::int from entities), 2, 'T30: a player sees only the visible entities');
+select is((select count(*)::int from entities where type <> 'party'), 2, 'T30: a player sees only the visible entities');
 select is((select count(*)::int from entities where id = tests.u('ent:cult')), 0, 'T30: a player cannot see the hidden entity');
 reset role;
 select tests.act_as('outsider');
 select is((select count(*)::int from entities), 0, 'T30: a non-member sees no entities');
 reset role;
 select tests.act_as('dm');
-select is((select count(*)::int from entities), 3, 'T30: the DM sees every entity');
+select is((select count(*)::int from entities where type <> 'party'), 3, 'T30: the DM sees every entity');
 reset role;
 
 -- T31: hidden links, and links touching hidden entities, stay hidden
@@ -608,7 +609,7 @@ select lives_ok($$ select delete_folder(current_setting('tests.outer')::uuid) $$
 select is((select parent_id from entity_folders where id = current_setting('tests.inner')::uuid), null, 'T33: its subfolder moved up to the top level');
 select is((select folder_id from entities where id = tests.u('ent:port')), null, 'T33: its entities moved up to the top level');
 select is((select folder_id from entities where id = tests.u('ent:mira')), current_setting('tests.inner')::uuid, 'T33: entities in the subfolder stay in the subfolder');
-select is((select count(*)::int from entities where campaign_id = tests.u('campaign')), 3, 'T33: no entity was deleted');
+select is((select count(*)::int from entities where campaign_id = tests.u('campaign') and type <> 'party'), 3, 'T33: no entity was deleted');
 reset role;
 
 -- T34: players cannot create, move or delete anything
@@ -738,6 +739,124 @@ select throws_ok($$ update srd_spells set level = 0 where id = 'test-spell' $$, 
 reset role;
 select tests.act_as_anon();
 select is((select count(*)::int from srd_spells), 0, 'T40: a signed-out visitor reads nothing');
+reset role;
+
+-- T41 to T46: the Party, wallets, the XP and coin ledger (P2-6, 0012_party_ledger.sql) ------------------------
+-- fixture: the campaign's official Party (made with the campaign); Brannoc (player) is in it. Kael (roller) and
+-- Wren (player) join it on creation, making three members. Pip joins nothing: his campaign turned auto-join off.
+select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+insert into characters (id, campaign_id, owner_id, name) values
+  (tests.u('char:kael'), tests.u('campaign'), tests.u('user:roller'), 'Kael'),
+  (tests.u('char:wren'), tests.u('campaign'), tests.u('user:player'), 'Wren');
+insert into campaigns (id, owner_id, name, settings) values (tests.u('campaign:solo'), tests.u('user:dm'), 'Solo campaign', '{"autoJoinParty": false}');
+insert into members (campaign_id, user_id, role) values (tests.u('campaign:solo'), tests.u('user:player'), 'player');
+insert into characters (id, campaign_id, owner_id, name) values (tests.u('char:pip'), tests.u('campaign:solo'), tests.u('user:player'), 'Pip');
+create function tests.party() returns uuid language sql stable security definer set search_path = public as $$ select official_party(tests.u('campaign')) $$;
+grant execute on function tests.party() to anon, authenticated, service_role;
+
+-- T41: only DMs award; players cannot call award_xp, award_coins, split_party_gold or withdraw_from_party
+select tests.act_as('player');
+select throws_ok($$ select award_xp('character', tests.u('char:brannoc'), 1000, 'quest') $$, '42501', 'Only the DM can do that', 'T41: a player cannot award XP');
+select throws_ok($$ select award_xp('party', tests.party(), 1000, 'quest') $$, '42501', 'Only the DM can do that', 'T41: a player cannot award XP to the party');
+select throws_ok($$ select award_coins('character', tests.u('char:brannoc'), '{"pp": 100}') $$, '42501', 'Only the DM can do that', 'T41: a player cannot award coins');
+select throws_ok($$ select split_party_gold(tests.party()) $$, '42501', 'Only the DM can do that', 'T41: a player cannot split the party pool');
+select throws_ok($$ select withdraw_from_party(tests.u('char:brannoc'), '{"gp": 1}') $$, '42501', 'Only the DM can do that', 'T41: a player cannot withdraw from the party pool');
+reset role;
+select tests.act_as('outsider');
+select throws_ok($$ select award_coins('party', tests.party(), '{"gp": 5}') $$, '42501', 'Only the DM can do that', 'T41: nor can someone outside the campaign');
+reset role;
+select tests.act_as_anon();
+select throws_ok($$ select award_xp('party', tests.party(), 1000, 'quest') $$, '42501', null, 'T41: nor a signed-out visitor');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ select award_xp('character', tests.u('char:brannoc'), 0, 'quest') $$, '22023', 'Award from 1 to 1,000,000 XP', 'T41: an award is at least 1 XP');
+select throws_ok($$ select award_xp('character', tests.u('char:brannoc'), 10, 'bribe') $$, '22023', 'The source is encounter, quest, milestone or other', 'T41: the source is one of the four');
+select throws_ok($$ select award_coins('character', tests.u('char:brannoc'), '{"ep": 3}') $$, '22023', 'Coins are cp, sp, gp or pp (not ep)', 'T41: coins are cp, sp, gp or pp');
+select throws_ok($$ select award_coins('character', tests.u('char:brannoc'), '{"gp": -3}') $$, '22023', 'Each coin amount is a whole number from 0 to 1,000,000', 'T41: an award of coins is never negative');
+select lives_ok($$ select award_xp('character', tests.u('char:brannoc'), 50, 'encounter', 'Goblin ambush') $$, 'T41: the DM awards XP to a character');
+reset role;
+select is((select xp from characters where id = tests.u('char:brannoc')), 14050, 'T41: the character gets all of it');
+select is((select note || ' / ' || source from ledger where target_id = tests.u('char:brannoc') and amount = '{"xp": 50}'), 'Goblin ambush / encounter', 'T41: the ledger records the source and the note');
+
+-- T42: 100 XP to a 3-member party gives 33 each, one ledger row per member and a remainder row of 1
+select is((select count(*)::int from party_members where party_id = tests.party()), 3, 'T42: the party has three members');
+select tests.act_as('dm');
+select lives_ok($$ select award_xp('party', tests.party(), 100, 'quest', 'Rescued the miller') $$, 'T42: the DM awards 100 XP to the party');
+reset role;
+select is((select array_agg(xp order by name) from characters where id in (tests.u('char:brannoc'), tests.u('char:kael'), tests.u('char:wren'))), array[14083, 33, 33], 'T42: each member gets 33');
+select is((select count(*)::int from ledger where kind = 'xp' and target_type = 'character' and note = 'Rescued the miller' and amount = '{"xp": 33}'), 3, 'T42: one ledger row per member');
+select is((select (amount ->> 'remainder')::int from ledger where target_type = 'party' and target_id = tests.party() and kind = 'xp'), 1, 'T42: a note row records the remainder of 1');
+select is((select (amount ->> 'xp')::int from ledger where target_type = 'party' and target_id = tests.party() and kind = 'xp'), 0, 'T42: the remainder is not awarded');
+select tests.act_as('dm');
+select lives_ok($$ select award_xp('party', tests.party(), 2700, 'milestone') $$, 'T42: the DM awards 2700 XP to the party');
+reset role;
+select is((select array_agg(xp || ':' || level_applied order by name) from characters where id in (tests.u('char:kael'), tests.u('char:wren'))), array['933:1', '933:1'], 'T42: 933 XP is level 3 by XP, with the sheet still at level 1 (two levels pending)');
+select is((select count(*)::int from characters ch where xp <> (select coalesce(sum((amount ->> 'xp')::int), 0) from ledger l where l.kind = 'xp' and l.target_type = 'character' and l.target_id = ch.id)), 0, 'T42: every character''s XP is the sum of their ledger rows');
+
+-- T43: the ledger cannot be changed or deleted, by any role
+select tests.act_as('player');
+select throws_ok($$ update ledger set amount = '{"xp": 99999}' where target_id = tests.u('char:brannoc') $$, '42501', null, 'T43: a player cannot change the ledger');
+select throws_ok($$ insert into ledger (campaign_id, kind, target_type, target_id, amount, source) values (tests.u('campaign'), 'xp', 'character', tests.u('char:brannoc'), '{"xp": 99999}', 'other') $$, '42501', null, 'T43: a player cannot write to the ledger');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ delete from ledger where target_id = tests.u('char:brannoc') $$, '42501', null, 'T43: nor can the DM delete from it');
+reset role;
+select tests.act_as_service();
+select throws_ok($$ update ledger set note = 'edited' where target_id = tests.u('char:brannoc') $$, 'P0001', 'The ledger is append-only: entries cannot be changed or deleted', 'T43: nor the service role change it');
+select throws_ok($$ delete from ledger where target_id = tests.u('char:brannoc') $$, 'P0001', 'The ledger is append-only: entries cannot be changed or deleted', 'T43: nor the service role delete from it');
+reset role;
+select throws_ok($$ delete from ledger $$, 'P0001', 'The ledger is append-only: entries cannot be changed or deleted', 'T43: nor the database owner');
+
+-- T44: wallets never go negative; deposits move coins from your own wallet to the pool; totals match the ledger
+select tests.act_as('dm');
+select lives_ok($$ select award_coins('character', tests.u('char:brannoc'), '{"gp": 10, "sp": 4}', 'Goblin purse') $$, 'T44: the DM gives Brannoc 10 gp 4 sp');
+reset role;
+select tests.act_as('player');
+select is((select gp || ' gp ' || sp || ' sp' from wallets where owner_id = tests.u('char:brannoc')), '10 gp 4 sp', 'T44: the player reads their own wallet');
+select throws_ok($$ select deposit_to_party(tests.u('char:brannoc'), '{"gp": 11}') $$, '22023', 'Not enough coins: the wallet holds less than that', 'T44: a deposit larger than the wallet fails');
+select throws_ok($$ select deposit_to_party(tests.u('char:kael'), '{"gp": 1}') $$, '42501', 'You can only deposit from your own character', 'T44: a player cannot deposit from someone else''s character');
+select throws_ok($$ update wallets set gp = 1000 where owner_id = tests.u('char:brannoc') $$, '42501', null, 'T44: a player cannot write to a wallet');
+select lives_ok($$ select deposit_to_party(tests.u('char:brannoc'), '{"gp": 7, "sp": 1}') $$, 'T44: a player deposits 7 gp 1 sp');
+select is((select gp || ' gp ' || sp || ' sp' from wallets where owner_type = 'party' and owner_id = tests.party()), '7 gp 1 sp', 'T44: the player reads the party pool, which holds the deposit');
+select is((select gp || ' gp ' || sp || ' sp' from wallets where owner_id = tests.u('char:brannoc')), '3 gp 3 sp', 'T44: and their wallet holds the rest');
+select is((select count(*)::int from wallets where owner_id = tests.u('char:kael')), 0, 'T44: a player cannot read another player''s wallet');
+select is((select count(*)::int from ledger where target_id = tests.u('char:kael')), 0, 'T44: nor the ledger rows about another player''s character');
+reset role;
+select throws_ok($$ update wallets set gp = -1 where owner_id = tests.u('char:brannoc') $$, '23514', null, 'T44: a wallet never holds a negative number of coins');
+select tests.act_as('dm');
+select lives_ok($$ select split_party_gold(tests.party()) $$, 'T44: the DM splits the pool (7 gp 1 sp) among the three members');
+reset role;
+select is((select gp || ' gp ' || sp || ' sp' from wallets where owner_type = 'party' and owner_id = tests.party()), '1 gp 1 sp', 'T44: what does not divide evenly stays in the pool');
+select is((select array_agg(gp || ' gp ' || sp || ' sp' order by owner_id) from wallets where owner_id in (tests.u('char:kael'), tests.u('char:wren'))), array['2 gp 0 sp', '2 gp 0 sp'], 'T44: each member gets 2 gp');
+select is((select amount -> 'remainder' from ledger where kind = 'coin' and target_id = tests.party() and amount ? 'remainder'), '{"cp": 0, "sp": 1, "gp": 1, "pp": 0}'::jsonb, 'T44: a note row records the remainder');
+select is((select count(*)::int from wallets w where (w.cp, w.sp, w.gp, w.pp) <> (
+    select coalesce(sum((amount ->> 'cp')::int), 0), coalesce(sum((amount ->> 'sp')::int), 0), coalesce(sum((amount ->> 'gp')::int), 0), coalesce(sum((amount ->> 'pp')::int), 0)
+    from ledger l where l.kind = 'coin' and l.target_type = w.owner_type and l.target_id = w.owner_id)), 0, 'T44: every wallet is the sum of its ledger rows');
+
+-- T45: one official party per campaign, made with it; new characters join it unless the campaign says not to
+select is((select count(*)::int from parties p join entities e on e.id = p.entity_id where p.campaign_id = tests.u('campaign') and p.is_official and e.type = 'party'), 1, 'T45: a new campaign has its official Party, a party entity');
+select is((select count(*)::int from party_members where party_id = tests.party() and character_id in (tests.u('char:kael'), tests.u('char:wren'))), 2, 'T45: new characters join the official Party');
+select is((select count(*)::int from party_members where character_id = tests.u('char:pip')), 0, 'T45: unless the campaign turned autoJoinParty off');
+select tests.act_as('dm');
+select throws_ok($$ with e as (insert into entities (campaign_id, type, name) values (tests.u('campaign'), 'party', 'Rival party') returning id) insert into parties (entity_id, campaign_id, is_official) select id, tests.u('campaign'), true from e $$, '23505', null, 'T45: a campaign has only one official Party');
+select lives_ok($$ with e as (insert into entities (id, campaign_id, type, name) values (tests.u('party:scouts'), tests.u('campaign'), 'party', 'Scouting party') returning id) insert into parties (entity_id, campaign_id) select id, tests.u('campaign') from e $$, 'T45: the DM can add other parties');
+select throws_ok($$ select delete_entity(tests.party()) $$, 'P0001', 'The official Party cannot be deleted', 'T45: the official Party cannot be deleted');
+reset role;
+select tests.act_as('player');
+select throws_ok($$ insert into party_members (party_id, character_id) values (tests.u('party:scouts'), tests.u('char:wren')) $$, '42501', null, 'T45: a player cannot add characters to a party');
+reset role;
+
+-- T46: players cannot change XP or the applied level themselves
+select tests.act_as('player');
+select throws_ok($$ update characters set xp = 355000 where id = tests.u('char:wren') $$, 'P0001', 'Only the DM can change XP', 'T46: a player cannot change their XP');
+select throws_ok($$ update characters set level_applied = 3 where id = tests.u('char:wren') $$, 'P0001', 'Only the DM can change the applied level', 'T46: a player cannot apply levels themself');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ do $do$ begin
+    update characters set level_applied = 3 where id = tests.u('char:wren');
+    if not found then raise exception 'update did not apply'; end if;
+  end $do$ $$, 'T46: the DM can set the applied level');
+select throws_ok($$ update characters set level_applied = 21 where id = tests.u('char:wren') $$, '23514', null, 'T46: the applied level runs from 1 to 20');
 reset role;
 
 select * from finish();

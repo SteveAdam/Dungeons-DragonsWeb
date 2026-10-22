@@ -125,6 +125,42 @@ describe('the SRD spells (SRD 5.2.1 pages 107 to 175)', () => {
     });
   });
 
+  it('include all 42 level 3 spells, plus Greater Restoration and Regenerate for the library mockups', () => {
+    expect(SRD_SPELLS.filter(s => s.level === 3)).toHaveLength(42);
+    expect(SRD_SPELLS.filter(s => s.level > 3).map(s => [s.name, s.level])).toEqual([
+      ['Greater Restoration', 5],
+      ['Regenerate', 7],
+    ]);
+    expect(SRD_SPELLS).toHaveLength(27 + 57 + 57 + 42 + 2);
+    for (const name of ['Cure Wounds', 'Lesser Restoration', 'Revivify', 'Greater Restoration', 'Regenerate']) {
+      expect(byName(name), name).toBeDefined();
+    }
+  });
+
+  it('read the level 3 and extra spells the ticket names', () => {
+    expect(byName('Fireball').mechanics).toEqual({
+      damage: { dice: '8d6', type: 'fire', perSlotLevel: '1d6' },
+      save: { ability: 'dex', onSuccess: 'half' },
+    });
+    expect(byName('Revivify').components).toEqual({
+      v: true,
+      s: true,
+      m: true,
+      materialText: 'a diamond worth 300+ GP, which the spell consumes',
+      costGp: 300,
+      consumed: true,
+    });
+    expect(byName('Greater Restoration').text.split('\n\n')[1].split('\n')).toEqual([
+      '• 1 Exhaustion level',
+      '• The Charmed or Petrified condition',
+      '• A curse, including the target’s Attunement to a cursed magic item',
+      '• Any reduction to one of the target’s ability scores',
+      '• Any reduction to the target’s Hit Point maximum',
+    ]);
+    // "4d8 + 15 Hit Points" is not one plain roll: Regenerate stays text only
+    expect(byName('Regenerate').mechanics).toBeUndefined();
+  });
+
   it('read the heading, casting time, range, components and duration', () => {
     const acid = all.find(s => s.name === 'Acid Arrow')!;
     expect([
