@@ -6,6 +6,7 @@ import { LoginPage } from './auth/LoginPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { DisplaySettingsControls } from './components/DisplaySettingsControls';
 import { DmModeIndicator } from './components/DmModeIndicator';
+import { SrdAttribution } from './components/SrdAttribution';
 import { DeskFrame, ICON_PROPS, IconLink, iconClasses } from './components/ui';
 import { CampaignHubPage } from './pages/CampaignHubPage';
 import { CampaignListPage } from './pages/CampaignListPage';
@@ -17,6 +18,7 @@ import styles from './App.module.css';
 // so the route and the page's code are dropped.
 const ThemePage = import.meta.env.DEV ? lazy(() => import('./pages/ThemePage')) : null;
 const OddsDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/OddsDevPage')) : null;
+const SrdDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/SrdDevPage')) : null;
 // The map view brings Leaflet; load it only when a map is opened.
 const MapViewPage = lazy(() => import('./pages/map/MapViewPage').then(m => ({ default: m.MapViewPage })));
 const CharacterSheetPage = lazy(() =>
@@ -63,7 +65,7 @@ function HeaderActions() {
 
 export function App() {
   return (
-    <DeskFrame brand={<Link to="/">D&D MANAGER</Link>} actions={<HeaderActions />}>
+    <DeskFrame brand={<Link to="/">D&D MANAGER</Link>} actions={<HeaderActions />} footer={<SrdAttribution />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -120,6 +122,16 @@ export function App() {
             element={
               <Suspense fallback={null}>
                 <OddsDevPage />
+              </Suspense>
+            }
+          />
+        )}
+        {SrdDevPage && (
+          <Route
+            path="/dev/srd"
+            element={
+              <Suspense fallback={null}>
+                <SrdDevPage />
               </Suspense>
             }
           />

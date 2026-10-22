@@ -1,0 +1,46 @@
+{
+  "source": "srd-5.2",
+  "coins": [
+    {
+      "id": "cp",
+      "name": "Copper Piece",
+      "abbreviation": "CP",
+      "source": "srd-5.2",
+      "valueInGpText": "1/100",
+      "valueInCp": 1
+    },
+    {
+      "id": "sp",
+      "name": "Silver Piece",
+      "abbreviation": "SP",
+      "source": "srd-5.2",
+      "valueInGpText": "1/10",
+      "valueInCp": 10
+    },
+    {
+      "id": "ep",
+      "name": "Electrum Piece",
+      "abbreviation": "EP",
+      "source": "srd-5.2",
+      "valueInGpText": "1/2",
+      "valueInCp": 50
+    },
+    {
+      "id": "gp",
+      "name": "Gold Piece",
+      "abbreviation": "GP",
+      "source": "srd-5.2",
+      "valueInGpText": "1",
+      "valueInCp": 100
+    },
+    {
+      "id": "pp",
+      "name": "Platinum Piece",
+      "abbreviation": "PP",
+      "source": "srd-5.2",
+      "valueInGpText": "10",
+      "valueInCp": 1000
+    }
+  ],
+  "coinsPerPound": 50
+}

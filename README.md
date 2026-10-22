@@ -13,9 +13,11 @@ apps/web/                 React + TypeScript + Vite app
   src/lib/storage         the only code that touches map images (P0-9; enforced by ESLint)
   src/hooks               TanStack Query hooks over src/data
   src/types/database.ts   generated from the schema (pnpm db:types)
-packages/rules-engine/    D&D 2024 rules (P1): core odds, bonus dice, effects, item requirements, terrain
+packages/rules-engine/    D&D 2024 rules (P1): core odds, bonus dice, effects, item requirements, terrain;
+                          armour class, weapon profiles and coins (P2-3)
+packages/srd-data/        SRD 5.2.1 weapons, armour and coins as zod-checked JSON, made from the SRD text (P2-3)
 supabase/
-  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters, 0006 map tools, 0007 entities
+  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters, 0006 map tools, 0007 entities, 0008 roll security, 0009 SRD equipment
   tests/database/         pgTAP suite for every policy
 scripts/                  mutation check (RLS suite) and token check (CSS)
 docs/                     design notes, including the P0-5 schema review
@@ -42,14 +44,15 @@ pnpm dev                                # http://localhost:5173
 | `pnpm check:tokens`                          | Fails if a CSS file other than `tokens.css` contains a hex colour  |
 | `pnpm db:start` / `db:stop`                  | Starts or stops the local Supabase stack                           |
 | `pnpm db:reset`                              | Rebuilds the local database from `migrations/` and `seed.sql`      |
-| `pnpm db:test`                               | pgTAP row level security suite (229 assertions)                    |
-| `pnpm db:test:mutations`                     | Removes each protection in turn; all 34 must be caught             |
+| `pnpm db:test`                               | pgTAP row level security suite (237 assertions)                    |
+| `pnpm db:test:mutations`                     | Removes each protection in turn; all 35 must be caught             |
 | `pnpm db:seed:dev <email>`                   | Gives that local player account Brannoc (P1-7 golden fixture)      |
 | `pnpm db:types`                              | Regenerates `apps/web/src/types/database.ts` from the local schema |
 | `pnpm db:push`                               | Applies new migrations to the linked hosted project                |
 | `pnpm functions:serve`                       | Runs the roll Edge Function on the local stack (needs Docker)      |
 | `pnpm test:functions` / `functions:check`    | Deno tests, type check and lint for the Edge Functions             |
 | `pnpm engine:sync` / `engine:check`          | Copies the rules engine into the Edge Functions / checks the copy  |
+| `pnpm srd:import`                            | Loads the SRD weapons and armour into the local database           |
 
 ## Hosted Supabase projects
 
@@ -243,6 +246,27 @@ factions, lore, player characters, the party and sessions (`0007_entities.sql`).
 - New entities start hidden. Players see a flat, searchable list of revealed entities, and a relationship only when
   it is not hidden and both ends are revealed. Every write goes through DM-only database functions.
 - A manual two-account test is in `docs/p2-1-manual-test.md`.
+
+## SRD equipment: weapons, armour and coins (P2-3)
+
+Only SRD 5.2.1 content (CC-BY-4.0) is bundled, and none of it is typed in from memory:
+
+- `packages/srd-data/source` holds the SRD's own table text (the Weapons, Armor and Coin Values tables and the
+  attribution statement), copied from the official PDF. `src/convert.ts` turns it into `data/*.json`;
+  `pnpm -C packages/srd-data build` (part of `pnpm build`) fails if a record is invalid under the zod schemas in
+  `src/schemas.ts` or differs from what the source text gives. Every record has `id`, `name` and
+  `source: 'srd-5.2'`; the Properties and Armor Class columns are kept as printed, for checking by eye.
+- `0009_srd_equipment.sql` adds `srd_weapons` and `srd_armor`: readable by any signed-in user, writable by no one
+  but the service role. `pnpm srd:import` loads them (local stack by default; for a hosted project set
+  `SRD_IMPORT_URL` and `SRD_IMPORT_SERVICE_KEY`). Running it again updates the rows in place.
+- The rules engine adds `armorClass` (light armour adds Dexterity, medium up to +2, heavy none, a shield +2 with
+  training; a Strength score below the armour's costs 10 feet of speed through the P1-3 requirement rules; stealth
+  disadvantage as a note), `weaponProfile` (Finesse takes the better of Strength and Dexterity, other ranged weapons
+  Dexterity, other melee weapons Strength even when thrown; versatile two-handed damage, reach, range, mastery, and
+  disadvantage for a Heavy weapon below 13) and coins (`totalInCopper`, `canAfford`, `makeChange`, `pay`,
+  `formatPurse`; electrum is in the SRD, so it is in, but change is given without it unless asked).
+- `/dev/srd` (development only) lists every record in the SRD's own layout with its source tag.
+- The attribution statement is in `ATTRIBUTION.md` and in the footer of every page (`App.test.tsx` checks each route).
 
 ## Rules content licence
 

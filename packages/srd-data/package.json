@@ -1,0 +1,29 @@
+{
+  "name": "@dnd-manager/srd-data",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SRD 5.2.1 equipment data (CC-BY-4.0): weapons, armour and coins, validated with zod.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "convert": "node scripts/data.ts",
+    "build": "node scripts/data.ts --check",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "@dnd-manager/rules-engine": "workspace:*",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.3",
+    "eslint": "^10.13.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
+  }
+}

@@ -24,7 +24,8 @@
     "engine:check": "node scripts/sync-engine.mjs --check",
     "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/roll && deno lint --config supabase/functions/deno.json supabase/functions/roll",
     "functions:serve": "supabase functions serve roll",
-    "test:functions": "deno test --no-prompt --config supabase/functions/deno.json supabase/functions"
+    "test:functions": "deno test --no-prompt --config supabase/functions/deno.json supabase/functions",
+    "srd:import": "node packages/srd-data/scripts/import.ts"
   },
   "devDependencies": {
     "prettier": "^3.9.10",

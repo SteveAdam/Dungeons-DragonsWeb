@@ -1,0 +1,210 @@
+[
+  {
+    "id": "padded-armor",
+    "name": "Padded Armor",
+    "source": "srd-5.2",
+    "category": "light",
+    "baseAc": 11,
+    "acText": "11 + Dex modifier",
+    "strength": null,
+    "stealthDisadvantage": true,
+    "donDoff": "1 Minute to Don or Doff",
+    "weightLb": 8,
+    "cost": {
+      "amount": 5,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "leather-armor",
+    "name": "Leather Armor",
+    "source": "srd-5.2",
+    "category": "light",
+    "baseAc": 11,
+    "acText": "11 + Dex modifier",
+    "strength": null,
+    "stealthDisadvantage": false,
+    "donDoff": "1 Minute to Don or Doff",
+    "weightLb": 10,
+    "cost": {
+      "amount": 10,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "studded-leather-armor",
+    "name": "Studded Leather Armor",
+    "source": "srd-5.2",
+    "category": "light",
+    "baseAc": 12,
+    "acText": "12 + Dex modifier",
+    "strength": null,
+    "stealthDisadvantage": false,
+    "donDoff": "1 Minute to Don or Doff",
+    "weightLb": 13,
+    "cost": {
+      "amount": 45,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "hide-armor",
+    "name": "Hide Armor",
+    "source": "srd-5.2",
+    "category": "medium",
+    "baseAc": 12,
+    "acText": "12 + Dex modifier (max 2)",
+    "strength": null,
+    "stealthDisadvantage": false,
+    "donDoff": "5 Minutes to Don and 1 Minute to Doff",
+    "weightLb": 12,
+    "cost": {
+      "amount": 10,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "chain-shirt",
+    "name": "Chain Shirt",
+    "source": "srd-5.2",
+    "category": "medium",
+    "baseAc": 13,
+    "acText": "13 + Dex modifier (max 2)",
+    "strength": null,
+    "stealthDisadvantage": false,
+    "donDoff": "5 Minutes to Don and 1 Minute to Doff",
+    "weightLb": 20,
+    "cost": {
+      "amount": 50,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "scale-mail",
+    "name": "Scale Mail",
+    "source": "srd-5.2",
+    "category": "medium",
+    "baseAc": 14,
+    "acText": "14 + Dex modifier (max 2)",
+    "strength": null,
+    "stealthDisadvantage": true,
+    "donDoff": "5 Minutes to Don and 1 Minute to Doff",
+    "weightLb": 45,
+    "cost": {
+      "amount": 50,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "breastplate",
+    "name": "Breastplate",
+    "source": "srd-5.2",
+    "category": "medium",
+    "baseAc": 14,
+    "acText": "14 + Dex modifier (max 2)",
+    "strength": null,
+    "stealthDisadvantage": false,
+    "donDoff": "5 Minutes to Don and 1 Minute to Doff",
+    "weightLb": 20,
+    "cost": {
+      "amount": 400,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "half-plate-armor",
+    "name": "Half Plate Armor",
+    "source": "srd-5.2",
+    "category": "medium",
+    "baseAc": 15,
+    "acText": "15 + Dex modifier (max 2)",
+    "strength": null,
+    "stealthDisadvantage": true,
+    "donDoff": "5 Minutes to Don and 1 Minute to Doff",
+    "weightLb": 40,
+    "cost": {
+      "amount": 750,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "ring-mail",
+    "name": "Ring Mail",
+    "source": "srd-5.2",
+    "category": "heavy",
+    "baseAc": 14,
+    "acText": "14",
+    "strength": null,
+    "stealthDisadvantage": true,
+    "donDoff": "10 Minutes to Don and 5 Minutes to Doff",
+    "weightLb": 40,
+    "cost": {
+      "amount": 30,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "chain-mail",
+    "name": "Chain Mail",
+    "source": "srd-5.2",
+    "category": "heavy",
+    "baseAc": 16,
+    "acText": "16",
+    "strength": 13,
+    "stealthDisadvantage": true,
+    "donDoff": "10 Minutes to Don and 5 Minutes to Doff",
+    "weightLb": 55,
+    "cost": {
+      "amount": 75,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "splint-armor",
+    "name": "Splint Armor",
+    "source": "srd-5.2",
+    "category": "heavy",
+    "baseAc": 17,
+    "acText": "17",
+    "strength": 15,
+    "stealthDisadvantage": true,
+    "donDoff": "10 Minutes to Don and 5 Minutes to Doff",
+    "weightLb": 60,
+    "cost": {
+      "amount": 200,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "plate-armor",
+    "name": "Plate Armor",
+    "source": "srd-5.2",
+    "category": "heavy",
+    "baseAc": 18,
+    "acText": "18",
+    "strength": 15,
+    "stealthDisadvantage": true,
+    "donDoff": "10 Minutes to Don and 5 Minutes to Doff",
+    "weightLb": 65,
+    "cost": {
+      "amount": 1500,
+      "coin": "gp"
+    }
+  },
+  {
+    "id": "shield",
+    "name": "Shield",
+    "source": "srd-5.2",
+    "category": "shield",
+    "baseAc": 2,
+    "acText": "+2",
+    "strength": null,
+    "stealthDisadvantage": false,
+    "donDoff": "Utilize Action to Don or Doff",
+    "weightLb": 6,
+    "cost": {
+      "amount": 10,
+      "coin": "gp"
+    }
+  }
+]

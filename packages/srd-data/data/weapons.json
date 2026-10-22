@@ -1,0 +1,912 @@
+[
+  {
+    "id": "club",
+    "name": "Club",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d4",
+      "type": "bludgeoning"
+    },
+    "properties": [
+      "light"
+    ],
+    "mastery": "slow",
+    "weightLb": 2,
+    "cost": {
+      "amount": 1,
+      "coin": "sp"
+    },
+    "propertiesText": "Light"
+  },
+  {
+    "id": "dagger",
+    "name": "Dagger",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d4",
+      "type": "piercing"
+    },
+    "properties": [
+      "finesse",
+      "light",
+      "thrown"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "mastery": "nick",
+    "weightLb": 1,
+    "cost": {
+      "amount": 2,
+      "coin": "gp"
+    },
+    "propertiesText": "Finesse, Light, Thrown (Range 20/60)"
+  },
+  {
+    "id": "greatclub",
+    "name": "Greatclub",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d8",
+      "type": "bludgeoning"
+    },
+    "properties": [
+      "two-handed"
+    ],
+    "mastery": "push",
+    "weightLb": 10,
+    "cost": {
+      "amount": 2,
+      "coin": "sp"
+    },
+    "propertiesText": "Two-Handed"
+  },
+  {
+    "id": "handaxe",
+    "name": "Handaxe",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d6",
+      "type": "slashing"
+    },
+    "properties": [
+      "light",
+      "thrown"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "mastery": "vex",
+    "weightLb": 2,
+    "cost": {
+      "amount": 5,
+      "coin": "gp"
+    },
+    "propertiesText": "Light, Thrown (Range 20/60)"
+  },
+  {
+    "id": "javelin",
+    "name": "Javelin",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "properties": [
+      "thrown"
+    ],
+    "range": {
+      "normal": 30,
+      "long": 120
+    },
+    "mastery": "slow",
+    "weightLb": 2,
+    "cost": {
+      "amount": 5,
+      "coin": "sp"
+    },
+    "propertiesText": "Thrown (Range 30/120)"
+  },
+  {
+    "id": "light-hammer",
+    "name": "Light Hammer",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d4",
+      "type": "bludgeoning"
+    },
+    "properties": [
+      "light",
+      "thrown"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "mastery": "nick",
+    "weightLb": 2,
+    "cost": {
+      "amount": 2,
+      "coin": "gp"
+    },
+    "propertiesText": "Light, Thrown (Range 20/60)"
+  },
+  {
+    "id": "mace",
+    "name": "Mace",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d6",
+      "type": "bludgeoning"
+    },
+    "properties": [],
+    "mastery": "sap",
+    "weightLb": 4,
+    "cost": {
+      "amount": 5,
+      "coin": "gp"
+    },
+    "propertiesText": "--"
+  },
+  {
+    "id": "quarterstaff",
+    "name": "Quarterstaff",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d6",
+      "type": "bludgeoning"
+    },
+    "properties": [
+      "versatile"
+    ],
+    "versatileDice": "1d8",
+    "mastery": "topple",
+    "weightLb": 4,
+    "cost": {
+      "amount": 2,
+      "coin": "sp"
+    },
+    "propertiesText": "Versatile (1d8)"
+  },
+  {
+    "id": "sickle",
+    "name": "Sickle",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d4",
+      "type": "slashing"
+    },
+    "properties": [
+      "light"
+    ],
+    "mastery": "nick",
+    "weightLb": 2,
+    "cost": {
+      "amount": 1,
+      "coin": "gp"
+    },
+    "propertiesText": "Light"
+  },
+  {
+    "id": "spear",
+    "name": "Spear",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "properties": [
+      "thrown",
+      "versatile"
+    ],
+    "versatileDice": "1d8",
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "mastery": "sap",
+    "weightLb": 3,
+    "cost": {
+      "amount": 1,
+      "coin": "gp"
+    },
+    "propertiesText": "Thrown (Range 20/60), Versatile (1d8)"
+  },
+  {
+    "id": "dart",
+    "name": "Dart",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1d4",
+      "type": "piercing"
+    },
+    "properties": [
+      "finesse",
+      "thrown"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "mastery": "vex",
+    "weightLb": 0.25,
+    "cost": {
+      "amount": 5,
+      "coin": "cp"
+    },
+    "propertiesText": "Finesse, Thrown (Range 20/60)"
+  },
+  {
+    "id": "light-crossbow",
+    "name": "Light Crossbow",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "properties": [
+      "ammunition",
+      "loading",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 80,
+      "long": 320
+    },
+    "ammunition": "bolt",
+    "mastery": "slow",
+    "weightLb": 5,
+    "cost": {
+      "amount": 25,
+      "coin": "gp"
+    },
+    "propertiesText": "Ammunition (Range 80/320; Bolt), Loading, Two-Handed"
+  },
+  {
+    "id": "shortbow",
+    "name": "Shortbow",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "properties": [
+      "ammunition",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 80,
+      "long": 320
+    },
+    "ammunition": "arrow",
+    "mastery": "vex",
+    "weightLb": 2,
+    "cost": {
+      "amount": 25,
+      "coin": "gp"
+    },
+    "propertiesText": "Ammunition (Range 80/320; Arrow), Two-Handed"
+  },
+  {
+    "id": "sling",
+    "name": "Sling",
+    "source": "srd-5.2",
+    "category": "simple",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1d4",
+      "type": "bludgeoning"
+    },
+    "properties": [
+      "ammunition"
+    ],
+    "range": {
+      "normal": 30,
+      "long": 120
+    },
+    "ammunition": "bullet",
+    "mastery": "slow",
+    "weightLb": null,
+    "cost": {
+      "amount": 1,
+      "coin": "sp"
+    },
+    "propertiesText": "Ammunition (Range 30/120; Bullet)"
+  },
+  {
+    "id": "battleaxe",
+    "name": "Battleaxe",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d8",
+      "type": "slashing"
+    },
+    "properties": [
+      "versatile"
+    ],
+    "versatileDice": "1d10",
+    "mastery": "topple",
+    "weightLb": 4,
+    "cost": {
+      "amount": 10,
+      "coin": "gp"
+    },
+    "propertiesText": "Versatile (1d10)"
+  },
+  {
+    "id": "flail",
+    "name": "Flail",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d8",
+      "type": "bludgeoning"
+    },
+    "properties": [],
+    "mastery": "sap",
+    "weightLb": 2,
+    "cost": {
+      "amount": 10,
+      "coin": "gp"
+    },
+    "propertiesText": "--"
+  },
+  {
+    "id": "glaive",
+    "name": "Glaive",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d10",
+      "type": "slashing"
+    },
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "mastery": "graze",
+    "weightLb": 6,
+    "cost": {
+      "amount": 20,
+      "coin": "gp"
+    },
+    "propertiesText": "Heavy, Reach, Two-Handed"
+  },
+  {
+    "id": "greataxe",
+    "name": "Greataxe",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d12",
+      "type": "slashing"
+    },
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "mastery": "cleave",
+    "weightLb": 7,
+    "cost": {
+      "amount": 30,
+      "coin": "gp"
+    },
+    "propertiesText": "Heavy, Two-Handed"
+  },
+  {
+    "id": "greatsword",
+    "name": "Greatsword",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "2d6",
+      "type": "slashing"
+    },
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "mastery": "graze",
+    "weightLb": 6,
+    "cost": {
+      "amount": 50,
+      "coin": "gp"
+    },
+    "propertiesText": "Heavy, Two-Handed"
+  },
+  {
+    "id": "halberd",
+    "name": "Halberd",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d10",
+      "type": "slashing"
+    },
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "mastery": "cleave",
+    "weightLb": 6,
+    "cost": {
+      "amount": 20,
+      "coin": "gp"
+    },
+    "propertiesText": "Heavy, Reach, Two-Handed"
+  },
+  {
+    "id": "lance",
+    "name": "Lance",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "mastery": "topple",
+    "weightLb": 6,
+    "cost": {
+      "amount": 10,
+      "coin": "gp"
+    },
+    "propertiesText": "Heavy, Reach, Two-Handed (unless mounted)",
+    "notes": [
+      "Two-Handed unless mounted"
+    ]
+  },
+  {
+    "id": "longsword",
+    "name": "Longsword",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d8",
+      "type": "slashing"
+    },
+    "properties": [
+      "versatile"
+    ],
+    "versatileDice": "1d10",
+    "mastery": "sap",
+    "weightLb": 3,
+    "cost": {
+      "amount": 15,
+      "coin": "gp"
+    },
+    "propertiesText": "Versatile (1d10)"
+  },
+  {
+    "id": "maul",
+    "name": "Maul",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "2d6",
+      "type": "bludgeoning"
+    },
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "mastery": "topple",
+    "weightLb": 10,
+    "cost": {
+      "amount": 10,
+      "coin": "gp"
+    },
+    "propertiesText": "Heavy, Two-Handed"
+  },
+  {
+    "id": "morningstar",
+    "name": "Morningstar",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "properties": [],
+    "mastery": "sap",
+    "weightLb": 4,
+    "cost": {
+      "amount": 15,
+      "coin": "gp"
+    },
+    "propertiesText": "--"
+  },
+  {
+    "id": "pike",
+    "name": "Pike",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "mastery": "push",
+    "weightLb": 18,
+    "cost": {
+      "amount": 5,
+      "coin": "gp"
+    },
+    "propertiesText": "Heavy, Reach, Two-Handed"
+  },
+  {
+    "id": "rapier",
+    "name": "Rapier",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "properties": [
+      "finesse"
+    ],
+    "mastery": "vex",
+    "weightLb": 2,
+    "cost": {
+      "amount": 25,
+      "coin": "gp"
+    },
+    "propertiesText": "Finesse"
+  },
+  {
+    "id": "scimitar",
+    "name": "Scimitar",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d6",
+      "type": "slashing"
+    },
+    "properties": [
+      "finesse",
+      "light"
+    ],
+    "mastery": "nick",
+    "weightLb": 3,
+    "cost": {
+      "amount": 25,
+      "coin": "gp"
+    },
+    "propertiesText": "Finesse, Light"
+  },
+  {
+    "id": "shortsword",
+    "name": "Shortsword",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "properties": [
+      "finesse",
+      "light"
+    ],
+    "mastery": "vex",
+    "weightLb": 2,
+    "cost": {
+      "amount": 10,
+      "coin": "gp"
+    },
+    "propertiesText": "Finesse, Light"
+  },
+  {
+    "id": "trident",
+    "name": "Trident",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "properties": [
+      "thrown",
+      "versatile"
+    ],
+    "versatileDice": "1d10",
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "mastery": "topple",
+    "weightLb": 4,
+    "cost": {
+      "amount": 5,
+      "coin": "gp"
+    },
+    "propertiesText": "Thrown (Range 20/60), Versatile (1d10)"
+  },
+  {
+    "id": "warhammer",
+    "name": "Warhammer",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d8",
+      "type": "bludgeoning"
+    },
+    "properties": [
+      "versatile"
+    ],
+    "versatileDice": "1d10",
+    "mastery": "push",
+    "weightLb": 5,
+    "cost": {
+      "amount": 15,
+      "coin": "gp"
+    },
+    "propertiesText": "Versatile (1d10)"
+  },
+  {
+    "id": "war-pick",
+    "name": "War Pick",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "properties": [
+      "versatile"
+    ],
+    "versatileDice": "1d10",
+    "mastery": "sap",
+    "weightLb": 2,
+    "cost": {
+      "amount": 5,
+      "coin": "gp"
+    },
+    "propertiesText": "Versatile (1d10)"
+  },
+  {
+    "id": "whip",
+    "name": "Whip",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "melee",
+    "damage": {
+      "dice": "1d4",
+      "type": "slashing"
+    },
+    "properties": [
+      "finesse",
+      "reach"
+    ],
+    "mastery": "slow",
+    "weightLb": 3,
+    "cost": {
+      "amount": 2,
+      "coin": "gp"
+    },
+    "propertiesText": "Finesse, Reach"
+  },
+  {
+    "id": "blowgun",
+    "name": "Blowgun",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1",
+      "type": "piercing"
+    },
+    "properties": [
+      "ammunition",
+      "loading"
+    ],
+    "range": {
+      "normal": 25,
+      "long": 100
+    },
+    "ammunition": "needle",
+    "mastery": "vex",
+    "weightLb": 1,
+    "cost": {
+      "amount": 10,
+      "coin": "gp"
+    },
+    "propertiesText": "Ammunition (Range 25/100; Needle), Loading"
+  },
+  {
+    "id": "hand-crossbow",
+    "name": "Hand Crossbow",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1d6",
+      "type": "piercing"
+    },
+    "properties": [
+      "ammunition",
+      "light",
+      "loading"
+    ],
+    "range": {
+      "normal": 30,
+      "long": 120
+    },
+    "ammunition": "bolt",
+    "mastery": "vex",
+    "weightLb": 3,
+    "cost": {
+      "amount": 75,
+      "coin": "gp"
+    },
+    "propertiesText": "Ammunition (Range 30/120; Bolt), Light, Loading"
+  },
+  {
+    "id": "heavy-crossbow",
+    "name": "Heavy Crossbow",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "properties": [
+      "ammunition",
+      "heavy",
+      "loading",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 100,
+      "long": 400
+    },
+    "ammunition": "bolt",
+    "mastery": "push",
+    "weightLb": 18,
+    "cost": {
+      "amount": 50,
+      "coin": "gp"
+    },
+    "propertiesText": "Ammunition (Range 100/400; Bolt), Heavy, Loading, Two-Handed"
+  },
+  {
+    "id": "longbow",
+    "name": "Longbow",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1d8",
+      "type": "piercing"
+    },
+    "properties": [
+      "ammunition",
+      "heavy",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 150,
+      "long": 600
+    },
+    "ammunition": "arrow",
+    "mastery": "slow",
+    "weightLb": 2,
+    "cost": {
+      "amount": 50,
+      "coin": "gp"
+    },
+    "propertiesText": "Ammunition (Range 150/600; Arrow), Heavy, Two-Handed"
+  },
+  {
+    "id": "musket",
+    "name": "Musket",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1d12",
+      "type": "piercing"
+    },
+    "properties": [
+      "ammunition",
+      "loading",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 40,
+      "long": 120
+    },
+    "ammunition": "bullet",
+    "mastery": "slow",
+    "weightLb": 10,
+    "cost": {
+      "amount": 500,
+      "coin": "gp"
+    },
+    "propertiesText": "Ammunition (Range 40/120; Bullet), Loading, Two-Handed"
+  },
+  {
+    "id": "pistol",
+    "name": "Pistol",
+    "source": "srd-5.2",
+    "category": "martial",
+    "kind": "ranged",
+    "damage": {
+      "dice": "1d10",
+      "type": "piercing"
+    },
+    "properties": [
+      "ammunition",
+      "loading"
+    ],
+    "range": {
+      "normal": 30,
+      "long": 90
+    },
+    "ammunition": "bullet",
+    "mastery": "vex",
+    "weightLb": 3,
+    "cost": {
+      "amount": 250,
+      "coin": "gp"
+    },
+    "propertiesText": "Ammunition (Range 30/90; Bullet), Loading"
+  }
+]

@@ -1,0 +1,57 @@
+.page {
+  display: grid;
+  justify-items: center;
+  gap: 1.25rem;
+  padding: 1.5rem 1rem;
+}
+
+.card {
+  display: grid;
+  gap: 0.75rem;
+  width: min(64rem, 100%);
+  padding: 1.25rem;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+}
+
+/* the tables are wider than a phone: they scroll sideways inside the card, the page does not */
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.table th,
+.table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--rule-faint);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table thead th {
+  border-bottom: 2px solid var(--rule);
+  font-family: var(--font-ui);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.table tbody th {
+  white-space: nowrap;
+}
+
+.group {
+  padding-top: 0.8rem;
+  font-family: var(--font-heading);
+}
+
+.note {
+  margin: 0;
+}

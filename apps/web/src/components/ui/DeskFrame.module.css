@@ -59,3 +59,17 @@
     font-size: 1rem;
   }
 }
+
+/* small print on the desk, under every page */
+.footer {
+  padding: 0.75rem 1.25rem 1rem;
+  border-top: 1px solid var(--rule);
+  color: color-mix(in srgb, var(--paper) 70%, transparent);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.footer p {
+  margin: 0;
+}

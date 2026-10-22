@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T37) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T38) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(229);
+select plan(237);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -649,7 +649,7 @@ select lives_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), 
 select throws_ok($$ select roll_d20(tests.u('user:player'), tests.u('campaign'), null, 'check', 'Padded', 30, 14, 'normal', false, '[{"label":"Strength","value":3}]') $$, '22023', 'The bonus must add up to its breakdown', 'T35: a bonus that does not match its breakdown is refused');
 select throws_ok($$ select roll_d20(null, tests.u('campaign'), null, 'check', 'Nobody', 0, 14, 'normal') $$, '42501', 'Sign in first', 'T35: a roll must name who is rolling');
 reset role;
-select is((select bonus_breakdown from rolls where label = 'Athletics check'), '[{"label":"Strength","value":3},{"label":"Proficiency","value":3}]'::jsonb, 'T35: the breakdown is stored with the roll');
+select is((select bonus_breakdown from rolls where label = 'Athletics check' and campaign_id = tests.u('campaign')), '[{"label":"Strength","value":3},{"label":"Proficiency","value":3}]'::jsonb, 'T35: the breakdown is stored with the roll');
 
 -- T36: conditions and exhaustion are the DM's to set, and only real ones
 select tests.act_as('player');
@@ -679,6 +679,27 @@ select lives_ok($$ do $do$ begin
     if not found then raise exception 'update did not apply'; end if;
   end $do$ $$, 'T37: the DM moves the game clock');
 select throws_ok($$ update campaigns set game_seconds = -1 where id = tests.u('campaign') $$, '23514', null, 'T37: the game clock never runs below 0');
+reset role;
+
+-- T38: SRD equipment (P2-3, 0009_srd_equipment.sql): every signed-in user reads it, nobody writes it ---------
+select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+insert into srd_weapons (id, name, source, category, kind, data) values
+  ('test-club', 'Test Club', 'srd-5.2', 'simple', 'melee', '{"id":"test-club"}');
+insert into srd_armor (id, name, source, category, data) values
+  ('test-shield', 'Test Shield', 'srd-5.2', 'shield', '{"id":"test-shield"}');
+select throws_ok($$ insert into srd_weapons (id, name, source, category, kind, data) values ('home-brew', 'Home Brew', 'homebrew', 'simple', 'melee', '{"id":"home-brew"}') $$, '23514', null, 'T38: only SRD 5.2 content goes in');
+select tests.act_as('player');
+select is((select count(*)::int from srd_weapons where id = 'test-club'), 1, 'T38: a player reads SRD weapons');
+select is((select count(*)::int from srd_armor where id = 'test-shield'), 1, 'T38: a player reads SRD armour');
+select throws_ok($$ insert into srd_weapons (id, name, source, category, kind, data) values ('vorpal', 'Vorpal', 'srd-5.2', 'martial', 'melee', '{"id":"vorpal"}') $$, '42501', null, 'T38: a player cannot add a weapon');
+select throws_ok($$ update srd_weapons set data = data || '{"damage":{"dice":"9d12"}}' where id = 'test-club' $$, '42501', null, 'T38: a player cannot change a weapon');
+select throws_ok($$ delete from srd_armor where id = 'test-shield' $$, '42501', null, 'T38: a player cannot delete armour');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ update srd_armor set data = '{"id":"test-shield","baseAc":10}' where id = 'test-shield' $$, '42501', null, 'T38: nor can a DM change it');
+reset role;
+select tests.act_as_anon();
+select is((select count(*)::int from srd_weapons), 0, 'T38: a signed-out visitor reads nothing');
 reset role;
 
 select * from finish();

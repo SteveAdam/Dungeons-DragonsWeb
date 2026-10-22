@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T37) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T38) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -246,6 +246,14 @@ end $f$;`,
     why: 'a player could create a character with any ability scores they like',
     sql: `create policy "members create their own characters" on characters for insert to authenticated with check (is_member(campaign_id) and owner_id = auth.uid());`,
     fails: ['T26'],
+  },
+  {
+    name: 'SRD equipment writable by signed-in users (P2-3)',
+    why: 'a player could give the Club 9d12 damage for everyone',
+    sql: `grant insert, update, delete on srd_weapons, srd_armor to authenticated;
+create policy "anyone writes srd weapons" on srd_weapons for all to authenticated using (true) with check (true);
+create policy "anyone writes srd armor" on srd_armor for all to authenticated using (true) with check (true);`,
+    fails: ['T38'],
   },
   {
     name: 'hidden entities readable by members',

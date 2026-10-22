@@ -15,6 +15,15 @@ describe('DeskFrame', () => {
     expect(screen.getByRole('main')).toHaveTextContent('Page');
   });
 
+  it('puts the footer under the page', () => {
+    render(
+      <DeskFrame brand="DM Manager" footer={<p>Small print</p>}>
+        <main>Page</main>
+      </DeskFrame>,
+    );
+    expect(screen.getByRole('contentinfo')).toHaveTextContent('Small print');
+  });
+
   it('works without actions', () => {
     render(
       <DeskFrame brand="DM Manager">
