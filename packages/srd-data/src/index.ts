@@ -4,9 +4,12 @@
 // LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons
 // Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
 import armorJson from '../data/armor.json';
+import backgroundsJson from '../data/backgrounds.json';
+import classesJson from '../data/classes.json';
 import currencyJson from '../data/currency.json';
+import speciesJson from '../data/species.json';
 import weaponsJson from '../data/weapons.json';
-import { armorSchema, currencySchema, weaponSchema } from './schemas';
+import { armorSchema, backgroundSchema, classSchema, currencySchema, speciesSchema, weaponSchema } from './schemas';
 
 export * from './schemas';
 
@@ -17,3 +20,8 @@ export const SRD_ATTRIBUTION =
 export const SRD_WEAPONS = weaponSchema.array().parse(weaponsJson);
 export const SRD_ARMOR = armorSchema.array().parse(armorJson);
 export const SRD_CURRENCY = currencySchema.parse(currencyJson);
+
+// P2-4: levels 1 to 3. Classes are added one at a time; species and backgrounds follow.
+export const SRD_CLASSES = classSchema.array().parse(classesJson);
+export const SRD_SPECIES = speciesSchema.array().parse(speciesJson);
+export const SRD_BACKGROUNDS = backgroundSchema.array().parse(backgroundsJson);

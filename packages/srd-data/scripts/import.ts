@@ -1,4 +1,5 @@
-// P2-3: loads the SRD weapons and armour into the database (srd_weapons, srd_armor). Run from the repo root:
+// P2-3, P2-4: loads the SRD data into the database (srd_weapons, srd_armor, srd_species, srd_classes,
+// srd_backgrounds). Run from the repo root:
 //
 //   pnpm srd:import
 //
@@ -7,11 +8,14 @@
 // updates the rows in place, so it is safe to repeat.
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { armorSchema, weaponSchema } from '../src/schemas.ts';
+import { armorSchema, backgroundSchema, classSchema, speciesSchema, weaponSchema } from '../src/schemas.ts';
 
 const read = (file: string) => JSON.parse(readFileSync(new URL(`../data/${file}`, import.meta.url), 'utf8'));
 const weapons = weaponSchema.array().parse(read('weapons.json'));
 const armor = armorSchema.array().parse(read('armor.json'));
+const species = speciesSchema.array().parse(read('species.json'));
+const classes = classSchema.array().parse(read('classes.json'));
+const backgrounds = backgroundSchema.array().parse(read('backgrounds.json'));
 
 function target(): { url: string; key: string } {
   const url = process.env.SRD_IMPORT_URL;
@@ -38,6 +42,10 @@ function target(): { url: string; key: string } {
 const { url, key } = target();
 
 async function upsert(table: string, rows: object[]) {
+  if (!rows.length) {
+    console.log(`${table}: nothing to load yet`);
+    return;
+  }
   const r = await fetch(`${url}/rest/v1/${table}?on_conflict=id`, {
     method: 'POST',
     headers: {
@@ -60,4 +68,13 @@ await upsert(
   'srd_armor',
   armor.map(a => ({ id: a.id, name: a.name, source: a.source, category: a.category, data: a })),
 );
+const named = (r: { id: string; name: string; source: string }) => ({
+  id: r.id,
+  name: r.name,
+  source: r.source,
+  data: r,
+});
+await upsert('srd_species', species.map(named));
+await upsert('srd_classes', classes.map(named));
+await upsert('srd_backgrounds', backgrounds.map(named));
 console.log(`Loaded into ${new URL(url).host}.`);

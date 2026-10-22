@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T38) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T39) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(237);
+select plan(246);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -700,6 +700,27 @@ select throws_ok($$ update srd_armor set data = '{"id":"test-shield","baseAc":10
 reset role;
 select tests.act_as_anon();
 select is((select count(*)::int from srd_weapons), 0, 'T38: a signed-out visitor reads nothing');
+reset role;
+
+-- T39: SRD species, classes and backgrounds (P2-4, 0010_srd_characters.sql): read by all signed in, written by none
+select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+insert into srd_species (id, name, source, data) values ('test-species', 'Test Species', 'srd-5.2', '{"id":"test-species"}');
+insert into srd_classes (id, name, source, data) values ('test-class', 'Test Class', 'srd-5.2', '{"id":"test-class"}');
+insert into srd_backgrounds (id, name, source, data) values ('test-background', 'Test Background', 'srd-5.2', '{"id":"test-background"}');
+select throws_ok($$ insert into srd_classes (id, name, source, data) values ('home-brew', 'Home Brew', 'homebrew', '{"id":"home-brew"}') $$, '23514', null, 'T39: only SRD 5.2 content goes in');
+select tests.act_as('player');
+select is((select count(*)::int from srd_species where id = 'test-species'), 1, 'T39: a player reads SRD species');
+select is((select count(*)::int from srd_classes where id = 'test-class'), 1, 'T39: a player reads SRD classes');
+select is((select count(*)::int from srd_backgrounds where id = 'test-background'), 1, 'T39: a player reads SRD backgrounds');
+select throws_ok($$ update srd_classes set data = data || '{"hitDie":"d20"}' where id = 'test-class' $$, '42501', null, 'T39: a player cannot change a class');
+select throws_ok($$ insert into srd_species (id, name, source, data) values ('dragonkin', 'Dragonkin', 'srd-5.2', '{"id":"dragonkin"}') $$, '42501', null, 'T39: a player cannot add a species');
+select throws_ok($$ delete from srd_backgrounds where id = 'test-background' $$, '42501', null, 'T39: a player cannot delete a background');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ update srd_species set data = '{"id":"test-species","speed":60}' where id = 'test-species' $$, '42501', null, 'T39: nor can a DM change them');
+reset role;
+select tests.act_as_anon();
+select is((select count(*)::int from srd_classes), 0, 'T39: a signed-out visitor reads nothing');
 reset role;
 
 select * from finish();

@@ -431,6 +431,76 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"srd_armor": {
+                  Row: {
+                    "category": string,"data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category": string,"data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  Update: {
+                    "category"?: string,"data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"srd_backgrounds": {
+                  Row: {
+                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  Update: {
+                    "data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"srd_classes": {
+                  Row: {
+                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  Update: {
+                    "data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"srd_species": {
+                  Row: {
+                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  Update: {
+                    "data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"srd_weapons": {
+                  Row: {
+                    "category": string,"data": NonNullable<Json>,"id": string,"kind": string,"name": string,"source": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category": string,"data": NonNullable<Json>,"id": string,"kind": string,"name": string,"source": string
+                  }
+                  Update: {
+                    "category"?: string,"data"?: NonNullable<Json>,"id"?: string,"kind"?: string,"name"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Views: {

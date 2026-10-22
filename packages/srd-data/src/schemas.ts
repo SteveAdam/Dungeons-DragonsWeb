@@ -89,3 +89,134 @@ export type SrdWeapon = z.infer<typeof weaponSchema>;
 export type SrdArmor = z.infer<typeof armorSchema>;
 export type SrdCoin = z.infer<typeof coinSchema>;
 export type SrdCurrency = z.infer<typeof currencySchema>;
+
+// P2-4: classes, species and backgrounds, levels 1 to 3. Text is kept in the SRD's own words.
+
+const ability = z.enum(['str', 'dex', 'con', 'int', 'wis', 'cha']);
+const skill = z.enum([
+  'acrobatics',
+  'animalHandling',
+  'arcana',
+  'athletics',
+  'deception',
+  'history',
+  'insight',
+  'intimidation',
+  'investigation',
+  'medicine',
+  'nature',
+  'perception',
+  'performance',
+  'persuasion',
+  'religion',
+  'sleightOfHand',
+  'stealth',
+  'survival',
+]);
+/** 'later': the feature has game mechanics the app does not run yet (listed in docs/features-pending.md). */
+const mechanics = z.enum(['later', 'none']);
+const option = z.object({ option: z.string().regex(/^[A-C]$/), text: z.string().min(1) }).strict();
+
+export const featureSchema = z
+  .object({
+    level: z.number().int().min(1).max(3),
+    name: z.string().min(1),
+    /** Paragraphs separated by a blank line; bullet lines start with "• ". */
+    description: z.string().min(1),
+    mechanics,
+  })
+  .strict();
+
+export const classSchema = z
+  .object({
+    id,
+    name: z.string().min(1),
+    source: z.literal(SOURCE),
+    primaryAbilityText: z.string(),
+    primaryAbilities: z.array(ability).min(1),
+    hitDie: z.enum(['d6', 'd8', 'd10', 'd12']),
+    saveProficiencies: z.array(ability).length(2),
+    skillChoices: z.object({ count: z.number().int().positive(), from: z.array(skill).min(1) }).strict(),
+    weaponProficiencies: z.string(),
+    toolProficiencies: z.string().optional(),
+    armorTraining: z
+      .object({ text: z.string(), categories: z.array(z.enum(['light', 'medium', 'heavy', 'shield'])) })
+      .strict(),
+    startingEquipmentOptions: z.array(option).min(1),
+    spellcasting: z
+      .object({ ability, preparation: z.enum(['prepared', 'known', 'spellbook']) })
+      .strict()
+      .optional(),
+    /** The extra columns of the class table, in the SRD's order, e.g. Rages, Rage Damage, Weapon Mastery. */
+    columns: z.array(z.object({ key: z.string(), label: z.string() }).strict()),
+    levels: z
+      .array(
+        z
+          .object({
+            level: z.number().int().min(1).max(3),
+            proficiencyBonus: z.number().int().min(2),
+            features: z.array(featureSchema),
+            columns: z.record(z.union([z.number(), z.string()])),
+          })
+          .strict(),
+      )
+      .length(3),
+    subclasses: z
+      .array(
+        z
+          .object({
+            id,
+            name: z.string(),
+            tagline: z.string(),
+            description: z.string(),
+            features: z.array(featureSchema),
+          })
+          .strict(),
+      )
+      .min(1),
+  })
+  .strict()
+  .superRefine((c, ctx) => {
+    c.levels.forEach((l, i) => {
+      if (l.level !== i + 1) ctx.addIssue({ code: 'custom', message: `levels must run 1, 2, 3 (found ${l.level})` });
+      for (const col of c.columns) {
+        if (!(col.key in l.columns)) ctx.addIssue({ code: 'custom', message: `level ${l.level} has no ${col.label}` });
+      }
+      for (const f of l.features) {
+        if (f.level !== l.level) ctx.addIssue({ code: 'custom', message: `${f.name} is filed under the wrong level` });
+      }
+    });
+  });
+
+export const speciesSchema = z
+  .object({
+    id,
+    name: z.string().min(1),
+    source: z.literal(SOURCE),
+    creatureType: z.string(),
+    sizeText: z.string(),
+    sizeOptions: z.array(z.enum(['tiny', 'small', 'medium', 'large'])).min(1),
+    speed: z.number().int().positive(),
+    traits: z.array(featureSchema.omit({ level: true })),
+    languages: z.string().optional(),
+  })
+  .strict();
+
+export const backgroundSchema = z
+  .object({
+    id,
+    name: z.string().min(1),
+    source: z.literal(SOURCE),
+    /** The three abilities: +2 to one and +1 to another, or +1 to all three; never above 20. */
+    abilityScores: z.array(ability).length(3),
+    originFeat: z.object({ name: z.string(), description: z.string().optional() }).strict(),
+    skillProficiencies: z.array(skill).length(2),
+    toolProficiency: z.string(),
+    equipmentOptions: z.array(option).min(1),
+  })
+  .strict();
+
+export type SrdFeature = z.infer<typeof featureSchema>;
+export type SrdClass = z.infer<typeof classSchema>;
+export type SrdSpecies = z.infer<typeof speciesSchema>;
+export type SrdBackground = z.infer<typeof backgroundSchema>;

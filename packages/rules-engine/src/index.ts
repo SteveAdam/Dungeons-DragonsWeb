@@ -15,5 +15,6 @@ export * from './environment';
 export * from './equipment';
 export * from './fixtures';
 export * from './legacy';
+export * from './progression';
 export * from './requirements';
 export * from './sheet';

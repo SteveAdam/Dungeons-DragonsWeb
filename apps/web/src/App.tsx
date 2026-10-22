@@ -19,6 +19,7 @@ import styles from './App.module.css';
 const ThemePage = import.meta.env.DEV ? lazy(() => import('./pages/ThemePage')) : null;
 const OddsDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/OddsDevPage')) : null;
 const SrdDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/SrdDevPage')) : null;
+const ClassesDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/ClassesDevPage')) : null;
 // The map view brings Leaflet; load it only when a map is opened.
 const MapViewPage = lazy(() => import('./pages/map/MapViewPage').then(m => ({ default: m.MapViewPage })));
 const CharacterSheetPage = lazy(() =>
@@ -132,6 +133,16 @@ export function App() {
             element={
               <Suspense fallback={null}>
                 <SrdDevPage />
+              </Suspense>
+            }
+          />
+        )}
+        {ClassesDevPage && (
+          <Route
+            path="/dev/classes"
+            element={
+              <Suspense fallback={null}>
+                <ClassesDevPage />
               </Suspense>
             }
           />

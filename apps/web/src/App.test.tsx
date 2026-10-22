@@ -52,6 +52,7 @@ const PAGES = [
   '/theme',
   '/dev/odds',
   '/dev/srd',
+  '/dev/classes',
   '/no-such-page',
 ];
 

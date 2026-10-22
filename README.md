@@ -14,10 +14,12 @@ apps/web/                 React + TypeScript + Vite app
   src/hooks               TanStack Query hooks over src/data
   src/types/database.ts   generated from the schema (pnpm db:types)
 packages/rules-engine/    D&D 2024 rules (P1): core odds, bonus dice, effects, item requirements, terrain;
-                          armour class, weapon profiles and coins (P2-3)
-packages/srd-data/        SRD 5.2.1 weapons, armour and coins as zod-checked JSON, made from the SRD text (P2-3)
+                          armour class, weapon profiles and coins (P2-3); class progression, hit points,
+                          background ability scores (P2-4)
+packages/srd-data/        SRD 5.2.1 data as zod-checked JSON, made from the SRD text: equipment (P2-3), classes,
+                          species and backgrounds to level 3 (P2-4)
 supabase/
-  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters, 0006 map tools, 0007 entities, 0008 roll security, 0009 SRD equipment
+  migrations/             0000 extensions, 0001 profiles, 0002 core schema and row level security, 0003 regions, 0004 rolls, 0005 characters, 0006 map tools, 0007 entities, 0008 roll security, 0009 SRD equipment, 0010 SRD classes, species, backgrounds
   tests/database/         pgTAP suite for every policy
 scripts/                  mutation check (RLS suite) and token check (CSS)
 docs/                     design notes, including the P0-5 schema review
@@ -44,15 +46,15 @@ pnpm dev                                # http://localhost:5173
 | `pnpm check:tokens`                          | Fails if a CSS file other than `tokens.css` contains a hex colour  |
 | `pnpm db:start` / `db:stop`                  | Starts or stops the local Supabase stack                           |
 | `pnpm db:reset`                              | Rebuilds the local database from `migrations/` and `seed.sql`      |
-| `pnpm db:test`                               | pgTAP row level security suite (237 assertions)                    |
-| `pnpm db:test:mutations`                     | Removes each protection in turn; all 35 must be caught             |
+| `pnpm db:test`                               | pgTAP row level security suite (246 assertions)                    |
+| `pnpm db:test:mutations`                     | Removes each protection in turn; all 36 must be caught             |
 | `pnpm db:seed:dev <email>`                   | Gives that local player account Brannoc (P1-7 golden fixture)      |
 | `pnpm db:types`                              | Regenerates `apps/web/src/types/database.ts` from the local schema |
 | `pnpm db:push`                               | Applies new migrations to the linked hosted project                |
 | `pnpm functions:serve`                       | Runs the roll Edge Function on the local stack (needs Docker)      |
 | `pnpm test:functions` / `functions:check`    | Deno tests, type check and lint for the Edge Functions             |
 | `pnpm engine:sync` / `engine:check`          | Copies the rules engine into the Edge Functions / checks the copy  |
-| `pnpm srd:import`                            | Loads the SRD weapons and armour into the local database           |
+| `pnpm srd:import`                            | Loads the SRD data (equipment, classes, ...) into the local DB     |
 
 ## Hosted Supabase projects
 
@@ -267,6 +269,27 @@ Only SRD 5.2.1 content (CC-BY-4.0) is bundled, and none of it is typed in from m
   `formatPurse`; electrum is in the SRD, so it is in, but change is given without it unless asked).
 - `/dev/srd` (development only) lists every record in the SRD's own layout with its source tag.
 - The attribution statement is in `ATTRIBUTION.md` and in the footer of every page (`App.test.tsx` checks each route).
+
+## SRD classes, species and backgrounds, levels 1 to 3 (P2-4)
+
+Classes are added one at a time, each checked against the SRD before the next. Done so far: **Barbarian**.
+
+- Each class's SRD pages are kept in `packages/srd-data/source/classes` twice: `<id>.flow.txt` (`pdftotext`, which
+  keeps paragraphs whole) for the Core Traits table and the feature text, and `<id>.raw.txt` (`pdftotext -raw`, one
+  row per line) for the class table. `src/convertClass.ts` turns them into `data/classes.json`: hit die, primary
+  abilities, saves, skill choices, weapon and armour training, starting equipment, the level 1 to 3 rows of the class
+  table with their extra columns, every feature's text in the SRD's words, and the subclass to level 3. The build
+  fails if a feature in the table has no text, or a described feature is missing from the table.
+- `src/classSources.ts` says which pages hold a class, names its table's extra columns, and decides for every level
+  1 to 3 feature whether it has game mechanics the app does not run yet (`mechanics: 'later'`). Those are listed in
+  `docs/features-pending.md`, generated with the data.
+- `0010_srd_characters.sql` adds `srd_species`, `srd_classes` and `srd_backgrounds` (read-only, like 0009);
+  `pnpm srd:import` loads them.
+- The engine adds `classProgression(class, level, subclass?)`, `hitPointsAtLevel1` (die maximum plus Constitution),
+  `hitPointsGain` (half the die plus 1, or a roll, plus Constitution; at least 1) and `applyBackground` (+2 and +1,
+  or +1 to all three of the background's abilities; none above 20).
+- `/dev/classes` (development only) reads the imported classes from the database: traits, table, features and
+  subclass.
 
 ## Rules content licence
 
