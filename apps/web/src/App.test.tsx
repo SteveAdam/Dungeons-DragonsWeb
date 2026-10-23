@@ -14,6 +14,8 @@ vi.mock('./data/campaigns', async importOriginal => ({
   ...(await importOriginal<typeof import('./data/campaigns')>()),
   listCampaigns: vi.fn(() => new Promise(() => {})),
   getCampaign: vi.fn(() => new Promise(() => {})),
+  // the live game clock (P2-8) would open a realtime connection
+  subscribeToClock: vi.fn(() => () => {}),
 }));
 vi.mock('./data/members', async importOriginal => ({
   ...(await importOriginal<typeof import('./data/members')>()),

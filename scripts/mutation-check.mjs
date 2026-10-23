@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T57) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T60) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -502,6 +502,40 @@ begin
   return ch;
 end $f$;`,
     fails: ['T57'],
+  },
+  {
+    name: 'hit point rolls can be repeated (P2-10)',
+    why: 'a player could roll their Hit Point Die until it showed the maximum',
+    sql: `create or replace function unused_hit_die_roll(p_character uuid, p_level int) returns rolls
+language sql stable security definer set search_path = public as $f$ select * from rolls where false $f$;`,
+    fails: ['T58'],
+  },
+  {
+    name: 'the level-up function open to signed-in users (P2-10)',
+    why: 'a player could skip the Edge Function and write any sheet with a new level',
+    sql: `grant execute on function apply_level_up_from_function(uuid, uuid, int, jsonb, jsonb, int, uuid) to authenticated;`,
+    fails: ['T59'],
+  },
+  {
+    name: 'level-up no longer checks the owner or the level (P2-10)',
+    why: 'anyone could level up anyone, or apply a level twice',
+    sql: `create or replace function apply_level_up_from_function(p_actor uuid, p_character uuid, p_from int, p_sheet jsonb, p_choices jsonb, p_hp_gain int, p_roll uuid default null)
+returns level_up_events language plpgsql security definer set search_path = public as $f$
+declare ch characters; result level_up_events;
+begin
+  select * into ch from characters where id = p_character;
+  update characters set sheet = p_sheet - 'name' - 'xp' - 'levelApplied', level_applied = p_from + 1 where id = p_character;
+  insert into level_up_events (campaign_id, character_id, from_level, to_level, choices, hp_gain, roll_id, created_by)
+  values (ch.campaign_id, p_character, p_from, p_from + 1, p_choices, p_hp_gain, null, p_actor) returning * into result;
+  return result;
+end $f$;`,
+    fails: ['T59'],
+  },
+  {
+    name: 'level-up log no longer append-only (P2-10)',
+    why: 'the record of hit points gained could be rewritten',
+    sql: `drop trigger level_up_events_append_only_trg on level_up_events;`,
+    fails: ['T60'],
   },
   {
     name: 'hidden entities readable by members',

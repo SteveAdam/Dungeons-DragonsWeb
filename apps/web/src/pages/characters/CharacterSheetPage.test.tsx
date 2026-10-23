@@ -94,7 +94,7 @@ beforeEach(() => {
 });
 
 describe('pending levels (P2-6)', () => {
-  it('shows the XP level and a "Level up available" badge, with the level-up button disabled until P2-10', async () => {
+  it('shows the XP level and a "Level up available" badge, and a link to the level-up flow (P2-10)', async () => {
     setUp('player');
     vi.mocked(charactersApi.getCharacter).mockResolvedValue({
       ...brannoc,
@@ -104,7 +104,10 @@ describe('pending levels (P2-6)', () => {
     expect(within(sheet).getByText('Fighter 5')).toBeInTheDocument();
     expect(within(sheet).getByText('14,000 of 23,000 for Level 7')).toBeInTheDocument();
     expect(within(sheet).getByText('Level up available: 1 level (level 6 by XP)')).toBeInTheDocument();
-    expect(within(sheet).getByRole('button', { name: 'Level up' })).toBeDisabled();
+    expect(within(sheet).getByRole('link', { name: 'Level up' })).toHaveAttribute(
+      'href',
+      '/campaigns/c1/characters/ch1/level-up',
+    );
     // proficiency stays at the applied level's +3
     expect(row(sheet, /^Strength \+6, proficient/)).toBeInTheDocument();
   });

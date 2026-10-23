@@ -18,6 +18,7 @@ export * from './equipment.ts';
 export * from './fixtures.ts';
 export * from './items.ts';
 export * from './legacy.ts';
+export * from './levelup.ts';
 export * from './progression.ts';
 export * from './requirements.ts';
 export * from './sheet.ts';

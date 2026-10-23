@@ -7,6 +7,7 @@ import {
   getInviteCode,
   joinCampaign,
   listCampaigns,
+  setOptionalFeats,
   subscribeToClock,
   type Campaign,
 } from '../data/campaigns';
@@ -75,4 +76,13 @@ export function useLiveClock(campaignId: string | undefined) {
       client.setQueryData<Campaign>(queryKeys.campaign(campaignId), old => (old ? { ...old, gameSeconds } : old)),
     );
   }, [campaignId, client]);
+}
+
+/** DM only (P2-10): the optional feat rule (a feat instead of an Ability Score Improvement). */
+export function useSetOptionalFeats(campaignId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (on: boolean) => setOptionalFeats(campaignId, on),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.campaign(campaignId), exact: true }),
+  });
 }

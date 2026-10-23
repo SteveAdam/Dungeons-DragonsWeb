@@ -142,3 +142,20 @@ describe('effects', () => {
     expect(effect.duration).toEqual({ kind: 'until', atSeconds: 3600 });
   });
 });
+
+describe('the wizard and level-up fields survive reading (P2-9, P2-10)', () => {
+  it('keeps spells, subclass, weapon training and details, which zod would otherwise drop', async () => {
+    const extras = {
+      weaponProficiencies: ['simple'],
+      subclass: 'evoker',
+      size: 'medium',
+      originFeat: 'Magic Initiate (Wizard)',
+      toolProficiency: 'Calligrapher’s Supplies',
+      spells: { cantrips: ['Fire Bolt'], prepared: ['Sleep'], spellbook: ['Sleep', 'Shield'] },
+      details: { personalityTraits: 'Curious', ideals: '', bonds: '', flaws: '', appearance: '', backstory: '' },
+    };
+    from({ data: { ...row, sheet: { ...storedSheet, ...extras }, level_applied: 2 }, error: null });
+    const c = await getCharacter('ch1');
+    expect(c.sheet).toMatchObject({ ...extras, levelApplied: 2 });
+  });
+});

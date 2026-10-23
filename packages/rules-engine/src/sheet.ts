@@ -124,6 +124,8 @@ export interface CharacterSheet {
   /** Size chosen from the species' options. */
   size?: 'tiny' | 'small' | 'medium' | 'large';
   originFeat?: string;
+  /** The subclass's SRD id, once chosen (P2-10). */
+  subclass?: string;
   toolProficiency?: string;
   spells?: { cantrips: string[]; prepared: string[]; spellbook?: string[] };
   details?: CharacterDetails;

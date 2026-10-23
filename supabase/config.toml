@@ -439,3 +439,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/deno.json"
 entrypoint = "./functions/create-character/index.ts"
+
+[functions.apply-level-up]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+entrypoint = "./functions/apply-level-up/index.ts"

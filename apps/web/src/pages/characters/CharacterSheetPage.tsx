@@ -2,7 +2,7 @@
 // them out. Tapping a save, skill or attack opens the odds popup, which shows the server's own preview of the roll
 // (P2-2) and rolls through the roll Edge Function: the bonus is never sent from here.
 import { computeSheet, type ComputedRoll } from '@dnd-manager/rules-engine';
-import { Backpack, BookOpen, ChevronRight, Dices, ScrollText, Swords, UserRound } from 'lucide-react';
+import { Backpack, BookOpen, ChevronRight, Dices, ScrollText, Swords, TrendingUp, UserRound } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../components/ErrorNotice';
@@ -191,13 +191,10 @@ export function CharacterSheetPage() {
             {sheet.xp.pending > 0 && (
               <div className={styles.levelUp}>
                 <Tag>{`Level up available: ${sheet.xp.pending} ${sheet.xp.pending === 1 ? 'level' : 'levels'} (level ${sheet.xp.level} by XP)`}</Tag>
-                {/* the level-up flow is P2-10; until then the button is a placeholder */}
-                <button type="button" disabled aria-describedby="level-up-soon" className={styles.levelUpButton}>
+                <IconLink to={`/campaigns/${campaignId}/characters/${characterId}/level-up`} icon={TrendingUp}>
                   Level up
-                </button>
-                <span id="level-up-soon" className={styles.small}>
-                  Levelling up arrives in a later update. The sheet stays at level {sheet.level} until then.
-                </span>
+                </IconLink>
+                <span className={styles.small}>{`The sheet stays at level ${sheet.level} until you level up.`}</span>
               </div>
             )}
             <Bar label="Experience" value={sheet.xp.intoLevel} max={sheet.xp.intoLevel + sheet.xp.toNext} />

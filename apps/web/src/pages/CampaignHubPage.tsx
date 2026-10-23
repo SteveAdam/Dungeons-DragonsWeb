@@ -2,9 +2,9 @@ import { ArrowLeft, BookMarked, Feather, Map as MapIcon, ScrollText, Tent, Users
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { IconLink, Paper, RibbonTabs, Toggle } from '../components/ui';
-import { toDataError } from '../data/errors';
+import { friendlyMessage, toDataError } from '../data/errors';
 import { ClockWidget } from '../components/ClockWidget';
-import { useCampaign, useInviteCode, useLiveClock } from '../hooks/useCampaigns';
+import { useCampaign, useInviteCode, useLiveClock, useSetOptionalFeats } from '../hooks/useCampaigns';
 import { useDmMode } from '../hooks/useDmMode';
 import { useMembers } from '../hooks/useMembers';
 import { useShowDmIndicator } from '../state/dmIndicator';
@@ -37,6 +37,7 @@ export function CampaignHubPage() {
   const { isDm, dmMode, setDmMode } = useDmMode(campaignId);
   const invite = useInviteCode(campaignId, dmMode);
   useLiveClock(campaignId);
+  const feats = useSetOptionalFeats(campaignId ?? '');
   useShowDmIndicator(dmMode);
 
   if (!campaignId) return <Navigate to="/campaigns" replace />;
@@ -91,6 +92,21 @@ export function CampaignHubPage() {
           <div className={styles.dmRow}>
             {dmMode && <SealedInviteCard code={invite.data ?? null} loading={invite.isPending} error={invite.error} />}
             {dmMode && <ClockWidget campaignId={campaignId} />}
+            {dmMode && (
+              <div className={styles.dmSwitch}>
+                <Toggle
+                  checked={campaign.data.optionalFeats ?? false}
+                  disabled={feats.isPending}
+                  onChange={on => feats.mutate(on)}
+                  label="Optional feats"
+                />
+                <p className={styles.dmHint}>
+                  {feats.isError
+                    ? friendlyMessage(feats.error)
+                    : 'Lets players take a feat instead of an Ability Score Improvement (the feats themselves come later).'}
+                </p>
+              </div>
+            )}
             {isDm && (
               <div className={styles.dmSwitch}>
                 <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />

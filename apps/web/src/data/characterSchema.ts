@@ -60,6 +60,29 @@ export const characterSheetSchema = z.object({
   ),
   equipment: z.array(z.string().max(120)),
   inspiration: z.boolean(),
+  // P2-7, P2-9, P2-10: zod drops keys it does not list, so every optional field of the sheet is listed here
+  weaponProficiencies: z.array(z.enum(['simple', 'martial', 'martial-light', 'martial-finesse'])).optional(),
+  size: z.enum(['tiny', 'small', 'medium', 'large']).optional(),
+  originFeat: z.string().max(80).optional(),
+  subclass: z.string().max(80).optional(),
+  toolProficiency: z.string().max(200).optional(),
+  spells: z
+    .object({
+      cantrips: z.array(z.string().max(80)),
+      prepared: z.array(z.string().max(80)),
+      spellbook: z.array(z.string().max(80)).optional(),
+    })
+    .optional(),
+  details: z
+    .object({
+      personalityTraits: z.string().max(4000),
+      ideals: z.string().max(4000),
+      bonds: z.string().max(4000),
+      flaws: z.string().max(4000),
+      appearance: z.string().max(4000),
+      backstory: z.string().max(4000),
+    })
+    .optional(),
 }) satisfies z.ZodType<CharacterSheet>;
 
 export const effectDurationSchema = z.discriminatedUnion('kind', [

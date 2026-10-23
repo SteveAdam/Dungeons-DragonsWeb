@@ -422,6 +422,34 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
 - Species traits with their own choices (Human Skillful, Elf lineages, Dragonborn ancestry and so on) are recorded
   as text only for now, as listed in `docs/features-pending.md`; the size choice is kept.
 
+## Levelling up (P2-10)
+
+- **Rules in one place.** `packages/rules-engine/src/levelup.ts`: `levelUpPlan` (what the next level brings: the
+  class features, a subclass choice where the class table has a "… Subclass" feature, an Ability Score Improvement
+  where it has one, new cantrips and prepared spells from the table's columns, a Wizard's two spellbook spells, and
+  the spell slots), `levelUpProblems` (no pending level, choices for the wrong level, a missing subclass, a roll
+  outside the die, a score above 20, feats while the campaign does not allow them, spells off the list or above the
+  slot levels) and `applyLevelUp`. Hit points: the average (half the die plus 1) or the server's roll, plus the
+  Constitution modifier, at least 1; a higher Constitution modifier raises the earlier levels too. Real-data tests
+  for a Fighter, a Wizard and a Cleric from 1 to 3 are in `packages/srd-data/src/levelup.test.ts`.
+- **Content stops at level 3** (the SRD class data in the app covers levels 1 to 3): for level 4 and up the flow
+  says "Content for this level is not available yet" and offers no way to apply it.
+- **The Edge Function `apply-level-up`** checks that a level is pending and the choices are for it, uses its own
+  record of the Hit Point Die roll (once a level is rolled for, that roll is the gain), builds the new sheet and
+  works it out with `computeSheet`, then calls `apply_level_up_from_function`. Deploy it with the other functions
+  (`supabase functions deploy apply-level-up`).
+- `0016_level_up.sql`: `roll_hit_die` (the owner's or the DM's server roll of the Hit Point Die, logged as `hit_die`,
+  once per character and level), `level_up_events` (the audit log, append-only for every role, read by the owner
+  and the DM) and `apply_level_up_from_function` (service role only), which writes the sheet, `level_applied` and
+  the audit row together and refuses a level that has been applied meanwhile. `campaigns.settings.optionalFeats`
+  is the optional feat rule (off unless set); the DM switches it in the hub. The SRD feat list comes later.
+- **The flow** (`/campaigns/<id>/characters/<id>/level-up`, from the sheet's _Level up_ link): hit points, new
+  features and subclass, ability scores, spells, review and apply. Several pending levels are applied one at a time,
+  in order. Maximum hit points and the proficiency bonus change only when a level is applied.
+- The web app's sheet schema now keeps the creation and level-up fields (spells, subclass, weapon training, size,
+  origin feat, tool, details); before this, reading a sheet dropped them, so the sheet page treated every weapon as
+  proficient.
+
 ## Rules content licence
 
 This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,

@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T57) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T60) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(406);
+select plan(427);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1084,6 +1084,55 @@ reset role;
 select tests.act_as('player');
 select lives_ok($$ select roll_ability_scores(tests.u('campaign')) $$, 'T57: once used, the player can roll for their next character');
 reset role;
+
+-- T58 to T60: the level-up flow (P2-10, 0016_level_up.sql) -------------------------------------------------------
+-- fixture: Ivo (player), a level 1 Fighter at 900 XP: two levels pending
+select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+insert into characters (id, campaign_id, owner_id, name, sheet, xp, level_applied) values
+  (tests.u('char:ivo'), tests.u('campaign'), tests.u('user:player'), 'Ivo', '{"className":"Fighter","hitDice":{"die":"d10","total":1,"spent":0},"hp":{"max":12,"current":12,"temp":0}}', 900, 1);
+
+-- T58: the Hit Point Die is rolled by the server, for the owner's pending level, once
+select tests.act_as('roller');
+select throws_ok($$ select roll_hit_die(tests.u('char:ivo')) $$, '42501', 'You can only roll for your own character', 'T58: another player cannot roll for Ivo');
+reset role;
+select tests.act_as('player');
+select lives_ok($$ select roll_hit_die(tests.u('char:ivo')) $$, 'T58: Ivo''s player rolls his Hit Point Die');
+select is((select kind || ' for level ' || target from rolls where character_id = tests.u('char:ivo')), 'hit_die for level 2', 'T58: the roll is logged for level 2');
+select ok((select dice[1] between 1 and 10 from rolls where character_id = tests.u('char:ivo')), 'T58: a d10 shows 1 to 10');
+select throws_ok($$ select roll_hit_die(tests.u('char:ivo')) $$, '22023', 'You have already rolled for this level: use that roll', 'T58: no second roll for the same level');
+select throws_ok($$ select roll_hit_die(tests.u('char:wren')) $$, '22023', 'No level-up is waiting: the character needs more XP', 'T58: no roll without a pending level');
+reset role;
+
+-- T59: levels are applied only by the apply-level-up function (service role), for the owner, one at a time
+select tests.act_as('player');
+select throws_ok($$ select apply_level_up_from_function(tests.u('user:player'), tests.u('char:ivo'), 1, '{}', '{}', 6) $$, '42501', null, 'T59: a player cannot call the apply function directly');
+select throws_ok($$ update characters set level_applied = 2 where id = tests.u('char:ivo') $$, 'P0001', 'Only the DM can change the applied level', 'T59: nor set the level themself');
+reset role;
+select tests.act_as_service();
+select throws_ok($$ select apply_level_up_from_function(tests.u('user:roller'), tests.u('char:ivo'), 1, '{}', '{}', 6) $$, '42501', 'You can only level up your own character', 'T59: a second account cannot apply someone else''s level-up');
+select throws_ok($$ select apply_level_up_from_function(tests.u('user:player'), tests.u('char:ivo'), 2, '{}', '{}', 6) $$, '22023', 'The character is no longer at level 2: reload and try again', 'T59: choices for the wrong level are refused');
+select throws_ok($$ select apply_level_up_from_function(tests.u('user:player'), tests.u('char:ivo'), 1, '{}', '{}', 6, tests.u('roll:fake')) $$, '22023', 'That hit point roll is not this level''s unused roll', 'T59: only the level''s own roll counts');
+select lives_ok($$ select apply_level_up_from_function(tests.u('user:player'), tests.u('char:ivo'), 1, '{"className":"Fighter","hp":{"max":19,"current":19,"temp":0},"levelApplied":2}', '{"toLevel":2}', 7, (select id from rolls where character_id = tests.u('char:ivo'))) $$, 'T59: Ivo''s player applies level 2 with the roll');
+select lives_ok($$ select apply_level_up_from_function(tests.u('user:player'), tests.u('char:ivo'), 2, '{"className":"Fighter","hp":{"max":25,"current":25,"temp":0},"levelApplied":3}', '{"toLevel":3}', 6) $$, 'T59: then level 3 with the average');
+select throws_ok($$ select apply_level_up_from_function(tests.u('user:player'), tests.u('char:ivo'), 3, '{}', '{}', 6) $$, '22023', 'No level-up is waiting: the character needs more XP', 'T59: no level without the XP');
+reset role;
+select is((select level_applied || ' ' || (sheet -> 'hp' ->> 'max') || ' ' || (sheet ? 'levelApplied')::text from characters where id = tests.u('char:ivo')), '3 25 false', 'T59: Ivo is level 3 with the new sheet (the level lives in its column)');
+
+-- T60: the audit rows exist, are read by the owner and the DM, and cannot be changed
+select tests.act_as('player');
+select is((select string_agg(from_level || '->' || to_level || ' +' || hp_gain, ', ' order by to_level) from level_up_events where character_id = tests.u('char:ivo')), '1->2 +7, 2->3 +6', 'T60: the owner reads the level-up log');
+select throws_ok($$ update level_up_events set hp_gain = 99 where character_id = tests.u('char:ivo') $$, '42501', null, 'T60: and cannot change it');
+reset role;
+select tests.act_as('roller');
+select is((select count(*)::int from level_up_events), 0, 'T60: another player reads none of it');
+reset role;
+select tests.act_as('dm');
+select is((select count(*)::int from level_up_events where character_id = tests.u('char:ivo')), 2, 'T60: the DM reads it');
+reset role;
+select tests.act_as_service();
+select throws_ok($$ update level_up_events set hp_gain = 99 $$, 'P0001', 'The level-up log is append-only: entries cannot be changed or deleted', 'T60: nor can the service role change it');
+reset role;
+select throws_ok($$ delete from level_up_events $$, 'P0001', 'The level-up log is append-only: entries cannot be changed or deleted', 'T60: nor the database owner delete it');
 
 select * from finish();
 rollback;

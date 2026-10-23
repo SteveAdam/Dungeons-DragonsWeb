@@ -23,8 +23,8 @@ const from = (result: { data: unknown; error: unknown }) => {
 beforeEach(() => vi.clearAllMocks());
 
 describe('listCampaigns', () => {
-  it('maps rows to campaigns', async () => {
-    from({ data: [row, { ...row, id: 'c2', rules_edition: '2014' }], error: null });
+  it('maps rows to campaigns, with the optional feat setting (P2-10)', async () => {
+    from({ data: [row, { ...row, id: 'c2', rules_edition: '2014', settings: { optionalFeats: true } }], error: null });
     expect(await listCampaigns()).toEqual([
       {
         id: 'c1',
@@ -32,6 +32,7 @@ describe('listCampaigns', () => {
         rulesEdition: '2024',
         nextSessionAt: null,
         gameSeconds: 3600,
+        optionalFeats: false,
         createdAt: '2026-10-18T10:00:00Z',
       },
       {
@@ -40,6 +41,7 @@ describe('listCampaigns', () => {
         rulesEdition: '2014',
         nextSessionAt: null,
         gameSeconds: 3600,
+        optionalFeats: true,
         createdAt: '2026-10-18T10:00:00Z',
       },
     ]);

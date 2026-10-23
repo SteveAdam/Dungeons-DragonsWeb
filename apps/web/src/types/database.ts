@@ -7,27 +7,27 @@ export type Database = {
           Tables: {
             "ability_roll_uses": {
                   Row: {
-                    "character_id": string | null,"roll_id": string,"used_at": string
+                    "campaign_id": string,"character_id": string | null,"roll_id": string,"used_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "character_id"?: string | null,"roll_id": string,"used_at"?: string
+                    "campaign_id": string,"character_id"?: string | null,"roll_id": string,"used_at"?: string
                   }
                   Update: {
-                    "character_id"?: string | null,"roll_id"?: string,"used_at"?: string
+                    "campaign_id"?: string,"character_id"?: string | null,"roll_id"?: string,"used_at"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "ability_roll_uses_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "ability_roll_uses_character_id_fkey"
       columns: ["character_id"]
 isOneToOne: false
       referencedRelation: "characters"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "ability_roll_uses_roll_id_fkey"
-      columns: ["roll_id"]
-isOneToOne: true
-      referencedRelation: "rolls"
       referencedColumns: ["id"]
     }
                   ]
@@ -367,6 +367,26 @@ isOneToOne: true
                   Relationships: [
                     {
       foreignKeyName: "ledger_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"level_up_events": {
+                  Row: {
+                    "campaign_id": string,"character_id": string,"choices": NonNullable<Json>,"created_at": string,"created_by": string | null,"from_level": number,"hp_gain": number,"id": string,"roll_id": string | null,"to_level": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"character_id": string,"choices": NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"from_level": number,"hp_gain": number,"id"?: string,"roll_id"?: string | null,"to_level": number
+                  }
+                  Update: {
+                    "campaign_id"?: string,"character_id"?: string,"choices"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"from_level"?: number,"hp_gain"?: number,"id"?: string,"roll_id"?: string | null,"to_level"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "level_up_events_campaign_id_fkey"
       columns: ["campaign_id"]
 isOneToOne: false
       referencedRelation: "campaigns"
@@ -793,6 +813,25 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"apply_level_up_from_function":
+{ Args: { "p_actor": string,"p_character": string,"p_choices": Json,"p_from": number,"p_hp_gain": number,"p_roll"?: string,"p_sheet": Json }; Returns: {
+              "campaign_id": string,
+"character_id": string,
+"choices": NonNullable<Json>,
+"created_at": string,
+"created_by": string | null,
+"from_level": number,
+"hp_gain": number,
+"id": string,
+"roll_id": string | null,
+"to_level": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "level_up_events"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "attune_item":
 { Args: { "p_item": string }; Returns: {
               "attuned": boolean,
@@ -992,6 +1031,9 @@ isOneToOne: false
                            },
 "ledger_source":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"level_from_xp":
+{ Args: { "xp": number }; Returns: number
                            },
 "map_campaign":
 { Args: { "m": string }; Returns: string
@@ -1202,6 +1244,33 @@ isOneToOne: false
 "roll_die":
 { Args: { "sides": number }; Returns: number
                            },
+"roll_hit_die":
+{ Args: { "p_character": string }; Returns: {
+              "bonus": number,
+"bonus_breakdown": Json | null,
+"campaign_id": string,
+"character_id": string | null,
+"created_at": string,
+"crit": boolean,
+"dice": (number)[],
+"fumble": boolean,
+"hidden": boolean,
+"id": string,
+"kept": number,
+"kind": string,
+"label": string,
+"mode": string,
+"rolled_by": string,
+"success": boolean | null,
+"target": number | null,
+"total": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "rolls"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "roll_outcome":
 { Args: { "p_bonus": number,"p_dice": (number)[],"p_kind": string,"p_mode": string,"p_target": number }; Returns: Record<string, unknown>
                            },
@@ -1312,6 +1381,33 @@ isOneToOne: false
       } },
 "unused_ability_roll":
 { Args: { "p_campaign": string,"p_user": string }; Returns: {
+              "bonus": number,
+"bonus_breakdown": Json | null,
+"campaign_id": string,
+"character_id": string | null,
+"created_at": string,
+"crit": boolean,
+"dice": (number)[],
+"fumble": boolean,
+"hidden": boolean,
+"id": string,
+"kept": number,
+"kind": string,
+"label": string,
+"mode": string,
+"rolled_by": string,
+"success": boolean | null,
+"target": number | null,
+"total": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "rolls"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"unused_hit_die_roll":
+{ Args: { "p_character": string,"p_level": number }; Returns: {
               "bonus": number,
 "bonus_breakdown": Json | null,
 "campaign_id": string,

@@ -22,7 +22,7 @@
     "db:seed:dev": "node scripts/seed-dev.mjs",
     "engine:sync": "node scripts/sync-engine.mjs",
     "engine:check": "node scripts/sync-engine.mjs --check",
-    "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/roll supabase/functions/create-character && deno lint --config supabase/functions/deno.json supabase/functions/roll supabase/functions/create-character",
+    "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/roll supabase/functions/create-character supabase/functions/apply-level-up && deno lint --config supabase/functions/deno.json supabase/functions/roll supabase/functions/create-character supabase/functions/apply-level-up",
     "functions:serve": "supabase functions serve",
     "test:functions": "deno test --no-prompt --config supabase/functions/deno.json supabase/functions",
     "srd:import": "node packages/srd-data/scripts/import.ts"

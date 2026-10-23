@@ -26,6 +26,7 @@ const CharacterSheetPage = lazy(() =>
   import('./pages/characters/CharacterSheetPage').then(m => ({ default: m.CharacterSheetPage })),
 );
 const CreateCharacterPage = lazy(() => import('./pages/characters/create/CreateCharacterPage'));
+const LevelUpPage = lazy(() => import('./pages/characters/levelup/LevelUpPage'));
 
 function HeaderActions() {
   const { session, signOut } = useAuth();
@@ -103,6 +104,16 @@ export function App() {
             <ProtectedRoute>
               <Suspense fallback={<p className="auth-status">Laying out the blank sheet…</p>}>
                 <CreateCharacterPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/characters/:characterId/level-up"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<p className="auth-status">Turning the page…</p>}>
+                <LevelUpPage />
               </Suspense>
             </ProtectedRoute>
           }

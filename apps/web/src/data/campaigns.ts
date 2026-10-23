@@ -8,6 +8,8 @@ export interface Campaign {
   nextSessionAt: string | null;
   /** The in-game clock in seconds (P2-2). Effect durations are measured against it, not real time. */
   gameSeconds: number;
+  /** P2-10: players may take a feat instead of an Ability Score Improvement (campaigns.settings.optionalFeats). */
+  optionalFeats?: boolean;
   createdAt: string;
 }
 
@@ -17,10 +19,11 @@ interface CampaignRow {
   rules_edition: string;
   next_session_at: string | null;
   game_seconds: number;
+  settings?: unknown;
   created_at: string;
 }
 
-const COLUMNS = 'id, name, rules_edition, next_session_at, game_seconds, created_at';
+const COLUMNS = 'id, name, rules_edition, next_session_at, game_seconds, settings, created_at';
 
 const toCampaign = (r: CampaignRow): Campaign => ({
   id: r.id,
@@ -28,6 +31,7 @@ const toCampaign = (r: CampaignRow): Campaign => ({
   rulesEdition: r.rules_edition === '2014' ? '2014' : '2024',
   nextSessionAt: r.next_session_at,
   gameSeconds: Number(r.game_seconds ?? 0),
+  optionalFeats: (r.settings as { optionalFeats?: unknown } | null)?.optionalFeats === true,
   createdAt: r.created_at,
 });
 
@@ -109,4 +113,18 @@ export function subscribeToClock(campaignId: string, onTime: (gameSeconds: numbe
   return () => {
     void supabase.removeChannel(channel);
   };
+}
+
+/** DM only (P2-10): turns the optional feat rule on or off, keeping the campaign's other settings. */
+export async function setOptionalFeats(campaignId: string, on: boolean): Promise<void> {
+  const { data, error } = await supabase.from('campaigns').select('settings').eq('id', campaignId).maybeSingle();
+  if (error) throw toDataError(error);
+  const settings = { ...((data?.settings as Record<string, unknown> | null) ?? {}), optionalFeats: on };
+  const { data: updated, error: updateError } = await supabase
+    .from('campaigns')
+    .update({ settings: settings as never })
+    .eq('id', campaignId)
+    .select('id');
+  if (updateError) throw toDataError(updateError);
+  if (!updated || updated.length === 0) throw new DataError('forbidden');
 }

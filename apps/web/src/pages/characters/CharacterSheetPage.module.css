@@ -317,17 +317,6 @@
   gap: 0.5rem;
 }
 
-.levelUpButton {
-  padding: 0.25rem 0.75rem;
-  border: 1px dashed var(--gold-dark);
-  border-radius: 0.2rem;
-  background: transparent;
-  color: var(--ink-faded);
-  font-family: var(--font-ui);
-  font-size: 1rem;
-  cursor: not-allowed;
-}
-
 /* P2-8: ending an effect early (DM) */
 .endEffect {
   margin-left: 0.4rem;
