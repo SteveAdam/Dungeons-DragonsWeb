@@ -42,3 +42,38 @@ jobs:
       - run: pnpm exec supabase start -x studio,edge-runtime,logflare,vector,imgproxy,mailpit
       - run: pnpm db:test
       - run: pnpm db:test:mutations
+
+  # P2-12: the Phase 2 scenario end to end (a DM and two players), against a fresh local stack
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C e2e exec playwright install --with-deps chromium
+      # the stack without the parts the scenario does not use; the Edge Functions are served on their own below
+      - run: pnpm exec supabase start -x studio,edge-runtime,logflare,vector,imgproxy,mailpit
+      - name: Serve the Edge Functions
+        run: |
+          nohup pnpm exec supabase functions serve > functions.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -s -o /dev/null -w '%{http_code}' -X OPTIONS http://127.0.0.1:54321/functions/v1/apply-level-up | grep -q 200 && exit 0
+            sleep 2
+          done
+          cat functions.log
+          exit 1
+      - run: pnpm test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+            functions.log
+          retention-days: 7

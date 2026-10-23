@@ -25,7 +25,8 @@
     "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/roll supabase/functions/create-character supabase/functions/apply-level-up && deno lint --config supabase/functions/deno.json supabase/functions/roll supabase/functions/create-character supabase/functions/apply-level-up",
     "functions:serve": "supabase functions serve",
     "test:functions": "deno test --no-prompt --config supabase/functions/deno.json supabase/functions",
-    "srd:import": "node packages/srd-data/scripts/import.ts"
+    "srd:import": "node packages/srd-data/scripts/import.ts",
+    "test:e2e": "pnpm -C e2e test:e2e"
   },
   "devDependencies": {
     "prettier": "^3.9.10",

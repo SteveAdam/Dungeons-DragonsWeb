@@ -1,0 +1,16 @@
+{
+  "name": "@dnd-manager/e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "P2-12: the Phase 2 end-to-end test (Playwright, against the local Supabase stack).",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "^24.13.3",
+    "typescript": "~6.0.3"
+  }
+}

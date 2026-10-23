@@ -29,3 +29,10 @@ supabase/.temp
 supabase/tests-mutations/
 .env
 apps/web/.env
+
+# Playwright (P2-12)
+e2e/test-results/
+e2e/playwright-report/
+
+# the Edge Functions log CI writes (P2-12)
+functions.log

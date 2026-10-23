@@ -479,6 +479,44 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
 - The web app's sheet schema has a compile-time check that it lists every field of the stored sheet; zod drops
   unlisted fields, which is how P2-9's fields and then `spellcastingAbility` went missing on reading.
 
+## End-to-end test (P2-12)
+
+`e2e/` is a Playwright test of the whole of Phase 2 with three browser contexts, a DM and two players, against
+the local stack. It runs as one test with named steps:
+
+1. the DM creates a campaign and both players join with the invite code;
+2. player A makes a level 1 Fighter and player B a level 1 Wizard through the creation wizard;
+3. the DM awards XP to the Party and both characters show "Level up available";
+4. both players complete both level-ups (hit points 31 and 20, the Wizard's slots 4 and 2);
+5. the Greatsword of the Drowned is locked, unlocked by the Potion of Hill Giant Strength, and locked again
+   61 minutes later on the game clock;
+6. a scroll offered by A moves to B only when B accepts;
+7. an Athletics roll through the odds popup stores the server's bonus, and a forged bonus is ignored;
+8. direct API calls with each player's token cannot read the other's character, wallet or ledger, item or
+   effect secrets, or hidden entities, and cannot change XP, the applied level, wallets or rolls;
+9. the DM links entities and files one in a folder; players see only visible entities and links.
+
+Run it with the local stack up, the SRD imported (the test imports it) and the Edge Functions served:
+
+```bash
+pnpm db:start
+```
+
+```bash
+pnpm functions:serve
+```
+
+```bash
+pnpm test:e2e
+```
+
+The first run needs the browser: `pnpm -C e2e exec playwright install chromium`. Each run makes fresh accounts
+(`e2e-…@example.test`) in the local database, starts its own dev server on port 5174 pointed at the local stack,
+and refuses to run against anything that is not local. It takes about three minutes. Weakening a policy fails
+step 8 (shown with item secrets made readable to members: "A reads item secrets"). `pnpm format` touches every
+file, and `functions:serve` restarts when files change, so wait for it to come back before running the test.
+CI runs it in the `e2e` job on a fresh stack and keeps the report and trace when it fails.
+
 ## Rules content licence
 
 This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,
