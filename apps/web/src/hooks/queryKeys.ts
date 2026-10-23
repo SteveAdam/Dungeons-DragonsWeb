@@ -31,6 +31,8 @@ export const queryKeys = {
   roster: (campaignId: string) => ['campaigns', campaignId, 'items', 'roster'] as const,
   characterItems: (characterId: string) => ['characters', characterId, 'items'] as const,
   itemSecret: (itemId: string) => ['items', itemId, 'secret'] as const,
+  creationSrd: ['srd', 'creation'] as const,
+  creationDraft: (campaignId: string) => ['campaigns', campaignId, 'character-draft'] as const,
   pinNotes: (pinId: string) => ['pins', pinId, 'notes'] as const,
   mapImage: (path: string) => ['map-image', path] as const,
 };

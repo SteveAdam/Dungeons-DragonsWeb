@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T54) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T57) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(379);
+select plan(406);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1021,6 +1021,68 @@ select is((select count(*)::int from effect_secrets), 0, 'T54: a player reads no
 reset role;
 select tests.act_as('dm');
 select is((select s.hidden_detail from effect_secrets s join effects e on e.id = s.effect_id where e.duration ->> 'atSeconds' = '7800'), 'Brewed by a hag: it curses on the third sip', 'T54: the DM reads the hidden detail');
+reset role;
+
+-- T55 to T57: the character creation wizard (P2-9, 0015_character_creation.sql) ------------------------------
+
+-- T55: ability scores are rolled by the server, logged, and cannot be re-rolled while unused
+select tests.act_as('outsider');
+select throws_ok($$ select roll_ability_scores(tests.u('campaign')) $$, '42501', 'Only members of this campaign can roll here', 'T55: someone outside the campaign cannot roll ability scores there');
+reset role;
+select tests.act_as_anon();
+select throws_ok($$ select roll_ability_scores(tests.u('campaign')) $$, '42501', null, 'T55: nor a signed-out visitor');
+reset role;
+select tests.act_as('joiner');
+select throws_ok($$ select roll_ability_scores(tests.u('campaign')) $$, '42501', 'Only members of this campaign can roll here', 'T55: nor someone who has not joined');
+reset role;
+select tests.act_as('player');
+select lives_ok($$ select roll_ability_scores(tests.u('campaign')) $$, 'T55: a player rolls their ability scores');
+select is((select cardinality(dice) || ' d6, ' || kind from rolls where campaign_id = tests.u('campaign') and kind = 'ability_roll'), '24 d6, ability_roll', 'T55: six sets of 4d6 go in the roll log');
+select ok((select 6 >= all (dice) and 1 <= all (dice) from rolls where campaign_id = tests.u('campaign') and kind = 'ability_roll'), 'T55: every die is a d6');
+select throws_ok($$ select roll_ability_scores(tests.u('campaign')) $$, '22023', 'You have already rolled ability scores for a character here: use those first', 'T55: a second roll is refused while the first is unused');
+select throws_ok($$ update rolls set dice = array_fill(6, array[24]) where kind = 'ability_roll' $$, '42501', null, 'T55: the roll cannot be changed');
+reset role;
+
+-- T56: a wizard draft is its owner's alone
+select tests.act_as('player');
+select lives_ok($$ insert into character_drafts (campaign_id, data) values (tests.u('campaign'), '{"step": "abilities", "name": "Wren"}') $$, 'T56: a player saves a draft');
+select lives_ok($$ update character_drafts set data = data || '{"step": "skills"}' where campaign_id = tests.u('campaign') $$, 'T56: and saves it again');
+select is((select data ->> 'step' from character_drafts where campaign_id = tests.u('campaign')), 'skills', 'T56: and reads it back');
+select throws_ok($$ insert into character_drafts (user_id, campaign_id, data) values (tests.u('user:roller'), tests.u('campaign'), '{}') $$, '42501', null, 'T56: a player cannot save a draft as someone else');
+reset role;
+select tests.act_as('roller');
+select is((select count(*)::int from character_drafts), 0, 'T56: another player reads no one else''s draft');
+reset role;
+select tests.act_as('dm');
+select is((select count(*)::int from character_drafts), 0, 'T56: nor does the DM');
+reset role;
+select tests.act_as('outsider');
+select throws_ok($$ insert into character_drafts (campaign_id, data) values (tests.u('campaign'), '{}') $$, '42501', null, 'T56: someone outside the campaign cannot save a draft for it');
+reset role;
+
+-- T57: characters are created only by the create-character function (service role), in one step
+select tests.act_as('player');
+select throws_ok($$ select create_character_from_wizard(tests.u('user:player'), tests.u('campaign'), 'Shortcut', '{}', '[]', 1000) $$, '42501', null, 'T57: a player cannot call the creation function directly');
+reset role;
+select tests.act_as_service();
+select throws_ok($$ select create_character_from_wizard(tests.u('user:outsider'), tests.u('campaign'), 'Gatecrasher', '{}', '[]', 0) $$, '42501', 'Only members of this campaign can create a character here', 'T57: the actor must be a member');
+select throws_ok($$ select create_character_from_wizard(tests.u('user:roller'), tests.u('campaign'), 'Borrowed', '{}', '[]', 0, (select id from rolls where kind = 'ability_roll' and campaign_id = tests.u('campaign'))) $$, '22023', 'Those ability scores do not come from your unused ability roll', 'T57: nobody can use another player''s ability roll');
+select lives_ok($$ select create_character_from_wizard(tests.u('user:player'), tests.u('campaign'), 'Wren the Second', '{"className":"Fighter","name":"ignored","xp":99999}',
+    '[{"name":"Chain Mail","kind":"armor","definition":{"armor":{"category":"heavy","baseAc":16,"strength":13,"stealthDisadvantage":true}},"weight":55,"quantity":1,"value_cp":7500,"srd_ref":"chain-mail","equipped":true},
+      {"name":"Javelin","kind":"weapon","definition":{},"weight":2,"quantity":8,"value_cp":50,"srd_ref":"javelin","equipped":true}]',
+    18, (select id from rolls where kind = 'ability_roll' and campaign_id = tests.u('campaign'))) $$, 'T57: the service role creates a character from the player''s roll');
+reset role;
+select is((select xp || ' ' || level_applied || ' ' || (sheet ? 'xp')::text from characters where name = 'Wren the Second'), '0 1 false', 'T57: the new character starts at 0 XP and level 1, whatever the sheet said');
+select is((select e.type::text || ' ' || e.name from characters c join entities e on e.id = c.entity_id where c.name = 'Wren the Second'), 'player Wren the Second', 'T57: with its player entity');
+select is((select string_agg(e.name || ' x' || i.quantity || case when i.equipped then ' worn' else '' end, ', ' order by e.name) from items i join entities e on e.id = i.entity_id join characters c on c.id = i.owner_id where c.name = 'Wren the Second'), 'Chain Mail (2) x1 worn, Javelin x8 worn', 'T57: its starting items');
+select is((select gp from wallets w join characters c on c.id = w.owner_id where c.name = 'Wren the Second'), 18, 'T57: its starting gold, in the ledger');
+select is((select count(*)::int from party_members pm join characters c on c.id = pm.character_id where c.name = 'Wren the Second'), 1, 'T57: and its place in the Party');
+select is((select count(*)::int from character_drafts where user_id = tests.u('user:player') and campaign_id = tests.u('campaign')), 0, 'T57: the draft is cleared');
+select tests.act_as_service();
+select throws_ok($$ select create_character_from_wizard(tests.u('user:player'), tests.u('campaign'), 'Wren the Third', '{}', '[]', 0, (select id from rolls where kind = 'ability_roll' and campaign_id = tests.u('campaign'))) $$, '22023', 'Those ability scores do not come from your unused ability roll', 'T57: a roll makes only one character');
+reset role;
+select tests.act_as('player');
+select lives_ok($$ select roll_ability_scores(tests.u('campaign')) $$, 'T57: once used, the player can roll for their next character');
 reset role;
 
 select * from finish();

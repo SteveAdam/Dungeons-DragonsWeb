@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T54) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T57) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -468,6 +468,40 @@ end $f$;`,
     why: 'players would learn which potion is cursed',
     sql: `create policy "members read effect secrets" on effect_secrets for select to authenticated using (true);`,
     fails: ['T54'],
+  },
+  {
+    name: 'ability scores can be re-rolled at will (P2-9)',
+    why: 'a player could refresh the wizard until they rolled three 18s',
+    sql: `create or replace function unused_ability_roll(p_user uuid, p_campaign uuid) returns rolls
+language sql stable security definer set search_path = public as $f$ select * from rolls where false $f$;`,
+    fails: ['T55'],
+  },
+  {
+    name: 'wizard drafts readable by every member (P2-9)',
+    why: 'players could read each other’s unfinished characters',
+    sql: `create policy "members read drafts" on character_drafts for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T56'],
+  },
+  {
+    name: 'the creation function open to signed-in users (P2-9)',
+    why: 'a player could skip the Edge Function’s checks and write any sheet',
+    sql: `grant execute on function create_character_from_wizard(uuid, uuid, text, jsonb, jsonb, int, uuid) to authenticated;`,
+    fails: ['T57'],
+  },
+  {
+    name: 'creation no longer checks the ability roll (P2-9)',
+    why: 'one lucky roll could make any number of characters, or someone else’s roll could be used',
+    sql: `create or replace function create_character_from_wizard(p_actor uuid, p_campaign uuid, p_name text, p_sheet jsonb, p_items jsonb, p_gp int, p_roll uuid default null)
+returns uuid language plpgsql security definer set search_path = public as $f$
+declare ch uuid; e uuid;
+begin
+  if p_actor is null or not exists (select 1 from members where campaign_id = p_campaign and user_id = p_actor) then
+    raise exception 'Only members of this campaign can create a character here' using errcode = '42501'; end if;
+  insert into entities (campaign_id, type, name, visible_to_players) values (p_campaign, 'player', free_entity_name(p_campaign, p_name), true) returning id into e;
+  insert into characters (campaign_id, owner_id, name, sheet, xp, level_applied, entity_id) values (p_campaign, p_actor, btrim(p_name), p_sheet - 'name' - 'xp' - 'levelApplied', 0, 1, e) returning id into ch;
+  return ch;
+end $f$;`,
+    fails: ['T57'],
   },
   {
     name: 'hidden entities readable by members',

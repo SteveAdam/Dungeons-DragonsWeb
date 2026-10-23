@@ -9,6 +9,7 @@ export function rulesEngineInfo(): { name: string; editions: readonly ['2014', '
 
 export * from './conditions.ts';
 export * from './core.ts';
+export * from './creation.ts';
 export * from './currency.ts';
 export * from './dice.ts';
 export * from './effects.ts';

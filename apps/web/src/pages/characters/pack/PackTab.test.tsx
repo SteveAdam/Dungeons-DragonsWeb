@@ -259,5 +259,6 @@ describe('Pack tab (P2-7)', () => {
       valueCp: 7500,
       definition: { armor: { category: 'heavy', baseAc: 16, strength: 13, stealthDisadvantage: true }, magicBonus: 1 },
     });
-  });
+    // the DM tools load lazily, and the form takes many keystrokes: allow for a busy test run
+  }, 15_000);
 });

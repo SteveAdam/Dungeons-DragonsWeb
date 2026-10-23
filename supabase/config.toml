@@ -433,3 +433,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/deno.json"
 entrypoint = "./functions/roll/index.ts"
+
+[functions.create-character]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+entrypoint = "./functions/create-character/index.ts"

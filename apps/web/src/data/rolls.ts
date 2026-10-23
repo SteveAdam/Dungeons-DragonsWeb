@@ -3,7 +3,16 @@ import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database';
 import { DataError, toDataError } from './errors';
 
-export const ROLL_KINDS = ['check', 'save', 'attack', 'damage', 'initiative', 'death_save', 'other'] as const;
+export const ROLL_KINDS = [
+  'check',
+  'save',
+  'attack',
+  'damage',
+  'initiative',
+  'death_save',
+  'other',
+  'ability_roll',
+] as const;
 export type RollKindName = (typeof ROLL_KINDS)[number];
 
 /** A row of the roll log. The dice and (since P2-2) the bonus come from the server; the target from the roller. */

@@ -1,0 +1,277 @@
+/* P2-9: the character creation wizard. One column, so it works at phone width. */
+.page {
+  display: grid;
+  gap: 1rem;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.paper {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+}
+
+.subhead {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+}
+
+.label {
+  margin: 0;
+  padding: 0;
+  color: var(--gold-dark);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-faded);
+  font-style: italic;
+}
+
+.alert {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.wizard {
+  display: grid;
+  gap: 1rem;
+}
+
+.ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ribbon li {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 999px;
+  color: var(--ink-faded);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}
+
+.ribbon li[aria-current='step'] {
+  border-width: 2px;
+  background: var(--ink-wash);
+  color: var(--ink);
+}
+
+.ribbon .done {
+  color: var(--verdigris);
+}
+
+.stepNumber {
+  font-weight: 700;
+}
+
+/* on a phone only the current step's title shows */
+@media (max-width: 40rem) {
+  .ribbon li:not([aria-current='step']) .stepTitle {
+    display: none;
+  }
+}
+
+.step {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.select,
+.textarea {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.number {
+  width: 5rem;
+}
+
+.srd {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--ink-wash);
+}
+
+.srd p {
+  margin: 0;
+}
+
+.trait summary {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.trait p {
+  margin: 0.4rem 0 0;
+}
+
+.bullets {
+  margin: 0.4rem 0 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+}
+
+.facts dt {
+  font-family: var(--font-heading);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.radios,
+.checks {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.radios legend,
+.checks legend {
+  margin-bottom: 0.3rem;
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-left: 1.5rem;
+}
+
+.roll {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.roll p {
+  margin: 0;
+}
+
+.scores {
+  border-collapse: collapse;
+}
+
+.scores caption {
+  text-align: left;
+}
+
+.scores th,
+.scores td {
+  padding: 0.25rem 0.6rem;
+  border-bottom: 1px solid var(--gold-dark);
+  text-align: left;
+}
+
+.problems {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.saved {
+  color: var(--ink-faded);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}
+
+.review {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.review p {
+  margin: 0;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.stats div {
+  display: grid;
+  min-width: 6rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--ink-wash);
+}
+
+.stats dt {
+  color: var(--gold-dark);
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.stats dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}

@@ -105,8 +105,8 @@ export interface CharacterSheet {
   xp: number;
   /** The level the sheet has been built to; without it, the level from XP (Phase 1 sheets). */
   levelApplied?: number;
-  /** Weapon training by category (P2-7); without it, every item weapon counts as proficient (Phase 1 sheets). */
-  weaponProficiencies?: ('simple' | 'martial')[];
+  /** Weapon training (P2-7, P2-9); without it, every item weapon counts as proficient (Phase 1 sheets). */
+  weaponProficiencies?: WeaponTraining[];
   abilityScores: AbilityScores;
   skillProficiencies: SkillKey[];
   expertise: SkillKey[];
@@ -120,6 +120,25 @@ export interface CharacterSheet {
   weapons: SheetWeapon[];
   equipment: string[];
   inspiration: boolean;
+  // P2-9: what the creation wizard records besides the numbers (shown on the Details and Spells tabs, P2-11)
+  /** Size chosen from the species' options. */
+  size?: 'tiny' | 'small' | 'medium' | 'large';
+  originFeat?: string;
+  toolProficiency?: string;
+  spells?: { cantrips: string[]; prepared: string[]; spellbook?: string[] };
+  details?: CharacterDetails;
+}
+
+/** Weapon training: Simple, all Martial, or only Martial weapons with the Light or Finesse property (Monk, Rogue). */
+export type WeaponTraining = 'simple' | 'martial' | 'martial-light' | 'martial-finesse';
+
+export interface CharacterDetails {
+  personalityTraits: string;
+  ideals: string;
+  bonds: string;
+  flaws: string;
+  appearance: string;
+  backstory: string;
 }
 
 export interface ComputedAbility {

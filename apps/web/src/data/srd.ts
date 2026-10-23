@@ -10,7 +10,7 @@ import {
   type SrdClass,
   type SrdSpecies,
   type SrdSpell,
-} from '@dnd-manager/srd-data';
+} from '@dnd-manager/srd-data/schemas';
 import type { ZodTypeAny, z } from 'zod';
 import { supabase } from '../lib/supabase';
 import { DataError, toDataError } from './errors';

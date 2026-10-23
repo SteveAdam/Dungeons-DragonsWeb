@@ -8,6 +8,7 @@ export function rulesEngineInfo(): { name: string; editions: readonly ['2014', '
 
 export * from './conditions';
 export * from './core';
+export * from './creation';
 export * from './currency';
 export * from './dice';
 export * from './effects';

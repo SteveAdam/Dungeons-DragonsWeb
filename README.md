@@ -393,6 +393,35 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
   it disappears, worked out from `game_seconds` by the rules engine, not by a timer. Rounds-based effects wait for
   combat (a later phase); advancing the clock does not count them down.
 
+## Character creation wizard (P2-9)
+
+- **Rules in one place.** `packages/rules-engine/src/creation.ts` holds the level 1 creation rules from the SRD's
+  "Character Creation": the standard array, point buy (27 points, scores 8 to 15, costs 0 to 9), rolling (4d6 drop
+  the lowest, six times), background increases (+2/+1 or +1 to each of its three abilities, none above 20), skills
+  from the class list (not the background's), equipment options A/B/C read from the SRD text, cantrips and level 1
+  spells within the class table's counts (a Wizard's spellbook of six, prepared from it), and alignment. The wizard
+  checks each step with it, and the server checks everything again. It is plain TypeScript, not a zod schema, so
+  the engine stays free of dependencies (the earlier decision); `readCreationChoices` does the shape check a schema
+  would. The real-data tests are in `packages/srd-data/src/creation.test.ts`.
+- **The Edge Function `create-character`** (`supabase/functions/create-character`) reads the payload's shape, checks
+  every choice against the SRD rows in the database, checks rolled scores against the player's own unused ability
+  roll, builds the sheet and starting kit itself (hit points: the Hit Point Die's maximum plus the Constitution
+  modifier), works it out with `computeSheet`, and calls `create_character_from_wizard`. Any numbers the client
+  sends are ignored. Deploy it with the roll function (`supabase functions deploy create-character`).
+- `0015_character_creation.sql`: `roll_ability_scores` (server dice, logged in the roll log as `ability_roll`, rate
+  limited; refused while an earlier ability roll in the campaign is unused, so a refresh cannot re-roll), the
+  generic `roll_die` and `roll_pool(count, sides)`, `character_drafts` (one per player per campaign, owner only),
+  and `create_character_from_wizard` (service role only): the character at level 1, its `player` entity, starting
+  items (equipped armour, shield and the weapons the class is trained with), starting gold in the ledger, the
+  ability roll marked used and the draft cleared, in one transaction; 0012's triggers add the wallet and the Party
+  place.
+- **The wizard** (`/campaigns/<id>/characters/new`, linked from the Characters tab): name and species, class,
+  background, ability scores, skills, equipment, spells, details, review. One step per screen with a progress
+  ribbon; you cannot move on with choices that break the rules; the draft is saved at every step and right after a
+  roll. The review shows the sheet `computeSheet` makes of what the server will build.
+- Species traits with their own choices (Human Skillful, Elf lineages, Dragonborn ancestry and so on) are recorded
+  as text only for now, as listed in `docs/features-pending.md`; the size choice is kept.
+
 ## Rules content licence
 
 This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,

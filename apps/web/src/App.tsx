@@ -25,6 +25,7 @@ const MapViewPage = lazy(() => import('./pages/map/MapViewPage').then(m => ({ de
 const CharacterSheetPage = lazy(() =>
   import('./pages/characters/CharacterSheetPage').then(m => ({ default: m.CharacterSheetPage })),
 );
+const CreateCharacterPage = lazy(() => import('./pages/characters/create/CreateCharacterPage'));
 
 function HeaderActions() {
   const { session, signOut } = useAuth();
@@ -92,6 +93,16 @@ export function App() {
             <ProtectedRoute>
               <Suspense fallback={<p className="auth-status">Unrolling the map…</p>}>
                 <MapViewPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/characters/new"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<p className="auth-status">Laying out the blank sheet…</p>}>
+                <CreateCharacterPage />
               </Suspense>
             </ProtectedRoute>
           }

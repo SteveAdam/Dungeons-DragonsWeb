@@ -5,7 +5,33 @@ export type Database = {
   
   "public": {
           Tables: {
-            "campaign_secrets": {
+            "ability_roll_uses": {
+                  Row: {
+                    "character_id": string | null,"roll_id": string,"used_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "character_id"?: string | null,"roll_id": string,"used_at"?: string
+                  }
+                  Update: {
+                    "character_id"?: string | null,"roll_id"?: string,"used_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ability_roll_uses_character_id_fkey"
+      columns: ["character_id"]
+isOneToOne: false
+      referencedRelation: "characters"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ability_roll_uses_roll_id_fkey"
+      columns: ["roll_id"]
+isOneToOne: true
+      referencedRelation: "rolls"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"campaign_secrets": {
                   Row: {
                     "campaign_id": string,"invite_code": string
                   }
@@ -38,6 +64,26 @@ isOneToOne: true
                   }
                   Relationships: [
                     
+                  ]
+                },"character_drafts": {
+                  Row: {
+                    "campaign_id": string,"data": NonNullable<Json>,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"data"?: NonNullable<Json>,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"data"?: NonNullable<Json>,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "character_drafts_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"characters": {
                   Row: {
@@ -801,6 +847,9 @@ isOneToOne: false
               "cp": number,"gp": number,"pp": number,"sp": number
             }[]
                            },
+"create_character_from_wizard":
+{ Args: { "p_actor": string,"p_campaign": string,"p_gp": number,"p_items": Json,"p_name": string,"p_roll"?: string,"p_sheet": Json }; Returns: string
+                           },
 "create_entity":
 { Args: { "p_campaign": string,"p_folder"?: string,"p_name": string,"p_type": Database["public"]['Enums']["entity_type"],"p_visible"?: boolean }; Returns: {
               "campaign_id": string,
@@ -1096,6 +1145,33 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"roll_ability_scores":
+{ Args: { "p_campaign": string }; Returns: {
+              "bonus": number,
+"bonus_breakdown": Json | null,
+"campaign_id": string,
+"character_id": string | null,
+"created_at": string,
+"crit": boolean,
+"dice": (number)[],
+"fumble": boolean,
+"hidden": boolean,
+"id": string,
+"kept": number,
+"kind": string,
+"label": string,
+"mode": string,
+"rolled_by": string,
+"success": boolean | null,
+"target": number | null,
+"total": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "rolls"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "roll_d20":
 { Args: { "p_actor": string,"p_bonus": number,"p_breakdown"?: Json,"p_campaign": string,"p_character": string,"p_hidden"?: boolean,"p_kind": string,"p_label": string,"p_mode": string,"p_target": number }; Returns: {
               "bonus": number,
@@ -1123,8 +1199,14 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"roll_die":
+{ Args: { "sides": number }; Returns: number
+                           },
 "roll_outcome":
 { Args: { "p_bonus": number,"p_dice": (number)[],"p_kind": string,"p_mode": string,"p_target": number }; Returns: Record<string, unknown>
+                           },
+"roll_pool":
+{ Args: { "count": number,"sides": number }; Returns: (number)[]
                            },
 "set_entity_visibility":
 { Args: { "p_entity": string,"p_visible": boolean }; Returns: {
@@ -1225,6 +1307,33 @@ isOneToOne: false
                           SetofOptions: {
         from: "*"
         to: "items"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"unused_ability_roll":
+{ Args: { "p_campaign": string,"p_user": string }; Returns: {
+              "bonus": number,
+"bonus_breakdown": Json | null,
+"campaign_id": string,
+"character_id": string | null,
+"created_at": string,
+"crit": boolean,
+"dice": (number)[],
+"fumble": boolean,
+"hidden": boolean,
+"id": string,
+"kept": number,
+"kind": string,
+"label": string,
+"mode": string,
+"rolled_by": string,
+"success": boolean | null,
+"target": number | null,
+"total": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "rolls"
         isOneToOne: true
         isSetofReturn: false
       } },

@@ -6,7 +6,7 @@ import type { EffectMode, Effect, StatKey } from './effects.ts';
 import type { ArmorCategory, WeaponMastery, WeaponProperty } from './equipment.ts';
 import { ARMOR_CATEGORY_RULES } from './equipment.ts';
 import type { Requirement } from './requirements.ts';
-import type { SheetArmor, SheetWeapon } from './sheet.ts';
+import type { SheetArmor, SheetWeapon, WeaponTraining } from './sheet.ts';
 
 export const ITEM_KINDS = ['weapon', 'armor', 'shield', 'gear', 'magic', 'consumable', 'quest'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
@@ -99,10 +99,23 @@ export interface EquippedGear {
   weapons: SheetWeapon[];
 }
 
+/** Whether weapon training covers a weapon (SRD class tables: e.g. Rogue "Martial weapons that have the Finesse or Light property"). */
+export function trainedWith(
+  w: Pick<ItemWeapon, 'category' | 'properties'>,
+  training: readonly WeaponTraining[],
+): boolean {
+  if (w.category === 'simple') return training.includes('simple');
+  return (
+    training.includes('martial') ||
+    (training.includes('martial-light') && w.properties.includes('light')) ||
+    (training.includes('martial-finesse') && w.properties.includes('finesse'))
+  );
+}
+
 /** Armour, shield and weapons from the equipped items, in the shapes computeSheet works with. */
 export function equippedGear(
   items: readonly InventoryItem[],
-  weaponProficiencies?: readonly ('simple' | 'martial')[],
+  weaponProficiencies?: readonly WeaponTraining[],
 ): EquippedGear {
   const equipped = items.filter(i => i.equipped);
   const body = equipped.find(i => i.definition.armor && i.definition.armor.category !== 'shield');
@@ -129,7 +142,7 @@ export function equippedGear(
         name: i.name,
         ability: w.properties.includes('finesse') ? 'finesse' : w.kind === 'ranged' ? 'dex' : 'str',
         // Phase 1 sheets do not record weapon training, so a weapon counts as proficient there
-        proficient: weaponProficiencies ? weaponProficiencies.includes(w.category) : true,
+        proficient: weaponProficiencies ? trainedWith(w, weaponProficiencies) : true,
         magicBonus: i.definition.magicBonus ?? 0,
         damage: w.damage.dice,
         damageType: w.damage.type,
