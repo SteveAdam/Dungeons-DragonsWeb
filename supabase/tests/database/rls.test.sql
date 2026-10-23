@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T51) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T54) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(356);
+select plan(379);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -675,11 +675,9 @@ select lives_ok($$ do $do$ begin
   end $do$ $$, 'T37: a player cannot move the game clock');
 reset role;
 select tests.act_as('dm');
-select lives_ok($$ do $do$ begin
-    update campaigns set game_seconds = 3600 where id = tests.u('campaign');
-    if not found then raise exception 'update did not apply'; end if;
-  end $do$ $$, 'T37: the DM moves the game clock');
-select throws_ok($$ update campaigns set game_seconds = -1 where id = tests.u('campaign') $$, '23514', null, 'T37: the game clock never runs below 0');
+-- (P2-8: the DM moves it with advance_clock, which logs the move)
+select lives_ok($$ select advance_clock(tests.u('campaign'), 3600, 'Test hour') $$, 'T37: the DM moves the game clock');
+select throws_ok($$ select advance_clock(tests.u('campaign'), -1) $$, '22023', 'Advance the clock by between 1 second and 365 days', 'T37: the game clock never runs backwards');
 reset role;
 
 -- T38: SRD equipment (P2-3, 0009_srd_equipment.sql): every signed-in user reads it, nobody writes it ---------
@@ -970,6 +968,60 @@ select tests.act_as('dm');
 select lives_ok($$ select force_move_item(tests.item('Chain Mail'), 'party', tests.party()) $$, 'T51: the DM moves Brannoc''s chain mail to the party at once');
 reset role;
 select is((select owner_type || ':' || equipped from items where entity_id = tests.item('Chain Mail')), 'party:false', 'T51: a moved item is no longer worn');
+
+-- T52 to T54: the game clock log and the DM's effects tool (P2-8, 0014_clock_effects.sql) ---------------------
+-- the test campaign's clock stands at 3600 (T37)
+
+-- T52: only the DM advances the clock, and every move is logged
+select tests.act_as('player');
+select throws_ok($$ select advance_clock(tests.u('campaign'), 600) $$, '42501', 'Only the DM can do that', 'T52: a player cannot advance the clock');
+select is((select count(*)::int from game_clock_events where campaign_id = tests.u('campaign')), 1, 'T52: a player reads the clock log');
+reset role;
+select tests.act_as('outsider');
+select throws_ok($$ select advance_clock(tests.u('campaign'), 600) $$, '42501', 'Only the DM can do that', 'T52: nor can someone outside the campaign');
+select is((select count(*)::int from game_clock_events), 0, 'T52: who reads none of its clock log');
+reset role;
+select tests.act_as_anon();
+select throws_ok($$ select advance_clock(tests.u('campaign'), 600) $$, '42501', null, 'T52: nor a signed-out visitor');
+reset role;
+select tests.act_as('dm');
+select is((select advance_clock(tests.u('campaign'), 600, 'Searched the crypt')), 4200::bigint, 'T52: the DM advances the clock 10 minutes, to 4200');
+select is((select from_seconds || '->' || to_seconds || ' ' || reason from game_clock_events where campaign_id = tests.u('campaign') order by to_seconds desc limit 1), '3600->4200 Searched the crypt', 'T52: the move is logged with its reason');
+select throws_ok($$ update campaigns set game_seconds = 99999 where id = tests.u('campaign') $$, 'P0001', 'The clock moves with advance_clock, so every change is logged', 'T52: even the DM cannot set the clock without logging it');
+select throws_ok($$ select advance_clock(tests.u('campaign'), 31536001) $$, '22023', 'Advance the clock by between 1 second and 365 days', 'T52: at most a year at a time');
+reset role;
+
+-- T53: the clock log is append-only for every role
+select tests.act_as('player');
+select throws_ok($$ insert into game_clock_events (campaign_id, from_seconds, to_seconds) values (tests.u('campaign'), 0, 1) $$, '42501', null, 'T53: a player cannot write to the clock log');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ delete from game_clock_events where campaign_id = tests.u('campaign') $$, '42501', null, 'T53: nor can the DM delete from it');
+reset role;
+select tests.act_as_service();
+select throws_ok($$ update game_clock_events set reason = 'edited' where campaign_id = tests.u('campaign') $$, 'P0001', 'The clock log is append-only: events cannot be changed or deleted', 'T53: nor the service role change it');
+reset role;
+select throws_ok($$ delete from game_clock_events $$, 'P0001', 'The clock log is append-only: events cannot be changed or deleted', 'T53: nor the database owner');
+
+-- T54: only the DM applies effects; a hidden detail reaches DMs only
+select tests.act_as('player');
+select throws_ok($$ select apply_effect(tests.u('char:brannoc'), 'Self-blessing', '', 'str', 'add', 10, '{"kind":"permanent"}') $$, '42501', 'Only the DM can do that', 'T54: a player cannot apply an effect');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ select apply_effect(tests.u('char:brannoc'), 'Potion of Hill Giant Strength', 'Potion', 'str', 'set_at_least', 21, '{"kind":"for","seconds":3600}', false, 'Brewed by a hag: it curses on the third sip') $$, 'T54: the DM applies the potion for an hour, with a hidden detail');
+select is((select duration from effects where character_id = tests.u('char:brannoc') and name = 'Potion of Hill Giant Strength' and source = 'Potion' order by created_at desc limit 1), '{"kind": "until", "atSeconds": 7800}'::jsonb, 'T54: "for an hour" ends an hour after the clock''s 4200');
+select lives_ok($$ select apply_effect(tests.u('char:brannoc'), 'Shield of Faith', 'Spell', 'ac', 'add', 2, '{"kind":"for","seconds":600}', true) $$, 'T54: an effect without a hidden detail');
+select is((select count(*)::int from effect_secrets s join effects e on e.id = s.effect_id where e.name = 'Shield of Faith'), 0, 'T54: makes no secret');
+select throws_ok($$ select apply_effect(tests.u('char:brannoc'), 'Blink', '', 'ac', 'add', 1, '{"kind":"for","seconds":0}') $$, '22023', 'An effect lasts between 1 second and 365 days', 'T54: a timed effect lasts at least a second');
+reset role;
+select tests.act_as('player');
+select is((select count(*)::int from effects where character_id = tests.u('char:brannoc') and name = 'Potion of Hill Giant Strength' and duration ->> 'atSeconds' = '7800'), 1, 'T54: the player reads the effect on their character');
+select is((select count(*)::int from effects e where e.character_id = tests.u('char:brannoc') and to_jsonb(e)::text like '%hag%'), 0, 'T54: and nothing of its hidden detail');
+select is((select count(*)::int from effect_secrets), 0, 'T54: a player reads no effect secrets');
+reset role;
+select tests.act_as('dm');
+select is((select s.hidden_detail from effect_secrets s join effects e on e.id = s.effect_id where e.duration ->> 'atSeconds' = '7800'), 'Brewed by a hag: it curses on the third sip', 'T54: the DM reads the hidden detail');
+reset role;
 
 select * from finish();
 rollback;

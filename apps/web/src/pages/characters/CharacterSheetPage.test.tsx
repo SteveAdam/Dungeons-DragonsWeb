@@ -206,6 +206,103 @@ describe('Sheet tab for Brannoc (acceptance 2)', () => {
   });
 });
 
+describe('the game clock and the DM effects tool (P2-8)', () => {
+  // the clock as the database holds it: advanceClock moves it, getCampaign reads it
+  let clockNow = 0;
+  function liveClock() {
+    clockNow = 0;
+    vi.mocked(campaignsApi.getCampaign).mockImplementation(async () => ({
+      id: 'c1',
+      name: 'The Sunken Crown',
+      rulesEdition: '2024',
+      nextSessionAt: null,
+      gameSeconds: clockNow,
+      createdAt: '',
+    }));
+    vi.mocked(campaignsApi.advanceClock).mockImplementation(async (_c, seconds) => (clockNow += seconds));
+  }
+  async function advance(user: ReturnType<typeof userEvent.setup>, minutes: string) {
+    const form = screen.getByRole('form', { name: 'Advance by another amount' });
+    await user.type(within(form).getByLabelText('Amount'), minutes);
+    await user.click(within(form).getByRole('button', { name: 'Advance' }));
+  }
+
+  it('acceptance 1: the potion at 0, 59 minutes on it has 1 minute left, 2 more and it is gone and the greatsword locks', async () => {
+    setUp('dm', [hillGiantStrength(0)]);
+    liveClock();
+    const user = userEvent.setup();
+    const sheet = await renderSheet();
+    expect(screen.getByText('Day 1, 00:00')).toBeInTheDocument();
+    expect(await within(sheet).findByText('Potion of Hill Giant Strength · 1 hour left')).toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: /^Greatsword of the Drowned/ })).toBeInTheDocument();
+
+    await advance(user, '59');
+    expect(campaignsApi.advanceClock).toHaveBeenLastCalledWith('c1', 3540, '');
+    expect(await within(sheet).findByText('Potion of Hill Giant Strength · 1 minute left')).toBeInTheDocument();
+    expect(screen.getByText('Day 1, 00:59')).toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: /^Greatsword of the Drowned/ })).toBeInTheDocument();
+
+    await advance(user, '2');
+    await waitFor(() => expect(within(sheet).queryByText(/Potion of Hill Giant Strength ·/)).not.toBeInTheDocument());
+    expect(screen.getByText('Day 1, 01:01')).toBeInTheDocument();
+    expect(within(sheet).queryByRole('button', { name: /^Greatsword of the Drowned/ })).not.toBeInTheDocument();
+    expect(within(sheet).getByText('Strength 17 needed, you have 16')).toBeInTheDocument();
+  });
+
+  it('the clock buttons advance by fixed steps, with a reason for the log', async () => {
+    setUp('dm');
+    liveClock();
+    const user = userEvent.setup();
+    await renderSheet();
+    await user.click(screen.getByRole('button', { name: '+8 hours' }));
+    expect(campaignsApi.advanceClock).toHaveBeenCalledWith('c1', 8 * 3600, '8 hours pass');
+    expect(await screen.findByText('Day 1, 08:00')).toBeInTheDocument();
+    const form = screen.getByRole('form', { name: 'Advance by another amount' });
+    await user.type(within(form).getByLabelText('Amount'), '2');
+    await user.selectOptions(within(form).getByLabelText('Unit'), 'days');
+    await user.type(within(form).getByLabelText('Reason'), 'Travel to Port Vellum');
+    await user.click(within(form).getByRole('button', { name: 'Advance' }));
+    expect(campaignsApi.advanceClock).toHaveBeenLastCalledWith('c1', 2 * 86400, 'Travel to Port Vellum');
+    expect(await screen.findByText('Day 3, 08:00')).toBeInTheDocument();
+  });
+
+  it('the DM applies a preset with a hidden detail, and ends an effect early', async () => {
+    setUp('dm', [hillGiantStrength(0)]);
+    vi.mocked(charactersApi.applyEffect).mockResolvedValue(hillGiantStrength(0, 'new'));
+    vi.mocked(charactersApi.removeEffect).mockResolvedValue();
+    const user = userEvent.setup();
+    const sheet = await renderSheet();
+    const tool = within(sheet).getByRole('form', { name: 'Apply an effect' });
+    await user.selectOptions(within(tool).getByLabelText('Preset'), 'ac-two');
+    expect(within(tool).getByLabelText('Name')).toHaveValue('Armour class +2');
+    await user.selectOptions(within(tool).getByLabelText('Preset'), 'hill-giant');
+    await user.type(within(tool).getByLabelText('Hidden detail (DMs only)'), 'Brewed by a hag');
+    await user.click(within(tool).getByRole('button', { name: 'Apply effect' }));
+    expect(charactersApi.applyEffect).toHaveBeenCalledWith('ch1', {
+      name: 'Potion of Hill Giant Strength',
+      source: 'Potion',
+      stat: 'str',
+      mode: 'set_at_least',
+      value: 21,
+      duration: { kind: 'for', seconds: 3600 },
+      concentration: false,
+      hiddenDetail: 'Brewed by a hag',
+    });
+    expect(await within(tool).findByText('Applied Potion of Hill Giant Strength.')).toBeInTheDocument();
+    await user.click(within(sheet).getByRole('button', { name: 'End Potion of Hill Giant Strength' }));
+    expect(charactersApi.removeEffect).toHaveBeenCalledWith('hill-giant-strength');
+  });
+
+  it('players get neither the clock controls nor the effects tool', async () => {
+    setUp('player', [hillGiantStrength(0)]);
+    const sheet = await renderSheet();
+    await within(sheet).findByText('Potion of Hill Giant Strength · 1 hour left');
+    expect(screen.queryByRole('group', { name: 'Advance the clock' })).not.toBeInTheDocument();
+    expect(within(sheet).queryByRole('form', { name: 'Apply an effect' })).not.toBeInTheDocument();
+    expect(within(sheet).queryByRole('button', { name: /^End / })).not.toBeInTheDocument();
+  });
+});
+
 describe('rolling from the sheet', () => {
   const athletics = {
     label: 'Athletics check',

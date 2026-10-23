@@ -75,3 +75,38 @@ export async function getInviteCode(campaignId: string): Promise<string | null> 
   if (error) throw toDataError(error);
   return (data as { invite_code: string } | null)?.invite_code ?? null;
 }
+
+/** DM only (P2-8): moves the game clock forward and logs why. Returns the new time in game seconds. */
+export async function advanceClock(campaignId: string, seconds: number, reason: string): Promise<number> {
+  const { data, error } = await supabase.rpc('advance_clock', {
+    p_campaign: campaignId,
+    p_seconds: seconds,
+    p_reason: reason,
+  });
+  if (error) {
+    if (error.code === '22023') throw new DataError('validation', error.message);
+    throw toDataError(error);
+  }
+  return Number(data);
+}
+
+/**
+ * Calls back with the campaign's game time whenever the DM moves the clock (realtime; the campaigns read policy
+ * applies). Returns the function that stops listening.
+ */
+export function subscribeToClock(campaignId: string, onTime: (gameSeconds: number) => void): () => void {
+  const channel = supabase
+    .channel(`clock:${campaignId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'campaigns', filter: `id=eq.${campaignId}` },
+      payload => {
+        const seconds = Number((payload.new as Partial<CampaignRow>).game_seconds);
+        if (Number.isFinite(seconds)) onTime(seconds);
+      },
+    )
+    .subscribe();
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}

@@ -1,0 +1,78 @@
+/* P2-8: the DM's effects tool on the sheet */
+.tool {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  border: 1px dashed var(--gold-dark);
+  border-radius: 0.25rem;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+}
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.field {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.grow {
+  flex: 1 1 10rem;
+}
+
+.label {
+  margin: 0;
+  color: var(--gold-dark);
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.number {
+  width: 6rem;
+}
+
+.check {
+  align-self: center;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-faded);
+  font-style: italic;
+}
+
+.alert {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.done {
+  margin: 0;
+  color: var(--verdigris);
+  font-weight: 700;
+}

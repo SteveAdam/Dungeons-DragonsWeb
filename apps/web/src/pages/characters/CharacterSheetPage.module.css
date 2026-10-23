@@ -327,3 +327,16 @@
   font-size: 1rem;
   cursor: not-allowed;
 }
+
+/* P2-8: ending an effect early (DM) */
+.endEffect {
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--wax-red);
+  border-radius: 0.2rem;
+  background: transparent;
+  color: var(--wax-red);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  cursor: pointer;
+}

@@ -3,7 +3,8 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { IconLink, Paper, RibbonTabs, Toggle } from '../components/ui';
 import { toDataError } from '../data/errors';
-import { useCampaign, useInviteCode } from '../hooks/useCampaigns';
+import { ClockWidget } from '../components/ClockWidget';
+import { useCampaign, useInviteCode, useLiveClock } from '../hooks/useCampaigns';
 import { useDmMode } from '../hooks/useDmMode';
 import { useMembers } from '../hooks/useMembers';
 import { useShowDmIndicator } from '../state/dmIndicator';
@@ -35,6 +36,7 @@ export function CampaignHubPage() {
   const members = useMembers(campaignId);
   const { isDm, dmMode, setDmMode } = useDmMode(campaignId);
   const invite = useInviteCode(campaignId, dmMode);
+  useLiveClock(campaignId);
   useShowDmIndicator(dmMode);
 
   if (!campaignId) return <Navigate to="/campaigns" replace />;
@@ -88,6 +90,7 @@ export function CampaignHubPage() {
         {(isDm || dmMode) && (
           <div className={styles.dmRow}>
             {dmMode && <SealedInviteCard code={invite.data ?? null} loading={invite.isPending} error={invite.error} />}
+            {dmMode && <ClockWidget campaignId={campaignId} />}
             {isDm && (
               <div className={styles.dmSwitch}>
                 <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />

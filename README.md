@@ -375,6 +375,24 @@ P2-10).
   items and editing their rules, secrets and owner. `pnpm db:seed:dev` gives new characters Brannoc's gear.
 - Manual test with two players: [docs/p2-7-manual-test.md](docs/p2-7-manual-test.md).
 
+## The game clock and the DM effects tool (P2-8)
+
+- `0014_clock_effects.sql`: the DM moves `campaigns.game_seconds` only with `advance_clock(campaign, seconds,
+reason)`, which writes to `game_clock_events` (append-only for every role). A direct change to the clock is
+  refused, so the log is complete. `campaigns` is in the realtime publication, so open screens hear the new time.
+  (The local stack runs without the realtime container, so locally only the DM's own screen updates at once;
+  others catch up on their next fetch.)
+- `apply_effect` puts an effect on a character in one step: "for N seconds" is counted from the clock as the server
+  sees it, and a hidden detail goes to `effect_secrets`, which only DMs read. Ending an effect early deletes it.
+- The DM's **Game clock** (hub and character page, DM mode) shows "Day N, hh:mm" (day = game_seconds / 86400 + 1;
+  the calendar is Phase 3) with +10 minutes, +1 hour, +8 hours, +1 day, and a custom amount with a reason.
+- The Sheet tab's **Apply an effect** form (DM mode) takes name, source, stat, add / set / set at least, value,
+  duration (minutes or hours from now, rounds, until a short or long rest, permanent), concentration and the hidden
+  detail, with presets for the Potion of Hill Giant Strength and "+2 armour class for 10 minutes". It replaces the
+  development-only potion switch. Effects show as chips with the time left; when the clock passes an effect's end
+  it disappears, worked out from `game_seconds` by the rules engine, not by a timer. Rounds-based effects wait for
+  combat (a later phase); advancing the clock does not count them down.
+
 ## Rules content licence
 
 This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,

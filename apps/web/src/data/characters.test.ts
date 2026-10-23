@@ -2,9 +2,9 @@ import { BRANNOC } from '@dnd-manager/rules-engine';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '../lib/supabase';
 import { fakeQuery } from '../test/fakeQuery';
-import { addEffect, getCharacter, getEffectSecrets, listEffects } from './characters';
+import { applyEffect, getCharacter, getEffectSecrets, listEffects } from './characters';
 
-vi.mock('../lib/supabase', () => ({ supabase: { from: vi.fn() } }));
+vi.mock('../lib/supabase', () => ({ supabase: { from: vi.fn(), rpc: vi.fn() } }));
 
 const from = (result: { data: unknown; error: unknown }) => {
   const q = fakeQuery(result);
@@ -103,8 +103,8 @@ describe('effects', () => {
     expect(await getEffectSecrets(['e1'])).toEqual(new Map([['e1', 'Cursed']]));
   });
 
-  it('writes an effect with its duration as JSON', async () => {
-    const q = from({
+  it('applies an effect through apply_effect, with a "for" duration and its hidden detail (P2-8)', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValueOnce({
       data: {
         id: 'e3',
         character_id: 'ch1',
@@ -113,22 +113,32 @@ describe('effects', () => {
         stat: 'str',
         mode: 'set_at_least',
         value: 21,
-        duration: { kind: 'until', atSeconds: 5 },
+        duration: { kind: 'until', atSeconds: 3600 },
         concentration: false,
         created_at: '',
       },
       error: null,
-    });
-    await addEffect('ch1', {
+    } as never);
+    const effect = await applyEffect('ch1', {
       name: 'Potion',
       source: 'Potion',
       stat: 'str',
       mode: 'set_at_least',
       value: 21,
-      duration: { kind: 'until', atSeconds: 5 },
+      duration: { kind: 'for', seconds: 3600 },
+      hiddenDetail: 'Cursed',
     });
-    expect(q.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ character_id: 'ch1', duration: { kind: 'until', atSeconds: 5 }, concentration: false }),
-    );
+    expect(supabase.rpc).toHaveBeenCalledWith('apply_effect', {
+      p_character: 'ch1',
+      p_name: 'Potion',
+      p_source: 'Potion',
+      p_stat: 'str',
+      p_mode: 'set_at_least',
+      p_value: 21,
+      p_duration: { kind: 'for', seconds: 3600 },
+      p_concentration: false,
+      p_hidden_detail: 'Cursed',
+    });
+    expect(effect.duration).toEqual({ kind: 'until', atSeconds: 3600 });
   });
 });

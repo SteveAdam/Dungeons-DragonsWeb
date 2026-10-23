@@ -215,6 +215,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"game_clock_events": {
+                  Row: {
+                    "campaign_id": string,"created_at": string,"created_by": string | null,"from_seconds": number,"id": string,"reason": string,"to_seconds": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"created_at"?: string,"created_by"?: string | null,"from_seconds": number,"id"?: string,"reason"?: string,"to_seconds": number
+                  }
+                  Update: {
+                    "campaign_id"?: string,"created_at"?: string,"created_by"?: string | null,"from_seconds"?: number,"id"?: string,"reason"?: string,"to_seconds"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "game_clock_events_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"item_secrets": {
                   Row: {
                     "dm_notes": string,"hidden_effect": string,"item_id": string
@@ -702,6 +722,28 @@ isOneToOne: false
                           SetofOptions: {
         from: "*"
         to: "entity_links"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"advance_clock":
+{ Args: { "p_campaign": string,"p_reason"?: string,"p_seconds": number }; Returns: number
+                           },
+"apply_effect":
+{ Args: { "p_character": string,"p_concentration"?: boolean,"p_duration": Json,"p_hidden_detail"?: string,"p_mode": string,"p_name": string,"p_source": string,"p_stat": string,"p_value": number }; Returns: {
+              "character_id": string,
+"concentration": boolean,
+"created_at": string,
+"duration": NonNullable<Json>,
+"id": string,
+"mode": string,
+"name": string,
+"source": string,
+"stat": string,
+"value": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "effects"
         isOneToOne: true
         isSetofReturn: false
       } },

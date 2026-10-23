@@ -1,7 +1,7 @@
 // P1-7: the read-only Sheet tab. Every number comes from computeSheet in the rules engine; this page only lays
 // them out. Tapping a save, skill or attack opens the odds popup, which shows the server's own preview of the roll
 // (P2-2) and rolls through the roll Edge Function: the bonus is never sent from here.
-import { computeSheet, hillGiantStrength, type ComputedRoll } from '@dnd-manager/rules-engine';
+import { computeSheet, type ComputedRoll } from '@dnd-manager/rules-engine';
 import { Backpack, BookOpen, ChevronRight, Dices, ScrollText, Swords, UserRound } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
@@ -10,9 +10,9 @@ import { OddsPopup, type OddsCheck } from '../../components/odds/OddsPopup';
 import { ICON_PROPS, IconLink, Input, Paper, RibbonTabs, Tag, Toggle } from '../../components/ui';
 import { friendlyMessage } from '../../data/errors';
 import { rollForCharacter, type CharacterRollRequest } from '../../data/rolls';
-import { useCampaign } from '../../hooks/useCampaigns';
+import { ClockWidget } from '../../components/ClockWidget';
+import { useCampaign, useLiveClock } from '../../hooks/useCampaigns';
 import {
-  useAddEffect,
   useCharacter,
   useCharacterEffects,
   useEffectSecrets,
@@ -25,6 +25,7 @@ import { useMembers } from '../../hooks/useMembers';
 import { durationText, timeLeft } from '../../lib/gameClock';
 import { useShowDmIndicator } from '../../state/dmIndicator';
 import styles from './CharacterSheetPage.module.css';
+import { EffectsTool } from './EffectsTool';
 import { PackTab } from './pack/PackTab';
 
 const TABS = [
@@ -34,7 +35,6 @@ const TABS = [
   { id: 'pack', label: 'Pack', icon: Backpack },
 ];
 const OPEN_TABS = ['sheet', 'pack'];
-const POTION = 'Potion of Hill Giant Strength';
 const signed = (n: number) => (n < 0 ? `${n}` : `+${n}`);
 const thousands = (n: number) => n.toLocaleString('en');
 
@@ -44,6 +44,8 @@ export function CharacterSheetPage() {
   const navigate = useNavigate();
   const activeTab = tab ?? 'sheet';
   const campaign = useCampaign(campaignId);
+  // effect countdowns follow the game clock, which the DM moves (P2-8)
+  useLiveClock(campaignId);
   const { isDm, dmMode, setDmMode } = useDmMode(campaignId);
   useShowDmIndicator(dmMode);
   const character = useCharacter(characterId);
@@ -52,6 +54,7 @@ export function CharacterSheetPage() {
   const items = useCharacterItems(characterId);
   const effectIds = useMemo(() => (effects.data ?? []).map(e => e.id), [effects.data]);
   const secrets = useEffectSecrets(characterId, effectIds, dmMode);
+  const remove = useRemoveEffect(characterId);
   const members = useMembers(campaignId);
   const gameSeconds = campaign.data?.gameSeconds ?? 0;
   const clock = useMemo(() => ({ seconds: gameSeconds }), [gameSeconds]);
@@ -136,7 +139,6 @@ export function CharacterSheetPage() {
   }
 
   const lockedWeapons = sheet.attacks.filter(a => !a.usable);
-  const potion = effects.data?.find(e => e.name === POTION);
 
   return (
     <main className={styles.page}>
@@ -145,6 +147,7 @@ export function CharacterSheetPage() {
         {owner && <span className={styles.player}>{`Played by ${owner.displayName}`}</span>}
         {isDm && <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />}
       </div>
+      {dmMode && <ClockWidget campaignId={campaignId} />}
       <RibbonTabs
         aria-label="Character sections"
         tabs={TABS}
@@ -318,6 +321,16 @@ export function CharacterSheetPage() {
                     {sheet.activeEffects.map(e => (
                       <li key={e.id}>
                         <Tag>{`${e.name} · ${durationText(e, clock)}`}</Tag>
+                        {dmMode && !e.id.startsWith('item:') && (
+                          <button
+                            type="button"
+                            className={styles.endEffect}
+                            disabled={remove.isPending}
+                            onClick={() => remove.mutate(e.id)}
+                          >
+                            {`End ${e.name}`}
+                          </button>
+                        )}
                         {dmMode && secrets.data?.get(e.id) && (
                           <span className={styles.secret}>{`DM only: ${secrets.data.get(e.id)}`}</span>
                         )}
@@ -325,9 +338,12 @@ export function CharacterSheetPage() {
                     ))}
                   </ul>
                 )}
-                {import.meta.env.DEV && dmMode && (
-                  <PotionToggle characterId={characterId} potionId={potion?.id} clock={clock.seconds} />
+                {remove.isError && (
+                  <p role="alert" className={styles.error}>
+                    {friendlyMessage(remove.error)}
+                  </p>
                 )}
+                {dmMode && <EffectsTool characterId={characterId} />}
               </section>
 
               <section aria-labelledby={`${id}-equipment`} className={styles.box}>
@@ -482,27 +498,3 @@ function RollList({
 }
 
 /** Development only: give or take away the Potion of Hill Giant Strength, to see the sheet change. */
-function PotionToggle({ characterId, potionId, clock }: { characterId: string; potionId?: string; clock: number }) {
-  const add = useAddEffect(characterId);
-  const remove = useRemoveEffect(characterId);
-  const error = add.error ?? remove.error;
-  return (
-    <div className={styles.dev}>
-      <Toggle
-        checked={!!potionId}
-        disabled={add.isPending || remove.isPending}
-        onChange={on => {
-          // the database gives the effect its own id
-          if (on) add.mutate(hillGiantStrength(clock));
-          else if (potionId) remove.mutate(potionId);
-        }}
-        label={`Dev: ${POTION} (1 hour)`}
-      />
-      {error && (
-        <p role="alert" className={styles.error}>
-          {friendlyMessage(error)}
-        </p>
-      )}
-    </div>
-  );
-}

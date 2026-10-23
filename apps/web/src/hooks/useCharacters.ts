@@ -1,12 +1,12 @@
-import type { Effect } from '@dnd-manager/rules-engine';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  addEffect,
+  applyEffect,
   getCharacter,
   getEffectSecrets,
   listCharacters,
   listEffects,
   removeEffect,
+  type NewEffect,
 } from '../data/characters';
 import { previewRoll, type CharacterRollRequest } from '../data/rolls';
 import { queryKeys } from './queryKeys';
@@ -40,14 +40,6 @@ export const useEffectSecrets = (characterId: string | undefined, effectIds: str
     enabled: enabled && !!characterId && effectIds.length > 0,
   });
 
-export function useAddEffect(characterId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (effect: Omit<Effect, 'id'>) => addEffect(characterId, effect),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.characterEffects(characterId) }),
-  });
-}
-
 export function useRemoveEffect(characterId: string) {
   const client = useQueryClient();
   return useMutation({
@@ -64,3 +56,12 @@ export const useRollPreview = (request: CharacterRollRequest | null) =>
     enabled: !!request,
     retry: false,
   });
+
+/** DM only (P2-8): an effect with its duration counted on the server's clock and an optional hidden detail. */
+export function useApplyEffect(characterId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (effect: NewEffect) => applyEffect(characterId, effect),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['characters', characterId] }),
+  });
+}

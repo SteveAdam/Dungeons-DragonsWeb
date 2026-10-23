@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T51) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T54) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -422,6 +422,52 @@ begin
   return p_item;
 end $f$;`,
     fails: ['T51'],
+  },
+  {
+    name: 'advance_clock open to every member (P2-8)',
+    why: 'a player could skip time until a curse wears off',
+    sql: `create or replace function advance_clock(p_campaign uuid, p_seconds bigint, p_reason text default '') returns bigint
+language plpgsql security definer set search_path = public as $f$
+declare was bigint; now_at bigint;
+begin
+  if not is_member(p_campaign) then raise exception 'Only the DM can do that' using errcode = '42501'; end if;
+  if p_seconds is null or p_seconds < 1 or p_seconds > 31536000 then raise exception 'Advance the clock by between 1 second and 365 days' using errcode = '22023'; end if;
+  select game_seconds into was from campaigns where id = p_campaign;
+  now_at := was + p_seconds;
+  perform set_config('app.clock_move', 'on', true);
+  update campaigns set game_seconds = now_at where id = p_campaign;
+  perform set_config('app.clock_move', '', true);
+  insert into game_clock_events (campaign_id, from_seconds, to_seconds, reason) values (p_campaign, was, now_at, coalesce(p_reason, ''));
+  return now_at;
+end $f$;`,
+    fails: ['T52'],
+  },
+  {
+    name: 'clock guard dropped (P2-8)',
+    why: 'the clock could be set without a log entry',
+    sql: `drop trigger campaigns_clock_guard_trg on campaigns;`,
+    fails: ['T52'],
+  },
+  {
+    name: 'clock log no longer append-only (P2-8)',
+    why: 'the record of how much time passed could be rewritten',
+    sql: `drop trigger game_clock_events_append_only_trg on game_clock_events;`,
+    fails: ['T53'],
+  },
+  {
+    name: 'apply_effect open to every member (P2-8)',
+    why: 'a player could give themself Strength 30',
+    sql: `create or replace function require_dm(c uuid) returns void language plpgsql stable security definer set search_path = public as $f$
+begin
+  if c is null or not is_member(c) then raise exception 'Only the DM can do that' using errcode = '42501'; end if;
+end $f$;`,
+    fails: ['T54'],
+  },
+  {
+    name: 'effect secrets readable by members (P2-8)',
+    why: 'players would learn which potion is cursed',
+    sql: `create policy "members read effect secrets" on effect_secrets for select to authenticated using (true);`,
+    fails: ['T54'],
   },
   {
     name: 'hidden entities readable by members',

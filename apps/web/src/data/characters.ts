@@ -114,29 +114,41 @@ export async function getEffectSecrets(effectIds: string[]): Promise<Map<string,
   return new Map((data ?? []).map(r => [r.effect_id, r.hidden_detail]));
 }
 
-/** DM only: puts an effect on a character. */
-export async function addEffect(characterId: string, effect: Omit<Effect, 'id'>): Promise<Effect> {
-  const { data, error } = await supabase
-    .from('effects')
-    .insert({
-      character_id: characterId,
-      name: effect.name,
-      source: effect.source,
-      stat: effect.stat,
-      mode: effect.mode,
-      value: effect.value,
-      duration: effect.duration as unknown as NonNullable<Json>,
-      concentration: effect.concentration ?? false,
-    })
-    .select('*')
-    .single();
-  if (error) throw toDataError(error);
-  return toEffect(data);
-}
-
 /** DM only. */
 export async function removeEffect(effectId: string): Promise<void> {
   const { data, error } = await supabase.from('effects').delete().eq('id', effectId).select('id');
   if (error) throw toDataError(error);
   if (!data || data.length === 0) throw new DataError('forbidden');
+}
+
+/** How long a new effect lasts: as stored, or "for" a number of seconds from the clock's present moment. */
+export type EffectDurationInput = Effect['duration'] | { kind: 'for'; seconds: number };
+
+export interface NewEffect extends Omit<Effect, 'id' | 'duration'> {
+  duration: EffectDurationInput;
+  /** Shown to DMs only (stored in effect_secrets); empty for none. */
+  hiddenDetail: string;
+}
+
+/**
+ * DM only (P2-8): puts an effect on a character with apply_effect, which counts a "for" duration from the clock
+ * as the server sees it and writes the hidden detail where only DMs can read it.
+ */
+export async function applyEffect(characterId: string, e: NewEffect): Promise<Effect> {
+  const { data, error } = await supabase.rpc('apply_effect', {
+    p_character: characterId,
+    p_name: e.name,
+    p_source: e.source,
+    p_stat: e.stat,
+    p_mode: e.mode,
+    p_value: e.value,
+    p_duration: e.duration as unknown as NonNullable<Json>,
+    p_concentration: e.concentration ?? false,
+    p_hidden_detail: e.hiddenDetail,
+  });
+  if (error) {
+    if (error.code === '22023' || error.code === '23514') throw new DataError('validation', error.message);
+    throw toDataError(error);
+  }
+  return toEffect(data as EffectRow);
 }
