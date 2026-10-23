@@ -14,6 +14,7 @@ export * from './effects';
 export * from './environment';
 export * from './equipment';
 export * from './fixtures';
+export * from './items';
 export * from './legacy';
 export * from './progression';
 export * from './requirements';

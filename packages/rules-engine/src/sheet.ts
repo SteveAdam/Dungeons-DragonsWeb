@@ -11,6 +11,7 @@ import {
   type LevelProgress,
 } from './core';
 import { effectiveStat, isActive, type Effect, type GameClock } from './effects';
+import { equippedGear, itemEffects, type InventoryItem } from './items';
 import { checkRequirements, type AbilityScores, type Requirement, type RequirementResult } from './requirements';
 
 export type SkillKey =
@@ -86,6 +87,8 @@ export interface SheetArmor {
   dexCap: number | null;
   /** Heavy armour: below this Strength, speed drops by 10 feet. */
   strReq?: number;
+  /** Heavy armour from an item (P2-7): no Dexterity at all, so a negative modifier does not count either. */
+  noDex?: boolean;
 }
 
 /**
@@ -102,6 +105,8 @@ export interface CharacterSheet {
   xp: number;
   /** The level the sheet has been built to; without it, the level from XP (Phase 1 sheets). */
   levelApplied?: number;
+  /** Weapon training by category (P2-7); without it, every item weapon counts as proficient (Phase 1 sheets). */
+  weaponProficiencies?: ('simple' | 'martial')[];
   abilityScores: AbilityScores;
   skillProficiencies: SkillKey[];
   expertise: SkillKey[];
@@ -191,13 +196,28 @@ function lockReason(r: RequirementResult): string {
   return `${ABILITY_LABELS[r.stat].label} ${r.required} needed, you have ${r.actual}`;
 }
 
-/** Works out every number on the sheet. Pure: the inputs are never changed. */
+/**
+ * Works out every number on the sheet. Pure: the inputs are never changed.
+ *
+ * With `items` (P2-7), the character's equipment comes from their items: the equipped armour and shield make the
+ * armour class, the equipped weapons the attacks, and working items add their effects. Without it, the sheet's own
+ * armor, shield and weapons fields are used (Phase 1 sheets).
+ */
 export function computeSheet(
   sheet: CharacterSheet,
-  effects: readonly Effect[],
+  ownEffects: readonly Effect[],
   clock: GameClock,
   state: CharacterState = { conditions: [], exhaustion: 0 },
+  items?: readonly InventoryItem[],
 ): ComputedSheet {
+  const effects = items ? [...ownEffects, ...itemEffects(items)] : ownEffects;
+  const gear = items
+    ? equippedGear(items, sheet.weaponProficiencies)
+    : {
+        armor: sheet.armor,
+        shield: sheet.shield ? { name: 'Shield', bonus: 2 } : null,
+        weapons: sheet.weapons,
+      };
   const level = sheet.levelApplied ?? levelFromXp(sheet.xp);
   const pb = proficiencyBonus(level);
 
@@ -244,23 +264,24 @@ export function computeSheet(
 
   // armour class: armour base + Dexterity (up to the armour's cap), or 10 + Dexterity unarmoured; +2 for a shield
   const dex = mod('dex');
-  const acParts = sheet.armor
+  const armor = gear.armor;
+  const acParts = armor
     ? [
-        signedPart(sheet.armor.name, sheet.armor.base),
-        signedPart('Dexterity', sheet.armor.dexCap === null ? dex : Math.min(dex, sheet.armor.dexCap)),
+        signedPart(armor.name, armor.base),
+        ...(armor.noDex ? [] : [signedPart('Dexterity', armor.dexCap === null ? dex : Math.min(dex, armor.dexCap))]),
       ]
     : [signedPart('Unarmoured', 10), signedPart('Dexterity', dex)];
-  if (sheet.shield) acParts.push(signedPart('Shield', 2));
+  if (gear.shield) acParts.push(signedPart(gear.shield.name, gear.shield.bonus));
   const acBase = acParts.reduce((sum, p) => sum + p.value, 0);
   const ac = effectiveStat(acBase, 'ac', effects, clock);
 
   // speed: effects first, then heavy armour without the Strength for it costs 10 feet
-  const armorPenaltyFt = sheet.armor?.strReq
+  const armorPenaltyFt = armor?.strReq
     ? checkRequirements(
         {
           id: 'armor',
-          name: sheet.armor.name,
-          requirements: [{ stat: 'str', min: sheet.armor.strReq, onUnmet: 'speed_penalty', penaltyFt: 10 }],
+          name: armor.name,
+          requirements: [{ stat: 'str', min: armor.strReq, onUnmet: 'speed_penalty', penaltyFt: 10 }],
         },
         sheet.abilityScores,
         effects,
@@ -269,7 +290,7 @@ export function computeSheet(
     : 0;
   const speedStat = effectiveStat(sheet.speed, 'speed', effects, clock);
 
-  const attacks: ComputedAttack[] = sheet.weapons.map(w => {
+  const attacks: ComputedAttack[] = gear.weapons.map(w => {
     const ability: Ability = w.ability === 'finesse' ? (mod('dex') > mod('str') ? 'dex' : 'str') : w.ability;
     const breakdown = [signedPart(ABILITY_LABELS[ability].label, mod(ability))];
     if (w.proficient) breakdown.push(signedPart('Proficiency', pb));

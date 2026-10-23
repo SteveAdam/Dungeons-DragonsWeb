@@ -1,0 +1,242 @@
+/* P2-7: the Pack tab */
+.pack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.weight {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 1.05rem;
+}
+
+.section {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+}
+
+.label {
+  margin: 0;
+  padding: 0;
+  color: var(--gold-dark);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-faded);
+  font-style: italic;
+}
+
+.status {
+  color: var(--ink-faded);
+  font-style: italic;
+}
+
+.alert {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.done {
+  margin: 0;
+  color: var(--verdigris);
+  font-weight: 700;
+}
+
+.inbox {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border: 2px solid var(--wax-red);
+  border-radius: 0.25rem;
+  background: var(--ink-wash);
+  font-weight: 700;
+}
+
+.items {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.itemHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.name {
+  font-family: var(--font-heading);
+}
+
+.locked,
+.unlocked {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.locked,
+.lockedText {
+  color: var(--wax-red);
+}
+
+.unlocked {
+  color: var(--verdigris);
+}
+
+.description {
+  margin: 0;
+  font-style: italic;
+}
+
+.toggles,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+}
+
+.give {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border: 1px dashed var(--gold-dark);
+  border-radius: 0.25rem;
+}
+
+.members {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.members legend {
+  margin-bottom: 0.3rem;
+}
+
+.member {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.history {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.when {
+  color: var(--ink-faded);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}
+
+.dmTools summary {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.dmForm {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--ink-wash);
+}
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.grow {
+  flex: 1 1 12rem;
+}
+
+.wide {
+  width: 100%;
+}
+
+.select,
+.textarea {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+.rows {
+  display: grid;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

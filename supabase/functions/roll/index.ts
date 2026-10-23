@@ -56,6 +56,27 @@ const deps: RollDeps = {
     );
     return rows ?? [];
   },
+  async loadItems(characterId) {
+    const rows = orThrow(
+      await admin
+        .from('items')
+        .select('entity_id, kind, definition, weight, quantity, requires_attunement, equipped, attuned, entities(name)')
+        .eq('owner_type', 'character')
+        .eq('owner_id', characterId),
+    );
+    return (rows ?? []).map(r => ({
+      id: r.entity_id,
+      // the embedded entity comes back as one object (items.entity_id is its primary key)
+      name: (r.entities as unknown as { name: string } | null)?.name ?? 'Item',
+      kind: r.kind,
+      definition: r.definition,
+      weight: r.weight === null ? null : Number(r.weight),
+      quantity: r.quantity,
+      requiresAttunement: r.requires_attunement,
+      equipped: r.equipped,
+      attuned: r.attuned,
+    }));
+  },
   async gameSeconds(campaignId) {
     const row = orThrow(await admin.from('campaigns').select('game_seconds').eq('id', campaignId).single());
     return Number(row?.game_seconds ?? 0);

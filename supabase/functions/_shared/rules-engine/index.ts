@@ -15,6 +15,7 @@ export * from './effects.ts';
 export * from './environment.ts';
 export * from './equipment.ts';
 export * from './fixtures.ts';
+export * from './items.ts';
 export * from './legacy.ts';
 export * from './progression.ts';
 export * from './requirements.ts';

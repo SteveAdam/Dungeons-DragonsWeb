@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T46) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T51) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(309);
+select plan(356);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -858,6 +858,118 @@ select lives_ok($$ do $do$ begin
   end $do$ $$, 'T46: the DM can set the applied level');
 select throws_ok($$ update characters set level_applied = 21 where id = tests.u('char:wren') $$, '23514', null, 'T46: the applied level runs from 1 to 20');
 reset role;
+
+-- T47 to T51: items, equipment, attunement and transfers (P2-7, 0013_items.sql) ----------------------------------
+-- fixture, made by the DM with create_item: Brannoc (player) carries chain mail, plate armour, a shield, a second
+-- shield, a scroll, 10 arrows, a bound crown and four rings that need attunement; Kael (roller) a dagger; the
+-- Party a rope; the world a lost idol. The scroll has a DM secret.
+create function tests.item(n text) returns uuid language sql stable security definer set search_path = public as $$
+  select id from entities where campaign_id = tests.u('campaign') and type = 'item' and name = n
+$$;
+grant execute on function tests.item(text) to anon, authenticated, service_role;
+select tests.act_as('dm');
+select lives_ok($$ do $do$ begin
+    perform create_item(tests.u('campaign'), 'Chain Mail', 'armor', '{"armor":{"category":"heavy","baseAc":16,"strength":13,"stealthDisadvantage":true}}', 'character', tests.u('char:brannoc'), 1, 55, 7500, null, false, false, 'chain-mail');
+    perform create_item(tests.u('campaign'), 'Plate Armor', 'armor', '{"armor":{"category":"heavy","baseAc":18,"strength":15,"stealthDisadvantage":true}}', 'character', tests.u('char:brannoc'));
+    perform create_item(tests.u('campaign'), 'Shield', 'shield', '{"armor":{"category":"shield","baseAc":2,"strength":null,"stealthDisadvantage":false}}', 'character', tests.u('char:brannoc'));
+    perform create_item(tests.u('campaign'), 'Spare Shield', 'shield', '{"armor":{"category":"shield","baseAc":2,"strength":null,"stealthDisadvantage":false}}', 'character', tests.u('char:brannoc'));
+    perform create_item(tests.u('campaign'), 'Scroll of Fog Cloud', 'consumable', '{"requirements":[{"stat":"int","min":10,"onUnmet":"lock"}]}', 'character', tests.u('char:brannoc'));
+    perform create_item(tests.u('campaign'), 'Arrows', 'gear', '{}', 'character', tests.u('char:brannoc'), 10, 0.05);
+    perform create_item(tests.u('campaign'), 'Crown Shard', 'quest', '{}', 'character', tests.u('char:brannoc'), 1, null, 0, null, false, true);
+    perform create_item(tests.u('campaign'), 'Ring ' || n, 'magic', '{"effects":[{"stat":"ac","mode":"add","value":1}]}', 'character', tests.u('char:brannoc'), 1, null, 0, 'rare', true) from generate_series(1, 4) n;
+    perform create_item(tests.u('campaign'), 'Dagger', 'weapon', '{}', 'character', tests.u('char:kael'));
+    perform create_item(tests.u('campaign'), 'Rope', 'gear', '{}', 'party', tests.party());
+    perform create_item(tests.u('campaign'), 'Lost Idol', 'quest', '{}', 'world', null);
+    insert into item_secrets (item_id, dm_notes, hidden_effect) values (tests.item('Scroll of Fog Cloud'), 'Forged by the cult', 'Summons the cult instead');
+  end $do$ $$, 'T47: the DM creates items for characters, the party and the world');
+reset role;
+select is((select count(*)::int from item_transfers where campaign_id = tests.u('campaign') and item_name = 'Dagger' and from_name = 'Found' and to_name = 'Kael' and status = 'accepted'), 1, 'T47: placing an item records where it went');
+
+-- T47: a player sees only their own characters' items and the party's; never item secrets
+select tests.act_as('player');
+select is((select count(*)::int from items where owner_id = tests.u('char:brannoc')), 11, 'T47: a player reads the items their character carries');
+select is((select count(*)::int from items where owner_type = 'party'), 1, 'T47: and the party''s items');
+select is((select count(*)::int from items where entity_id = tests.item('Dagger')), 0, 'T47: but not another player''s items');
+select is((select count(*)::int from items where owner_type = 'world'), 0, 'T47: nor items left in the world');
+select is((select name from entities where id = tests.item('Scroll of Fog Cloud')), 'Scroll of Fog Cloud', 'T47: a player reads their item''s name, though its Codex entry is hidden');
+select is((select count(*)::int from item_secrets), 0, 'T47: a player never reads item secrets');
+select lives_ok($$ do $do$ begin
+    update items set quantity = 99 where entity_id = tests.item('Arrows');
+    if found then raise exception 'update applied'; end if;
+  end $do$ $$, 'T47: a player cannot change an item directly');
+select throws_ok($$ insert into items (entity_id, campaign_id, kind, owner_type, owner_id) values (tests.u('ent:mira'), tests.u('campaign'), 'gear', 'character', tests.u('char:brannoc')) $$, '42501', null, 'T47: a player cannot create items');
+select throws_ok($$ select create_item(tests.u('campaign'), 'Vorpal Sword', 'magic', '{}', 'character', tests.u('char:brannoc')) $$, '42501', 'Only the DM can do that', 'T47: nor call create_item');
+reset role;
+select tests.act_as('dm');
+select is((select hidden_effect from item_secrets where item_id = tests.item('Scroll of Fog Cloud')), 'Summons the cult instead', 'T47: the DM reads item secrets');
+select throws_ok($$ update items set owner_type = 'character', owner_id = tests.u('char:kael') where entity_id = tests.item('Rope') $$, 'P0001', 'Items move with offer_transfer or force_move_item, so every move is recorded', 'T47: even the DM moves items only through the functions');
+reset role;
+
+-- T48: bound items cannot be offered; ownership moves only on accept; declining leaves it where it was
+select tests.act_as('player');
+select throws_ok($$ select offer_transfer(tests.item('Crown Shard'), tests.u('char:kael')) $$, '22023', 'This item is bound: it cannot be given', 'T48: a bound item cannot be offered');
+select throws_ok($$ select offer_transfer(tests.item('Dagger'), tests.u('char:wren')) $$, '42501', 'You can only give items your own character carries', 'T48: a player cannot offer someone else''s item');
+select lives_ok($$ select offer_transfer(tests.item('Scroll of Fog Cloud'), tests.u('char:kael')) $$, 'T48: a player offers the scroll to Kael');
+select is((select owner_id from items where entity_id = tests.item('Scroll of Fog Cloud')), tests.u('char:brannoc'), 'T48: the scroll stays with Brannoc until Kael accepts');
+select throws_ok($$ select offer_transfer(tests.item('Scroll of Fog Cloud'), tests.u('char:wren')) $$, '22023', 'This item has already been offered: cancel that offer first', 'T48: one open offer per item');
+select throws_ok($$ select accept_transfer((select id from item_transfers where campaign_id = tests.u('campaign') and item_name = 'Scroll of Fog Cloud' and status = 'pending')) $$, '42501', 'Only the recipient can accept this', 'T48: the giver cannot accept their own offer');
+reset role;
+select tests.act_as('roller');
+select is((select count(*)::int from item_transfers where campaign_id = tests.u('campaign') and status = 'pending' and to_id = tests.u('char:kael')), 1, 'T48: the offer is in Kael''s inbox, with its name');
+select is((select count(*)::int from items where entity_id = tests.item('Scroll of Fog Cloud')), 0, 'T48: Kael''s player cannot read the scroll itself before accepting');
+select lives_ok($$ select decline_transfer((select id from item_transfers where campaign_id = tests.u('campaign') and item_name = 'Scroll of Fog Cloud' and status = 'pending')) $$, 'T48: Kael declines');
+reset role;
+select is((select owner_id from items where entity_id = tests.item('Scroll of Fog Cloud')), tests.u('char:brannoc'), 'T48: declining leaves the scroll with Brannoc');
+select tests.act_as('player');
+select lives_ok($$ select offer_transfer(tests.item('Scroll of Fog Cloud'), tests.u('char:kael')) $$, 'T48: Brannoc offers it again');
+reset role;
+select tests.act_as('roller');
+select lives_ok($$ select accept_transfer((select id from item_transfers where campaign_id = tests.u('campaign') and item_name = 'Scroll of Fog Cloud' and status = 'pending')) $$, 'T48: Kael accepts');
+select is((select count(*)::int from items where entity_id = tests.item('Scroll of Fog Cloud') and owner_id = tests.u('char:kael')), 1, 'T48: now the scroll is Kael''s, and his player reads it');
+reset role;
+select is((select string_agg(status, ',' order by seq) from item_transfers where campaign_id = tests.u('campaign') and item_name = 'Scroll of Fog Cloud' and from_name = 'Brannoc'), 'declined,accepted', 'T48: the history keeps the declined offer and the accepted one');
+select tests.act_as('outsider');
+select is((select count(*)::int from item_transfers), 0, 'T48: someone outside the campaign reads no transfers');
+reset role;
+
+-- T49: no fourth attuned item; one suit of armour and one shield at a time
+select tests.act_as('player');
+select lives_ok($$ select attune_item(tests.item('Ring ' || n)) from generate_series(1, 3) n $$, 'T49: Brannoc attunes to three rings');
+select throws_ok($$ select attune_item(tests.item('Ring 4')) $$, 'P0001', 'A character can be attuned to no more than three items: end attunement to another first', 'T49: the fourth attuned item is refused');
+select throws_ok($$ select attune_item(tests.item('Chain Mail')) $$, '22023', 'This item does not need attunement', 'T49: only items that need attunement can be attuned');
+select lives_ok($$ select unattune_item(tests.item('Ring 1')); select attune_item(tests.item('Ring 4')) $$, 'T49: ending one attunement frees a place');
+select lives_ok($$ select equip_item(tests.item('Chain Mail')); select equip_item(tests.item('Shield')) $$, 'T49: Brannoc puts on chain mail and takes up a shield');
+select throws_ok($$ select equip_item(tests.item('Plate Armor')) $$, 'P0001', 'Only one suit of armour can be worn at a time: take the other off first', 'T49: a second suit of armour is refused');
+select throws_ok($$ select equip_item(tests.item('Spare Shield')) $$, 'P0001', 'Only one shield can be carried at a time: put the other down first', 'T49: a second shield is refused');
+select throws_ok($$ select equip_item(tests.item('Arrows')) $$, 'P0001', 'Only weapons, armour, shields and magic items can be equipped', 'T49: gear is carried, not equipped');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ update items set attuned = true where entity_id = tests.item('Dagger') $$, '23514', null, 'T49: an item that does not need attunement is never attuned, even set directly');
+reset role;
+
+-- T50: a player cannot equip or attune an item they do not own
+select tests.act_as('player');
+select throws_ok($$ select equip_item(tests.item('Dagger')) $$, '42501', 'You can only equip or attune items your own character carries', 'T50: a player cannot equip another player''s item');
+select throws_ok($$ select equip_item(tests.item('Rope')) $$, '42501', 'You can only equip or attune items your own character carries', 'T50: nor a party item');
+reset role;
+select tests.act_as('roller');
+select throws_ok($$ select unequip_item(tests.item('Chain Mail')) $$, '42501', 'You can only equip or attune items your own character carries', 'T50: nor take off someone else''s armour');
+reset role;
+
+-- T51: giving 4 of 10 arrows leaves 6 and makes a stack of 4
+select tests.act_as('player');
+select throws_ok($$ select offer_transfer(tests.item('Arrows'), tests.u('char:kael'), 11) $$, '22023', 'Give between 1 and 10 of these', 'T51: you cannot give more than the stack');
+select lives_ok($$ select offer_transfer(tests.item('Arrows'), tests.u('char:kael'), 4) $$, 'T51: Brannoc offers 4 arrows');
+reset role;
+select tests.act_as('roller');
+select lives_ok($$ select accept_transfer((select id from item_transfers where campaign_id = tests.u('campaign') and item_name = 'Arrows' and status = 'pending')) $$, 'T51: Kael accepts');
+reset role;
+select is((select quantity from items where entity_id = tests.item('Arrows')), 6, 'T51: Brannoc keeps 6');
+select is((select i.quantity || ' ' || e.name from items i join entities e on e.id = i.entity_id where i.owner_id = tests.u('char:kael') and i.kind = 'gear'), '4 Arrows (2)', 'T51: Kael has a new stack of 4');
+select tests.act_as('dm');
+select lives_ok($$ select force_move_item(tests.item('Chain Mail'), 'party', tests.party()) $$, 'T51: the DM moves Brannoc''s chain mail to the party at once');
+reset role;
+select is((select owner_type || ':' || equipped from items where entity_id = tests.item('Chain Mail')), 'party:false', 'T51: a moved item is no longer worn');
 
 select * from finish();
 rollback;

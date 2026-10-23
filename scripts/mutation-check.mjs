@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T46) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T51) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -344,6 +344,84 @@ begin
   return new;
 end $f$;`,
     fails: ['T46'],
+  },
+  {
+    name: 'every item readable by members (P2-7)',
+    why: 'players would see what other characters carry and what lies hidden in the world',
+    sql: `drop policy "read items" on items;
+create policy "read items" on items for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T47'],
+  },
+  {
+    name: 'item secrets readable by members (P2-7)',
+    why: 'players would learn which items are cursed',
+    sql: `create policy "members read item secrets" on item_secrets for select to authenticated using (is_member(item_campaign(item_id)));`,
+    fails: ['T47'],
+  },
+  {
+    name: 'bound items can be offered (P2-7)',
+    why: 'a quest item meant to stay with one character could be handed on',
+    sql: `create or replace function offer_transfer(p_item uuid, p_to_character uuid, p_quantity int default null)
+returns item_transfers language plpgsql security definer set search_path = public as $f$
+declare it items; q int; result item_transfers;
+begin
+  select * into it from items where entity_id = p_item;
+  if it.entity_id is null or it.owner_type <> 'character' or not (owns_character(it.owner_id) or is_dm(it.campaign_id)) then
+    raise exception 'You can only give items your own character carries' using errcode = '42501'; end if;
+  q := coalesce(p_quantity, it.quantity);
+  if q < 1 or q > it.quantity then raise exception 'Give between 1 and % of these', it.quantity using errcode = '22023'; end if;
+  if exists (select 1 from item_transfers where item_id = p_item and status = 'pending') then
+    raise exception 'This item has already been offered: cancel that offer first' using errcode = '22023'; end if;
+  insert into item_transfers (campaign_id, item_id, item_name, from_type, from_id, from_name, to_type, to_id, to_name, quantity)
+  values (it.campaign_id, p_item, (select name from entities where id = p_item), 'character', it.owner_id,
+          owner_name('character', it.owner_id), 'character', p_to_character, owner_name('character', p_to_character), q)
+  returning * into result;
+  return result;
+end $f$;`,
+    fails: ['T48'],
+  },
+  {
+    name: 'an offer moves the item at once (P2-7)',
+    why: 'items would change hands without the recipient accepting',
+    sql: `create function give_now() returns trigger language plpgsql security definer set search_path = public as $f$
+begin
+  if new.status = 'pending' then perform move_item(new.item_id, 'character', new.to_id, new.quantity); end if;
+  return new;
+end $f$;
+create trigger give_now_trg after insert on item_transfers for each row execute function give_now();`,
+    fails: ['T48'],
+  },
+  {
+    name: 'item guard dropped (P2-7)',
+    why: 'a fourth attuned item, or two suits of armour, would be accepted',
+    sql: `drop trigger items_guard_trg on items;`,
+    fails: ['T49'],
+  },
+  {
+    name: 'equip and attune no longer check the owner (P2-7)',
+    why: 'a player could take off another character’s armour',
+    sql: `create or replace function set_item_worn(p_item uuid, p_field text, p_value boolean) returns items
+language plpgsql security definer set search_path = public as $f$
+declare result items;
+begin
+  if p_field = 'equipped' then update items set equipped = p_value where entity_id = p_item returning * into result;
+  else update items set attuned = p_value where entity_id = p_item returning * into result; end if;
+  return result;
+end $f$;`,
+    fails: ['T50'],
+  },
+  {
+    name: 'giving part of a stack moves all of it (P2-7)',
+    why: 'giving 4 arrows of 10 would hand over all 10',
+    sql: `create or replace function move_item(p_item uuid, p_to_type text, p_to_id uuid, p_quantity int) returns uuid
+language plpgsql security definer set search_path = public as $f$
+begin
+  perform set_config('app.item_move', 'on', true);
+  update items set owner_type = p_to_type, owner_id = case when p_to_type = 'world' then null else p_to_id end where entity_id = p_item;
+  perform set_config('app.item_move', '', true);
+  return p_item;
+end $f$;`,
+    fails: ['T51'],
   },
   {
     name: 'hidden entities readable by members',

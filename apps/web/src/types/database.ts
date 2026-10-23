@@ -215,6 +215,78 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"item_secrets": {
+                  Row: {
+                    "dm_notes": string,"hidden_effect": string,"item_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "dm_notes"?: string,"hidden_effect"?: string,"item_id": string
+                  }
+                  Update: {
+                    "dm_notes"?: string,"hidden_effect"?: string,"item_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "item_secrets_item_id_fkey"
+      columns: ["item_id"]
+isOneToOne: true
+      referencedRelation: "items"
+      referencedColumns: ["entity_id"]
+    }
+                  ]
+                },"item_transfers": {
+                  Row: {
+                    "campaign_id": string,"created_at": string,"created_by": string | null,"from_id": string | null,"from_name": string,"from_type": string,"id": string,"item_id": string | null,"item_name": string,"quantity": number,"resolved_at": string | null,"seq": number,"status": string,"to_id": string | null,"to_name": string,"to_type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"created_at"?: string,"created_by"?: string | null,"from_id"?: string | null,"from_name": string,"from_type": string,"id"?: string,"item_id"?: string | null,"item_name": string,"quantity": number,"resolved_at"?: string | null,"seq"?: never,"status"?: string,"to_id"?: string | null,"to_name": string,"to_type": string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"created_at"?: string,"created_by"?: string | null,"from_id"?: string | null,"from_name"?: string,"from_type"?: string,"id"?: string,"item_id"?: string | null,"item_name"?: string,"quantity"?: number,"resolved_at"?: string | null,"seq"?: never,"status"?: string,"to_id"?: string | null,"to_name"?: string,"to_type"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "item_transfers_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "item_transfers_item_id_fkey"
+      columns: ["item_id"]
+isOneToOne: false
+      referencedRelation: "items"
+      referencedColumns: ["entity_id"]
+    }
+                  ]
+                },"items": {
+                  Row: {
+                    "attuned": boolean,"bound": boolean,"campaign_id": string,"created_at": string,"definition": NonNullable<Json>,"entity_id": string,"equipped": boolean,"kind": string,"owner_id": string | null,"owner_type": string,"quantity": number,"rarity": string | null,"requires_attunement": boolean,"srd_ref": string | null,"value_cp": number,"weight": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "attuned"?: boolean,"bound"?: boolean,"campaign_id": string,"created_at"?: string,"definition"?: NonNullable<Json>,"entity_id": string,"equipped"?: boolean,"kind": string,"owner_id"?: string | null,"owner_type": string,"quantity"?: number,"rarity"?: string | null,"requires_attunement"?: boolean,"srd_ref"?: string | null,"value_cp"?: number,"weight"?: number | null
+                  }
+                  Update: {
+                    "attuned"?: boolean,"bound"?: boolean,"campaign_id"?: string,"created_at"?: string,"definition"?: NonNullable<Json>,"entity_id"?: string,"equipped"?: boolean,"kind"?: string,"owner_id"?: string | null,"owner_type"?: string,"quantity"?: number,"rarity"?: string | null,"requires_attunement"?: boolean,"srd_ref"?: string | null,"value_cp"?: number,"weight"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "items_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "items_entity_id_fkey"
+      columns: ["entity_id"]
+isOneToOne: true
+      referencedRelation: "entities"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"ledger": {
                   Row: {
                     "amount": NonNullable<Json>,"campaign_id": string,"created_at": string,"created_by": string | null,"id": string,"kind": string,"note": string,"seq": number,"source": string,"target_id": string,"target_type": string
@@ -613,7 +685,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "add_link":
+            "accept_transfer":
+{ Args: { "p_transfer": string }; Returns: string
+                           },
+"add_link":
 { Args: { "p_a": string,"p_b": string,"p_hidden"?: boolean,"p_label_ab": string,"p_label_ba": string }; Returns: {
               "a_id": string,
 "b_id": string,
@@ -630,14 +705,48 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"attune_item":
+{ Args: { "p_item": string }; Returns: {
+              "attuned": boolean,
+"bound": boolean,
+"campaign_id": string,
+"created_at": string,
+"definition": NonNullable<Json>,
+"entity_id": string,
+"equipped": boolean,
+"kind": string,
+"owner_id": string | null,
+"owner_type": string,
+"quantity": number,
+"rarity": string | null,
+"requires_attunement": boolean,
+"srd_ref": string | null,
+"value_cp": number,
+"weight": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "items"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "award_coins":
 { Args: { "p_coins": Json,"p_note"?: string,"p_source"?: string,"p_target_id": string,"p_target_type": string }; Returns: undefined
                            },
 "award_xp":
 { Args: { "p_amount": number,"p_note"?: string,"p_source": string,"p_target_id": string,"p_target_type": string }; Returns: undefined
                            },
+"body_armor":
+{ Args: { "d": Json }; Returns: boolean
+                           },
+"can_read_item":
+{ Args: { "i": string }; Returns: boolean
+                           },
 "can_read_map_image":
 { Args: { "object_name": string }; Returns: boolean
+                           },
+"cancel_transfer":
+{ Args: { "p_transfer": string }; Returns: undefined
                            },
 "character_campaign":
 { Args: { "c": string }; Returns: string
@@ -683,11 +792,39 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"create_item":
+{ Args: { "p_bound"?: boolean,"p_campaign": string,"p_definition": Json,"p_kind": string,"p_name": string,"p_owner_id": string,"p_owner_type": string,"p_quantity"?: number,"p_rarity"?: string,"p_requires_attunement"?: boolean,"p_srd_ref"?: string,"p_value_cp"?: number,"p_weight"?: number }; Returns: {
+              "attuned": boolean,
+"bound": boolean,
+"campaign_id": string,
+"created_at": string,
+"definition": NonNullable<Json>,
+"entity_id": string,
+"equipped": boolean,
+"kind": string,
+"owner_id": string | null,
+"owner_type": string,
+"quantity": number,
+"rarity": string | null,
+"requires_attunement": boolean,
+"srd_ref": string | null,
+"value_cp": number,
+"weight": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "items"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "create_official_party":
 { Args: { "c": string }; Returns: string
                            },
 "d20":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"decline_transfer":
+{ Args: { "p_transfer": string }; Returns: undefined
                            },
 "delete_entity":
 { Args: { "p_entity": string }; Returns: undefined
@@ -707,14 +844,51 @@ isOneToOne: false
 "entity_visible":
 { Args: { "e": string }; Returns: boolean
                            },
+"equip_item":
+{ Args: { "p_item": string }; Returns: {
+              "attuned": boolean,
+"bound": boolean,
+"campaign_id": string,
+"created_at": string,
+"definition": NonNullable<Json>,
+"entity_id": string,
+"equipped": boolean,
+"kind": string,
+"owner_id": string | null,
+"owner_type": string,
+"quantity": number,
+"rarity": string | null,
+"requires_attunement": boolean,
+"srd_ref": string | null,
+"value_cp": number,
+"weight": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "items"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "folder_campaign":
 { Args: { "object_name": string }; Returns: string
+                           },
+"force_move_item":
+{ Args: { "p_item": string,"p_quantity"?: number,"p_to_id": string,"p_to_type": string }; Returns: string
+                           },
+"free_entity_name":
+{ Args: { "base": string,"c": string }; Returns: string
                            },
 "is_dm":
 { Args: { "c": string }; Returns: boolean
                            },
 "is_member":
 { Args: { "c": string }; Returns: boolean
+                           },
+"is_shield":
+{ Args: { "d": Json }; Returns: boolean
+                           },
+"item_campaign":
+{ Args: { "i": string }; Returns: string
                            },
 "join_campaign":
 { Args: { "code": string }; Returns: string
@@ -770,14 +944,53 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"move_item":
+{ Args: { "p_item": string,"p_quantity": number,"p_to_id": string,"p_to_type": string }; Returns: string
+                           },
+"offer_transfer":
+{ Args: { "p_item": string,"p_quantity"?: number,"p_to_character": string }; Returns: {
+              "campaign_id": string,
+"created_at": string,
+"created_by": string | null,
+"from_id": string | null,
+"from_name": string,
+"from_type": string,
+"id": string,
+"item_id": string | null,
+"item_name": string,
+"quantity": number,
+"resolved_at": string | null,
+"seq": number,
+"status": string,
+"to_id": string | null,
+"to_name": string,
+"to_type": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "item_transfers"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "official_party":
 { Args: { "c": string }; Returns: string
+                           },
+"owner_campaign":
+{ Args: { "p_id": string,"p_type": string }; Returns: string
+                           },
+"owner_name":
+{ Args: { "p_id": string,"p_type": string }; Returns: string
                            },
 "owns_character":
 { Args: { "c": string }; Returns: boolean
                            },
 "party_campaign":
 { Args: { "p": string }; Returns: string
+                           },
+"party_roster":
+{ Args: { "p_campaign": string }; Returns: {
+              "ability_scores": Json,"character_id": string,"effects": Json,"name": string
+            }[]
                            },
 "pin_campaign":
 { Args: { "p": string }; Returns: string
@@ -889,6 +1102,31 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"set_item_worn":
+{ Args: { "p_field": string,"p_item": string,"p_value": boolean }; Returns: {
+              "attuned": boolean,
+"bound": boolean,
+"campaign_id": string,
+"created_at": string,
+"definition": NonNullable<Json>,
+"entity_id": string,
+"equipped": boolean,
+"kind": string,
+"owner_id": string | null,
+"owner_type": string,
+"quantity": number,
+"rarity": string | null,
+"requires_attunement": boolean,
+"srd_ref": string | null,
+"value_cp": number,
+"weight": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "items"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "shares_campaign":
 { Args: { "other": string }; Returns: boolean
                            },
@@ -898,6 +1136,56 @@ isOneToOne: false
 "target_campaign":
 { Args: { "p_target_id": string,"p_target_type": string }; Returns: string
                            },
+"unattune_item":
+{ Args: { "p_item": string }; Returns: {
+              "attuned": boolean,
+"bound": boolean,
+"campaign_id": string,
+"created_at": string,
+"definition": NonNullable<Json>,
+"entity_id": string,
+"equipped": boolean,
+"kind": string,
+"owner_id": string | null,
+"owner_type": string,
+"quantity": number,
+"rarity": string | null,
+"requires_attunement": boolean,
+"srd_ref": string | null,
+"value_cp": number,
+"weight": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "items"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"unequip_item":
+{ Args: { "p_item": string }; Returns: {
+              "attuned": boolean,
+"bound": boolean,
+"campaign_id": string,
+"created_at": string,
+"definition": NonNullable<Json>,
+"entity_id": string,
+"equipped": boolean,
+"kind": string,
+"owner_id": string | null,
+"owner_type": string,
+"quantity": number,
+"rarity": string | null,
+"requires_attunement": boolean,
+"srd_ref": string | null,
+"value_cp": number,
+"weight": number | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "items"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "withdraw_from_party":
 { Args: { "p_character": string,"p_coins": Json,"p_note"?: string }; Returns: undefined
                            }

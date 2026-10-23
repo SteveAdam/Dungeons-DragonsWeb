@@ -5,7 +5,9 @@
   "type": "module",
   "description": "SRD 5.2.1 equipment data (CC-BY-4.0): weapons, armour and coins, validated with zod.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./attribution": "./src/attribution.ts",
+    "./equipment": "./src/equipment.ts"
   },
   "scripts": {
     "convert": "node scripts/data.ts",

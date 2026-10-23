@@ -349,6 +349,32 @@ P2-10).
   (read-only) and a deposit form. `pnpm db:seed:dev <email> <name>` seeds a second, level 1 character for testing.
 - Manual test with two players: [docs/p2-6-manual-test.md](docs/p2-6-manual-test.md).
 
+## Items, the pack and transfers (P2-7)
+
+- `0013_items.sql` adds `items` (each an entity of type `item`, so the Codex lists it with folders and
+  relationships), `item_secrets` (DM only: notes and a hidden effect, which is a note until the DM writes it into
+  the item's rules) and `item_transfers` (offers and the history, with names kept as they were).
+- A trigger keeps the rules: attuned only when the item needs attunement, at most three attuned items, one body
+  armour and one shield equipped per character, only weapons, armour, shields and magic items equipped. Owners
+  change only inside the functions, so every move is recorded; a moved item is no longer worn.
+- Functions: `create_item` (DM: an SRD clone or from scratch, placed with a character, the Party or the world),
+  `offer_transfer` / `accept_transfer` / `decline_transfer` / `cancel_transfer` (ownership moves only on accept;
+  bound items cannot be offered; giving part of a stack splits it, the new stack named "Arrows (2)" because entity
+  names are unique), `force_move_item` (DM, at once), `equip_item`, `unequip_item`, `attune_item`,
+  `unattune_item`, and `party_roster` (the Party's ability scores and effects, for the Give dialog's "who can use
+  it").
+- Players read their characters' items and the Party's; transfers are read by the two sides and the DM.
+- The rules engine's `computeSheet` takes the character's items: the equipped armour and shield make the armour
+  class, the equipped weapons the attacks (with requirement locks), and items that are working (equipped, and
+  attuned when they need it) add their effects as permanent effects named after the item. `carriedWeight` is for
+  display. The roll function loads the items too, so server bonuses match the sheet. A sheet may record
+  `weaponProficiencies`; without it (Phase 1 sheets), item weapons count as proficient.
+- Existing characters' Phase 1 armour, shield and weapons become equipped items, matched to the SRD records by name.
+- The character's **Pack** tab (`/campaigns/<id>/characters/<id>/pack`): carried items with locks, equip and attune
+  switches, the Give dialog, the inbox of offers, the party inventory and the transfer history; in DM mode, creating
+  items and editing their rules, secrets and owner. `pnpm db:seed:dev` gives new characters Brannoc's gear.
+- Manual test with two players: [docs/p2-7-manual-test.md](docs/p2-7-manual-test.md).
+
 ## Rules content licence
 
 This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,

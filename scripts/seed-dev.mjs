@@ -7,11 +7,12 @@
 // Sign up the player in the app and join a campaign first. Running it again does nothing if the character is there.
 // With a name (P2-6), the character is a level 1 copy of Brannoc's sheet at 0 XP, for testing awards and the
 // Party with a second player. Brannoc himself is built to level 5, his level by XP, so no level-up is pending.
+// Each new character also gets Brannoc's gear as items (P2-7): everything equipped except the arrows.
 // The Potion of Hill Giant Strength is not seeded: a DM switches it on from the sheet (DM mode, development
 // builds only) to watch the numbers change and the greatsword unlock.
 import { execSync } from 'node:child_process';
 import { levelFromXp } from '../packages/rules-engine/src/core.ts';
-import { BRANNOC } from '../packages/rules-engine/src/fixtures.ts';
+import { BRANNOC, BRANNOC_ITEMS } from '../packages/rules-engine/src/fixtures.ts';
 
 const email = process.argv[2];
 const characterName = process.argv[3] ?? BRANNOC.name;
@@ -39,6 +40,16 @@ const headers = {
   Authorization: `Bearer ${env.SERVICE_ROLE_KEY}`,
   'Content-Type': 'application/json',
 };
+
+async function post(path, body) {
+  const r = await fetch(`${api}${path}`, {
+    method: 'POST',
+    headers: { ...headers, Prefer: 'return=representation' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`${path}: ${r.status} ${await r.text()}`);
+  return r.json();
+}
 
 async function get(path) {
   const r = await fetch(`${api}${path}`, { headers });
@@ -75,7 +86,23 @@ if (!id) {
   });
   if (!r.ok) throw new Error(`insert: ${r.status} ${await r.text()}`);
   id = (await r.json())[0].id;
-  console.log(`${characterName} created for ${email}.`);
+  for (const item of BRANNOC_ITEMS) {
+    // item names are unique in a campaign, so a second character's gear becomes "Chain Mail (2)" and so on
+    const name = await post('/rest/v1/rpc/free_entity_name', { c: campaignId, base: item.name });
+    const [entity] = await post('/rest/v1/entities', { campaign_id: campaignId, type: 'item', name });
+    await post('/rest/v1/items', {
+      entity_id: entity.id,
+      campaign_id: campaignId,
+      kind: item.kind,
+      definition: item.definition,
+      weight: item.weight,
+      quantity: item.quantity,
+      owner_type: 'character',
+      owner_id: id,
+      equipped: item.kind !== 'gear',
+    });
+  }
+  console.log(`${characterName} created for ${email}, with ${BRANNOC_ITEMS.length} items.`);
 } else {
   console.log(`${characterName} already exists for ${email}.`);
 }

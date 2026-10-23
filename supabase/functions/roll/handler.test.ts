@@ -1,8 +1,15 @@
 // P2-2: tests for the roll function, with the database replaced by an in-memory stand-in.
 //   pnpm test:functions
 import assert from 'node:assert/strict';
-import { BRANNOC, successChance } from '../_shared/rules-engine/index.ts';
-import { handle, type CharacterRecord, type EffectRow, type RollD20Args, type RollDeps } from './handler.ts';
+import { BRANNOC, BRANNOC_ITEMS, successChance } from '../_shared/rules-engine/index.ts';
+import {
+  handle,
+  type CharacterRecord,
+  type EffectRow,
+  type ItemRow,
+  type RollD20Args,
+  type RollDeps,
+} from './handler.ts';
 
 const CAMPAIGN = '00000000-0000-4000-8000-000000000001';
 const BRANNOC_ID = '00000000-0000-4000-8000-0000000000b1';
@@ -27,6 +34,7 @@ function world(
   over: {
     brannoc?: Partial<CharacterRecord>;
     effects?: EffectRow[];
+    items?: ItemRow[];
     rollError?: { code: string; message: string };
   } = {},
 ) {
@@ -51,6 +59,7 @@ function world(
     roleIn: (_c, user) => Promise.resolve(user === 'dm' ? 'dm' : user === 'outsider' ? null : 'player'),
     loadCharacter: id => Promise.resolve(characters[id] ?? null),
     loadEffects: () => Promise.resolve(over.effects ?? []),
+    loadItems: () => Promise.resolve(over.items ?? GEAR),
     gameSeconds: () => Promise.resolve(0),
     rollD20: args => {
       calls.push(args);
@@ -71,6 +80,9 @@ function world(
   };
   return { deps, calls };
 }
+
+// Brannoc's gear as items (P2-7), all equipped, as the database stores them
+const GEAR: ItemRow[] = BRANNOC_ITEMS.map(i => ({ ...i, equipped: i.kind !== 'gear' }));
 
 const athletics = { campaignId: CAMPAIGN, characterId: BRANNOC_ID, kind: 'check', key: 'athletics', target: 14 };
 
@@ -262,4 +274,24 @@ Deno.test('the browser’s CORS preflight is answered', async () => {
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('Access-Control-Allow-Origin'), '*');
   await res.body?.cancel();
+});
+
+Deno.test('attacks come from equipped items (P2-7): a weapon left in the pack cannot be rolled', async () => {
+  const sword = { ...athletics, kind: 'attack', key: 'longsword', target: 15 };
+  const wielded = await call(world().deps, 'token-player', { action: 'preview', ...sword });
+  // Strength +3, proficiency +3, magic +1
+  assert.equal(wielded.body.bonus, 7);
+  const packed = GEAR.map(i => (i.id === 'longsword' ? { ...i, equipped: false } : i));
+  const { status } = await call(world({ items: packed }).deps, 'token-player', { action: 'preview', ...sword });
+  assert.equal(status, 404);
+});
+
+Deno.test('a damaged item is set aside, not allowed to stop every roll', async () => {
+  const broken: ItemRow = { ...GEAR[0], id: 'broken', definition: { weapon: { damage: 'lots' } }, kind: 'magic' };
+  const { status, body } = await call(world({ items: [...GEAR, broken] }).deps, 'token-player', {
+    action: 'preview',
+    ...athletics,
+  });
+  assert.equal(status, 200);
+  assert.equal(body.bonus, 6);
 });

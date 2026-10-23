@@ -11,6 +11,7 @@
 import {
   ABILITY_KEYS,
   computeSheet,
+  ITEM_KINDS,
   conditionEffects,
   critChance,
   resolveRollMode,
@@ -21,6 +22,8 @@ import {
   type CharacterState,
   type Condition,
   type Effect,
+  type InventoryItem,
+  type ItemKind,
   type RollMode,
   type RollModeReason,
   type SkillKey,
@@ -68,6 +71,18 @@ export interface RollD20Args {
   p_breakdown: { label: string; value: number }[];
 }
 
+export interface ItemRow {
+  id: string;
+  name: string;
+  kind: string;
+  definition: unknown;
+  weight: number | null;
+  quantity: number;
+  requiresAttunement: boolean;
+  equipped: boolean;
+  attuned: boolean;
+}
+
 export interface RollDeps {
   /** The user id for an access token, or null when the token is missing, expired or forged. */
   userFromToken(token: string): Promise<string | null>;
@@ -75,6 +90,8 @@ export interface RollDeps {
   roleIn(campaignId: string, userId: string): Promise<'dm' | 'player' | null>;
   loadCharacter(characterId: string): Promise<CharacterRecord | null>;
   loadEffects(characterId: string): Promise<EffectRow[]>;
+  /** The items the character carries (P2-7): equipped ones give armour class, attacks and effects. */
+  loadItems(characterId: string): Promise<ItemRow[]>;
   gameSeconds(campaignId: string): Promise<number>;
   /** Calls public.roll_d20 with the service role. */
   rollD20(args: RollD20Args): Promise<{ data: unknown; error: { code?: string; message: string } | null }>;
@@ -162,6 +179,64 @@ export function parseInput(body: unknown): RollInput {
 const isInt = (v: unknown) => Number.isInteger(v);
 const isStringArray = (v: unknown) => Array.isArray(v) && v.every(s => typeof s === 'string');
 
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/**
+ * A stored item, checked enough that computeSheet cannot trip over it. A weapon or armour part that is not
+ * shaped right is dropped (the item still counts as carried), so one damaged item cannot stop every roll.
+ */
+export function itemOf(r: ItemRow): InventoryItem {
+  const d = isObject(r.definition) ? r.definition : {};
+  const w = isObject(d.weapon) ? d.weapon : null;
+  const a = isObject(d.armor) ? d.armor : null;
+  const weaponOk =
+    !!w &&
+    (w.category === 'simple' || w.category === 'martial') &&
+    (w.kind === 'melee' || w.kind === 'ranged') &&
+    isObject(w.damage) &&
+    typeof w.damage.dice === 'string' &&
+    typeof w.damage.type === 'string' &&
+    isStringArray(w.properties) &&
+    typeof w.mastery === 'string' &&
+    w.mastery.length > 0;
+  const armorOk = !!a && ['light', 'medium', 'heavy', 'shield'].includes(a.category as string) && isInt(a.baseAc);
+  const effects = Array.isArray(d.effects)
+    ? d.effects.filter(
+        (e): e is { stat: Effect['stat']; mode: Effect['mode']; value: number } =>
+          isObject(e) &&
+          ['str', 'dex', 'con', 'int', 'wis', 'cha', 'speed', 'ac'].includes(e.stat as string) &&
+          ['add', 'set', 'set_at_least'].includes(e.mode as string) &&
+          isInt(e.value),
+      )
+    : [];
+  const requirements = Array.isArray(d.requirements)
+    ? d.requirements.filter(
+        q =>
+          isObject(q) &&
+          ABILITY_KEYS.includes(q.stat as Ability) &&
+          isInt(q.min) &&
+          (q.onUnmet === 'lock' || q.onUnmet === 'speed_penalty'),
+      )
+    : [];
+  return {
+    id: r.id,
+    name: r.name,
+    kind: ((ITEM_KINDS as readonly string[]).includes(r.kind) ? r.kind : 'gear') as ItemKind,
+    definition: {
+      ...(weaponOk ? { weapon: w as unknown as InventoryItem['definition']['weapon'] } : {}),
+      ...(armorOk ? { armor: { strength: null, stealthDisadvantage: false, ...a } as never } : {}),
+      ...(isInt(d.magicBonus) ? { magicBonus: d.magicBonus as number } : {}),
+      ...(requirements.length ? { requirements: requirements as never } : {}),
+      ...(effects.length ? { effects } : {}),
+    },
+    weight: r.weight,
+    quantity: r.quantity,
+    requiresAttunement: r.requiresAttunement,
+    equipped: r.equipped,
+    attuned: r.attuned,
+  };
+}
+
 /** The stored sheet, checked enough that computeSheet cannot trip over it. Name, XP and level come from columns. */
 export function sheetOf(c: CharacterRecord): CharacterSheet {
   const s = (c.sheet ?? {}) as Record<string, unknown>;
@@ -220,8 +295,9 @@ export function computePreview(
   state: CharacterState,
   input: Pick<RollInput, 'kind' | 'key' | 'target'>,
   dmMode?: RollMode,
+  items?: readonly InventoryItem[],
 ): Preview {
-  const computed = computeSheet(sheet, effects, { seconds: gameSeconds }, state);
+  const computed = computeSheet(sheet, effects, { seconds: gameSeconds }, state, items);
   let label: string;
   let ability: Ability;
   let bonus: number;
@@ -307,8 +383,9 @@ export async function handle(req: Request, deps: RollDeps): Promise<Response> {
     }
     if (input.hidden && role !== 'dm') throw new HttpError(403, 'Only the DM can make a hidden roll');
 
-    const [effectRows, gameSeconds] = await Promise.all([
+    const [effectRows, itemRows, gameSeconds] = await Promise.all([
       deps.loadEffects(character.id),
+      deps.loadItems(character.id),
       deps.gameSeconds(input.campaignId),
     ]);
     const state: CharacterState = {
@@ -322,6 +399,7 @@ export async function handle(req: Request, deps: RollDeps): Promise<Response> {
       state,
       input,
       role === 'dm' ? input.mode : undefined,
+      itemRows.map(itemOf),
     );
     if (input.action === 'preview') return json(200, preview);
 

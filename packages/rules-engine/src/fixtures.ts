@@ -1,6 +1,7 @@
 // P1-7 golden fixtures: Brannoc exactly as the ticket gives him, and the potion that unlocks his greatsword.
 // Used by the engine tests, the web tests and the development seed.
 import type { Effect } from './effects';
+import type { InventoryItem } from './items';
 import type { CharacterSheet } from './sheet';
 
 export const BRANNOC: CharacterSheet = {
@@ -68,3 +69,106 @@ export function hillGiantStrength(startSeconds: number, id = 'hill-giant-strengt
     duration: { kind: 'until', atSeconds: startSeconds + 3600 },
   };
 }
+
+/**
+ * P2-7: Brannoc's equipment as items. Weapon and armour numbers are the SRD 5.2.1 records (packages/srd-data);
+ * the Greatsword of the Drowned is the P1-3 example (a +1 greatsword that needs Strength 17). Arrows weigh 1 lb.
+ * per 20. Everything is carried and nothing equipped: tests and the seed equip what they need.
+ */
+export const BRANNOC_ITEMS: InventoryItem[] = [
+  {
+    id: 'chain-mail',
+    name: 'Chain Mail',
+    kind: 'armor',
+    definition: { armor: { category: 'heavy', baseAc: 16, strength: 13, stealthDisadvantage: true } },
+    weight: 55,
+    quantity: 1,
+    requiresAttunement: false,
+    equipped: false,
+    attuned: false,
+  },
+  {
+    id: 'shield',
+    name: 'Shield',
+    kind: 'shield',
+    definition: { armor: { category: 'shield', baseAc: 2, strength: null, stealthDisadvantage: false } },
+    weight: 6,
+    quantity: 1,
+    requiresAttunement: false,
+    equipped: false,
+    attuned: false,
+  },
+  {
+    id: 'longsword',
+    name: 'Longsword +1',
+    kind: 'magic',
+    definition: {
+      weapon: {
+        category: 'martial',
+        kind: 'melee',
+        damage: { dice: '1d8', type: 'slashing' },
+        properties: ['versatile'],
+        versatileDice: '1d10',
+        mastery: 'sap',
+      },
+      magicBonus: 1,
+    },
+    weight: 3,
+    quantity: 1,
+    requiresAttunement: false,
+    equipped: false,
+    attuned: false,
+  },
+  {
+    id: 'handaxe',
+    name: 'Handaxe',
+    kind: 'weapon',
+    definition: {
+      weapon: {
+        category: 'simple',
+        kind: 'melee',
+        damage: { dice: '1d6', type: 'slashing' },
+        properties: ['light', 'thrown'],
+        range: { normal: 20, long: 60 },
+        mastery: 'vex',
+      },
+    },
+    weight: 2,
+    quantity: 1,
+    requiresAttunement: false,
+    equipped: false,
+    attuned: false,
+  },
+  {
+    id: 'greatsword-drowned',
+    name: 'Greatsword of the Drowned',
+    kind: 'magic',
+    definition: {
+      weapon: {
+        category: 'martial',
+        kind: 'melee',
+        damage: { dice: '2d6', type: 'slashing' },
+        properties: ['heavy', 'two-handed'],
+        mastery: 'graze',
+      },
+      magicBonus: 1,
+      requirements: [{ stat: 'str', min: 17, onUnmet: 'lock' }],
+    },
+    weight: 6,
+    quantity: 1,
+    requiresAttunement: false,
+    equipped: false,
+    attuned: false,
+  },
+  {
+    id: 'arrows',
+    name: 'Arrows',
+    kind: 'gear',
+    definition: {},
+    weight: 0.05,
+    quantity: 20,
+    requiresAttunement: false,
+    equipped: false,
+    attuned: false,
+  },
+];

@@ -26,6 +26,11 @@ export const queryKeys = {
   party: (campaignId: string) => ['campaigns', campaignId, 'party'] as const,
   wallets: (campaignId: string) => ['campaigns', campaignId, 'party', 'wallets'] as const,
   ledger: (campaignId: string) => ['campaigns', campaignId, 'party', 'ledger'] as const,
+  items: (campaignId: string) => ['campaigns', campaignId, 'items'] as const,
+  transfers: (campaignId: string) => ['campaigns', campaignId, 'items', 'transfers'] as const,
+  roster: (campaignId: string) => ['campaigns', campaignId, 'items', 'roster'] as const,
+  characterItems: (characterId: string) => ['characters', characterId, 'items'] as const,
+  itemSecret: (itemId: string) => ['items', itemId, 'secret'] as const,
   pinNotes: (pinId: string) => ['pins', pinId, 'notes'] as const,
   mapImage: (path: string) => ['map-image', path] as const,
 };

@@ -97,7 +97,7 @@ export function App() {
           }
         />
         <Route
-          path="/campaigns/:campaignId/characters/:characterId"
+          path="/campaigns/:campaignId/characters/:characterId/:tab?"
           element={
             <ProtectedRoute>
               <Suspense fallback={<p className="auth-status">Unfolding the sheet…</p>}>

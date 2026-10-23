@@ -1,4 +1,4 @@
-import { BRANNOC, hillGiantStrength } from '@dnd-manager/rules-engine';
+import { BRANNOC, BRANNOC_ITEMS, hillGiantStrength } from '@dnd-manager/rules-engine';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -8,6 +8,8 @@ import * as campaignsApi from '../../data/campaigns';
 import type { Character } from '../../data/characters';
 import * as charactersApi from '../../data/characters';
 import { DataError } from '../../data/errors';
+import type { Item } from '../../data/items';
+import * as itemsApi from '../../data/items';
 import * as membersApi from '../../data/members';
 import * as rollsApi from '../../data/rolls';
 import { useDmModeStore } from '../../state/dmModeStore';
@@ -17,6 +19,26 @@ vi.mock('../../data/characters');
 vi.mock('../../data/campaigns');
 vi.mock('../../data/members');
 vi.mock('../../data/rolls');
+vi.mock('../../data/items', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/items')>()),
+  listCharacterItems: vi.fn(),
+  listItems: vi.fn(),
+  listTransfers: vi.fn(),
+}));
+
+// Brannoc's gear as stored items (P2-7): everything but the arrows equipped
+const GEAR: Item[] = BRANNOC_ITEMS.map(i => ({
+  ...i,
+  equipped: i.kind !== 'gear',
+  campaignId: 'c1',
+  srdRef: null,
+  valueCp: 0,
+  rarity: null,
+  bound: false,
+  ownerType: 'character',
+  ownerId: 'ch1',
+  damaged: false,
+}));
 
 const brannoc: Character = {
   id: 'ch1',
@@ -43,6 +65,9 @@ function setUp(role: 'dm' | 'player', effects = [] as ReturnType<typeof hillGian
   });
   vi.mocked(charactersApi.getCharacter).mockResolvedValue(brannoc);
   vi.mocked(charactersApi.listEffects).mockResolvedValue(effects);
+  vi.mocked(itemsApi.listCharacterItems).mockResolvedValue(GEAR);
+  vi.mocked(itemsApi.listItems).mockResolvedValue(GEAR);
+  vi.mocked(itemsApi.listTransfers).mockResolvedValue([]);
   vi.mocked(charactersApi.getEffectSecrets).mockResolvedValue(new Map(effects.map(e => [e.id, 'Brewed by a hag'])));
 }
 
