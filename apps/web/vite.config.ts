@@ -7,7 +7,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
-    // the page tests type into many fields; on a busy machine (Docker running) they need more than the default 5 s
-    testTimeout: 15_000,
+    // the page tests type into many fields; on a busy machine (Docker running) some need well over the default 5 s
+    testTimeout: 30_000,
   },
 });

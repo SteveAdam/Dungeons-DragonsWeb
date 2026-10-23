@@ -162,8 +162,9 @@ describe('Sheet tab for Brannoc (acceptance 2)', () => {
     ).toEqual(['Longsword +1 · Sap+71d8+4 slashing', 'Handaxe · Vex+61d6+3 slashing']);
     const equipment = within(sheet).getByRole('region', { name: 'Equipment' });
     expect(within(equipment).getByText('Strength 17 needed, you have 16')).toBeInTheDocument();
-    // other tabs are coming soon
-    expect(screen.getByRole('tab', { name: 'Spells' })).toHaveAttribute('aria-disabled', 'true');
+    // P2-11: a Fighter has no Spells tab; Details and Pack are there
+    expect(screen.queryByRole('tab', { name: 'Spells' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Details' })).not.toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByText('Played by Joel')).toBeInTheDocument();
   });
 

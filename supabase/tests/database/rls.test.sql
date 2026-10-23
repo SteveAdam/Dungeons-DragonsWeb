@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T60) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T65) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(427);
+select plan(476);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1133,6 +1133,115 @@ select tests.act_as_service();
 select throws_ok($$ update level_up_events set hp_gain = 99 $$, 'P0001', 'The level-up log is append-only: entries cannot be changed or deleted', 'T60: nor can the service role change it');
 reset role;
 select throws_ok($$ delete from level_up_events $$, 'P0001', 'The level-up log is append-only: entries cannot be changed or deleted', 'T60: nor the database owner delete it');
+
+-- T61 to T65: spells, the long rest and details (P2-11, 0017_spells_details_rest.sql) ----------------------------
+-- fixture: a test class and spells (CI starts with no SRD rows), and Lyra (player), a level 3 "Test Wizard" with
+-- 4 level 1 slots and 2 level 2 slots, one spell lasting until a long rest, 3 spent Hit Point Dice and Exhaustion 2
+select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+insert into srd_classes (id, name, source, data) values ('test-wizard', 'Test Wizard', 'srd-5.2',
+  '{"id":"test-wizard","name":"Test Wizard","spellcasting":{"ability":"int","preparation":"spellbook"},"levels":[{"level":3,"columns":{"preparedSpells":4,"slots1":4,"slots2":2,"slots3":"—"}}]}');
+insert into srd_spells (id, name, source, level, data) values
+  ('test-bolt', 'Test Bolt', 'srd-5.2', 0, '{"id":"test-bolt","name":"Test Bolt","level":0,"classes":["Test Wizard"],"concentration":false,"ritual":false}'),
+  ('test-missile', 'Test Missile', 'srd-5.2', 1, '{"id":"test-missile","name":"Test Missile","level":1,"classes":["Test Wizard"],"concentration":false,"ritual":false}'),
+  ('test-bless', 'Test Bless', 'srd-5.2', 1, '{"id":"test-bless","name":"Test Bless","level":1,"classes":["Test Wizard"],"concentration":true,"ritual":false}'),
+  ('test-alarm', 'Test Alarm', 'srd-5.2', 1, '{"id":"test-alarm","name":"Test Alarm","level":1,"classes":["Test Wizard"],"concentration":false,"ritual":true}'),
+  ('test-blur', 'Test Blur', 'srd-5.2', 2, '{"id":"test-blur","name":"Test Blur","level":2,"classes":["Test Wizard"],"concentration":true,"ritual":false}'),
+  ('test-ball', 'Test Ball', 'srd-5.2', 3, '{"id":"test-ball","name":"Test Ball","level":3,"classes":["Test Wizard"],"concentration":false,"ritual":false}');
+insert into characters (id, campaign_id, owner_id, name, xp, level_applied, exhaustion, sheet) values
+  (tests.u('char:lyra'), tests.u('campaign'), tests.u('user:player'), 'Lyra', 900, 3, 2,
+   '{"className":"Test Wizard","hp":{"max":20,"current":5,"temp":0},"hitDice":{"die":"d6","total":3,"spent":3},"details":{"personalityTraits":"","ideals":"","bonds":"","flaws":"","appearance":"Ink-stained","backstory":"Apprentice"},"alignment":"Neutral",
+     "spells":{"cantrips":["Test Bolt"],"prepared":["Test Missile","Test Bless","Test Blur"],"spellbook":["Test Missile","Test Bless","Test Alarm","Test Blur"]}}');
+insert into effects (character_id, name, stat, mode, value, duration) values
+  (tests.u('char:lyra'), 'Until a long rest', 'ac', 'add', 1, '{"kind":"rest","rest":"long"}'),
+  (tests.u('char:lyra'), 'Mage Armor', 'ac', 'set', 13, '{"kind":"until","atSeconds":999999}');
+create function tests.lyra_slots() returns text language sql stable security definer set search_path = public as $$
+  select array_to_string(slots_used[1:2], '/') from character_spell_state where character_id = tests.u('char:lyra')
+$$;
+grant execute on function tests.lyra_slots() to authenticated, service_role;
+
+-- T61: a player cannot spend another player's slots, or change slots directly
+select tests.act_as('roller');
+select throws_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Missile', 1) $$, '42501', 'You can only do that for your own character', 'T61: another player cannot cast Lyra''s spells');
+select throws_ok($$ select set_prepared_spells(tests.u('char:lyra'), '{}') $$, '42501', 'You can only do that for your own character', 'T61: nor change what she has prepared');
+reset role;
+select tests.act_as('player');
+select lives_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Bolt') $$, 'T61: Lyra''s player casts a cantrip');
+select is(tests.lyra_slots(), '0/0', 'T61: a cantrip spends no slot');
+select throws_ok($$ insert into character_spell_state (character_id, campaign_id) values (tests.u('char:wren'), tests.u('campaign')) $$, '42501', null, 'T61: a player cannot write spell state');
+select throws_ok($$ update character_spell_state set slots_used = array_fill(0, array[9]) where character_id = tests.u('char:lyra') $$, '42501', null, 'T61: nor reset spent slots directly');
+reset role;
+
+-- T62: casting spends slots and refuses one that is not there; rituals spend none; concentration replaces concentration
+select tests.act_as('player');
+select lives_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Missile', 1); select cast_spell(tests.u('char:lyra'), 'Test Missile', 1) $$, 'T62: two level 1 casts');
+select lives_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Blur', 2) $$, 'T62: one level 2 cast');
+select is(tests.lyra_slots(), '2/1', 'T62: the slots spent match: 2 of level 1, 1 of level 2');
+select lives_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Missile', 2) $$, 'T62: a level 1 spell cast with a level 2 slot');
+select throws_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Missile', 2) $$, '22023', 'No level 2 spell slot left', 'T62: casting without an available slot is refused');
+select throws_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Blur', 1) $$, '22023', 'Cast Test Blur with a slot of level 2 or higher', 'T62: a spell needs a slot of its level or higher');
+select throws_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Ball', 3) $$, '22023', 'Test Ball is not prepared', 'T62: only prepared spells are cast');
+select lives_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Alarm', null, true) $$, 'T62: a ritual from the spellbook, though not prepared');
+select is(tests.lyra_slots(), '2/2', 'T62: ritual casting spends nothing');
+select throws_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Missile', null, true) $$, '22023', 'Test Missile is not a ritual', 'T62: only ritual spells are cast as rituals');
+select is((select concentration ->> 'spell' from character_spell_state where character_id = tests.u('char:lyra')), 'Test Blur', 'T62: Lyra concentrates on Test Blur');
+select lives_ok($$ select cast_spell(tests.u('char:lyra'), 'Test Bless', 1) $$, 'T62: then casts Test Bless, another concentration spell');
+select is((select concentration ->> 'spell' from character_spell_state where character_id = tests.u('char:lyra')), 'Test Bless', 'T62: the second concentration spell ends the first');
+select is((select ended_concentration from spell_casts where character_id = tests.u('char:lyra') and spell = 'Test Bless'), 'Test Blur', 'T62: the cast log records which concentration ended');
+select lives_ok($$ select break_concentration(tests.u('char:lyra')) $$, 'T62: she breaks concentration');
+select is((select concentration from character_spell_state where character_id = tests.u('char:lyra')), null, 'T62: and concentrates on nothing');
+select throws_ok($$ update spell_casts set spell = 'Wish' $$, '42501', null, 'T62: a player cannot change the cast log');
+reset role;
+select throws_ok($$ delete from spell_casts $$, 'P0001', 'This log is append-only: entries cannot be changed or deleted', 'T62: nor can the database owner');
+
+-- T63: prepared spells keep the class's rules, and change only after a rest (the campaign default)
+select tests.act_as('player');
+select throws_ok($$ select set_prepared_spells(tests.u('char:lyra'), '{"Test Missile","Test Alarm"}') $$, '22023', 'Prepared spells change after a long rest, before you cast with a slot', 'T63: after spending a slot, the list waits for a rest');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ select set_prepared_spells(tests.u('char:lyra'), '{"Test Missile","Test Alarm"}') $$, 'T63: the DM can change it at any time');
+select is((select sheet -> 'spells' -> 'prepared' from characters where id = tests.u('char:lyra')), '["Test Missile", "Test Alarm"]'::jsonb, 'T63: the sheet holds the new list, with the rest of the spells as they were');
+select is((select sheet -> 'spells' -> 'cantrips' from characters where id = tests.u('char:lyra')), '["Test Bolt"]'::jsonb, 'T63: cantrips untouched');
+select throws_ok($$ select set_prepared_spells(tests.u('char:lyra'), '{"Test Missile","Test Bless","Test Alarm","Test Blur","Test Missile"}') $$, '22023', 'Prepare each spell only once', 'T63: each spell once');
+select throws_ok($$ select set_prepared_spells(tests.u('char:lyra'), '{"Test Ball"}') $$, '22023', 'Test Ball is not a Test Wizard spell of a level you have slots for', 'T63: only spell levels with slots');
+reset role;
+
+-- T64: the simple long rest is the DM's, and restores what SRD 5.2.1 says
+select tests.act_as('player');
+select throws_ok($$ select simple_long_rest(tests.u('char:lyra')) $$, '42501', 'Only the DM can do that', 'T64: a player cannot give themself a long rest');
+select throws_ok($$ select simple_long_rest_party(tests.u('campaign')) $$, '42501', 'Only the DM can do that', 'T64: nor the whole party one');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ select simple_long_rest(tests.u('char:lyra')) $$, 'T64: the DM gives Lyra a simple long rest');
+reset role;
+select is(tests.lyra_slots(), '0/0', 'T64: every spell slot comes back');
+select is((select (sheet -> 'hp' ->> 'current') || ' hp, ' || (sheet -> 'hitDice' ->> 'spent') || ' dice spent, exhaustion ' || exhaustion from characters where id = tests.u('char:lyra')), '20 hp, 0 dice spent, exhaustion 1', 'T64: all hit points and all spent Hit Point Dice back; Exhaustion down by 1');
+select is((select string_agg(name, ', ') from effects where character_id = tests.u('char:lyra')), 'Mage Armor', 'T64: effects lasting until a rest end; timed ones stay');
+select is((select prepare_open::text || ' ' || coalesce(concentration::text, 'none') from character_spell_state where character_id = tests.u('char:lyra')), 'true none', 'T64: concentration ends and prepared spells may change again');
+select is((select details ->> 'hitDiceSpentBefore' from rest_events where character_id = tests.u('char:lyra')), '3', 'T64: the rest is logged with what it restored');
+select tests.act_as('player');
+select lives_ok($$ select set_prepared_spells(tests.u('char:lyra'), '{"Test Missile","Test Bless"}') $$, 'T64: after the rest, the player prepares again');
+reset role;
+select tests.act_as('dm');
+select is((select simple_long_rest_party(tests.u('campaign'))), (select count(*)::int from party_members where party_id = official_party(tests.u('campaign'))), 'T64: the party long rest rests every member');
+reset role;
+select throws_ok($$ update rest_events set kind = 'long' $$, 'P0001', 'This log is append-only: entries cannot be changed or deleted', 'T64: the rest log cannot be changed');
+
+-- T65: the Details tab is the owner's (and the DM's) to write, within its limits
+select is((select data ->> 'appearance' || ' / ' || (data ->> 'alignment') from character_details where character_id = tests.u('char:lyra')), 'Ink-stained / Neutral', 'T65: details start from what the wizard put in the sheet');
+select tests.act_as('player');
+select lives_ok($$ update character_details set data = data || '{"age":"23","eyes":"grey","symbol":"moon","allies":"The Lantern Guild"}' where character_id = tests.u('char:lyra') $$, 'T65: the owner edits the details');
+select is((select data ->> 'symbol' from character_details where character_id = tests.u('char:lyra')), 'moon', 'T65: and reads them back');
+select throws_ok($$ update character_details set data = data || jsonb_build_object('age', repeat('x', 41)) where character_id = tests.u('char:lyra') $$, '23514', null, 'T65: every field has its limit');
+select throws_ok($$ update character_details set data = data || '{"symbol":"dragon-logo"}' where character_id = tests.u('char:lyra') $$, '23514', null, 'T65: the symbol is one of the built-in icons');
+select throws_ok($$ update character_details set data = data || '{"script":"<b>"}' where character_id = tests.u('char:lyra') $$, '23514', null, 'T65: only the known fields');
+reset role;
+select tests.act_as('roller');
+select is((select count(*)::int from character_details where character_id = tests.u('char:lyra')), 0, 'T65: another player cannot read them');
+select lives_ok($$ do $do$ begin
+    update character_details set data = '{}' where character_id = tests.u('char:lyra');
+    if found then raise exception 'update applied'; end if;
+  end $do$ $$, 'T65: nor change them');
+reset role;
 
 select * from finish();
 rollback;

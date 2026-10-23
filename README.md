@@ -450,6 +450,35 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
   origin feat, tool, details); before this, reading a sheet dropped them, so the sheet page treated every weapon as
   proficient.
 
+## Spells, details and the simple long rest (P2-11)
+
+- **Spells tab** (casters only; a Fighter has none). The header's spellcasting ability, save DC and spell attack
+  come from `computeSheet` (new `spellcasting` on the computed sheet; casters record `spellcastingAbility`, set at
+  creation and filled in for existing characters by 0017). Slots are dots (filled = spent) from the class table and
+  the stored spell state. Cantrips and prepared spells are listed by level with their casting time, range,
+  duration, save DC, damage or healing (upcast and cantrip scaling from the engine). **Cast** spends the chosen slot
+  (an upcast chooser appears when a higher slot is free), **As a ritual** spends none, and spell attacks open the
+  odds popup: the roll function now takes `spell:<name>` attack keys and uses the spell attack bonus. A
+  concentration banner shows the spell, **Break concentration**, and the save DC for a given amount of damage.
+  Preparing: toggles within the class limit (a Wizard's from the spellbook), with a message at the limit.
+- **Details tab**: age, height, weight, eyes, skin, hair, appearance, backstory, allies and organisations,
+  treasure, personality traits, ideals, bonds, flaws, alignment, languages and a symbol from built-in icons; each
+  field has a limit, text stays plain text, and changes save themselves a moment after typing stops.
+- **Simple long rest** (DM mode: on the character page for one character, on the Party tab for the whole Party), a
+  stand-in until Phase 6. It follows SRD 5.2.1's Long Rest: all hit points and **all** spent Hit Point Dice back
+  (the ticket said half; that was the 2014 rule, and 5.2.1 says "all spent Hit Point Dice"), Exhaustion down by 1,
+  every spell slot back, concentration ends, and effects lasting until a rest end. The engine's `longRest` is the
+  reference for it.
+- `0017_spells_details_rest.sql`: `character_spell_state` (spent slots, concentration, whether the prepared list
+  may change; no direct writes), `spell_casts` and `rest_events` (append-only logs), `character_details` (owner and
+  DM write; limits checked by `details_ok`; seeded from the creation wizard's sheet), and the functions
+  `cast_spell`, `break_concentration`, `set_prepared_spells`, `simple_long_rest`, `simple_long_rest_party`. The
+  campaign setting `prepareAfterRestOnly` (on unless set false; the DM switches it in the hub) lets prepared spells
+  change only between a long rest and the next spell cast with a slot. The character guard now lets these functions
+  write a player's sheet (the `app.sheet_write` flag) while direct writes stay the DM's.
+- The web app's sheet schema has a compile-time check that it lists every field of the stored sheet; zod drops
+  unlisted fields, which is how P2-9's fields and then `spellcastingAbility` went missing on reading.
+
 ## Rules content licence
 
 This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,

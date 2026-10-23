@@ -148,6 +148,7 @@ describe('the wizard and level-up fields survive reading (P2-9, P2-10)', () => {
     const extras = {
       weaponProficiencies: ['simple'],
       subclass: 'evoker',
+      spellcastingAbility: 'int',
       size: 'medium',
       originFeat: 'Magic Initiate (Wizard)',
       toolProficiency: 'Calligrapher’s Supplies',

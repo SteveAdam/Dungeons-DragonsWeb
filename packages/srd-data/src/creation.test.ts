@@ -105,6 +105,14 @@ describe('creating a level 1 character from the SRD (P2-9)', () => {
     const built = buildCharacter(wizard, srd);
     expect(built.sheet.hp.max).toBe(6 + 2);
     expect(built.sheet.spells).toEqual(wizard.spells);
+    // P2-11: Intelligence 15 + 2 = 17 (+3) and proficiency +2: save DC 13, spell attack +5
+    expect(computeSheet(built.sheet, [], { seconds: 0 }).spellcasting).toEqual({
+      ability: 'int',
+      label: 'Intelligence',
+      saveDc: 13,
+      attackBonus: 5,
+    });
+    expect(computeSheet(buildCharacter(fighter, srd).sheet, [], { seconds: 0 }).spellcasting).toBeUndefined();
     expect(built.sheet.weaponProficiencies).toEqual(['simple']);
     // the Quarterstaff in "Arcane Focus (Quarterstaff)" is a focus, kept as gear; the daggers are weapons
     expect(built.items.filter(i => i.kind === 'weapon').map(i => [i.name, i.quantity, i.equipped])).toEqual([

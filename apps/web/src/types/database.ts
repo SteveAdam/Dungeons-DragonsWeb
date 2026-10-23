@@ -65,6 +65,32 @@ isOneToOne: true
                   Relationships: [
                     
                   ]
+                },"character_details": {
+                  Row: {
+                    "campaign_id": string,"character_id": string,"data": NonNullable<Json>,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"character_id": string,"data"?: NonNullable<Json>,"updated_at"?: string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"character_id"?: string,"data"?: NonNullable<Json>,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "character_details_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "character_details_character_id_fkey"
+      columns: ["character_id"]
+isOneToOne: true
+      referencedRelation: "characters"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"character_drafts": {
                   Row: {
                     "campaign_id": string,"data": NonNullable<Json>,"updated_at": string,"user_id": string
@@ -82,6 +108,32 @@ isOneToOne: true
       columns: ["campaign_id"]
 isOneToOne: false
       referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"character_spell_state": {
+                  Row: {
+                    "campaign_id": string,"character_id": string,"concentration": Json | null,"prepare_open": boolean,"slots_used": (number)[],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"character_id": string,"concentration"?: Json | null,"prepare_open"?: boolean,"slots_used"?: (number)[],"updated_at"?: string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"character_id"?: string,"concentration"?: Json | null,"prepare_open"?: boolean,"slots_used"?: (number)[],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "character_spell_state_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "character_spell_state_character_id_fkey"
+      columns: ["character_id"]
+isOneToOne: true
+      referencedRelation: "characters"
       referencedColumns: ["id"]
     }
                   ]
@@ -635,6 +687,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"rest_events": {
+                  Row: {
+                    "campaign_id": string,"character_id": string,"created_at": string,"created_by": string | null,"details": NonNullable<Json>,"id": string,"kind": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"character_id": string,"created_at"?: string,"created_by"?: string | null,"details"?: NonNullable<Json>,"id"?: string,"kind": string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"character_id"?: string,"created_at"?: string,"created_by"?: string | null,"details"?: NonNullable<Json>,"id"?: string,"kind"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "rest_events_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"rolls": {
                   Row: {
                     "bonus": number,"bonus_breakdown": Json | null,"campaign_id": string,"character_id": string | null,"created_at": string,"crit": boolean,"dice": (number)[],"fumble": boolean,"hidden": boolean,"id": string,"kept": number,"kind": string,"label": string,"mode": string,"rolled_by": string,"success": boolean | null,"target": number | null,"total": number
@@ -658,6 +730,26 @@ isOneToOne: false
       columns: ["character_id"]
 isOneToOne: false
       referencedRelation: "characters"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"spell_casts": {
+                  Row: {
+                    "campaign_id": string,"character_id": string,"concentration": boolean,"created_at": string,"created_by": string | null,"ended_concentration": string | null,"id": string,"ritual": boolean,"seq": number,"slot_level": number | null,"spell": string,"spell_level": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"character_id": string,"concentration"?: boolean,"created_at"?: string,"created_by"?: string | null,"ended_concentration"?: string | null,"id"?: string,"ritual"?: boolean,"seq"?: never,"slot_level"?: number | null,"spell": string,"spell_level": number
+                  }
+                  Update: {
+                    "campaign_id"?: string,"character_id"?: string,"concentration"?: boolean,"created_at"?: string,"created_by"?: string | null,"ended_concentration"?: string | null,"id"?: string,"ritual"?: boolean,"seq"?: never,"slot_level"?: number | null,"spell"?: string,"spell_level"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "spell_casts_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
       referencedColumns: ["id"]
     }
                   ]
@@ -866,6 +958,21 @@ isOneToOne: false
 "body_armor":
 { Args: { "d": Json }; Returns: boolean
                            },
+"break_concentration":
+{ Args: { "p_character": string }; Returns: {
+              "campaign_id": string,
+"character_id": string,
+"concentration": Json | null,
+"prepare_open": boolean,
+"slots_used": (number)[],
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "character_spell_state"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "can_read_item":
 { Args: { "i": string }; Returns: boolean
                            },
@@ -875,11 +982,29 @@ isOneToOne: false
 "cancel_transfer":
 { Args: { "p_transfer": string }; Returns: undefined
                            },
+"cast_spell":
+{ Args: { "p_character": string,"p_ritual"?: boolean,"p_slot_level"?: number,"p_spell": string }; Returns: {
+              "campaign_id": string,
+"character_id": string,
+"concentration": Json | null,
+"prepare_open": boolean,
+"slots_used": (number)[],
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "character_spell_state"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "character_campaign":
 { Args: { "c": string }; Returns: string
                            },
 "check_source":
 { Args: { "p_source": string }; Returns: undefined
+                           },
+"class_slots":
+{ Args: { "p_class": string,"p_level": number }; Returns: (number)[]
                            },
 "coins_of":
 { Args: { "p_coins": Json }; Returns: {
@@ -965,6 +1090,12 @@ isOneToOne: false
 "deposit_to_party":
 { Args: { "p_character": string,"p_coins": Json,"p_note"?: string }; Returns: undefined
                            },
+"details_from_sheet":
+{ Args: { "s": Json }; Returns: Json
+                           },
+"details_ok":
+{ Args: { "d": Json }; Returns: boolean
+                           },
 "entity_campaign":
 { Args: { "e": string }; Returns: string
                            },
@@ -1040,6 +1171,9 @@ isOneToOne: false
                            },
 "map_is_revealed":
 { Args: { "m": string }; Returns: boolean
+                           },
+"max_spell_level":
+{ Args: { "p_class": string,"p_level": number }; Returns: number
                            },
 "move_coins":
 { Args: { "p_cp": number,"p_gp": number,"p_note": string,"p_owner_id": string,"p_owner_type": string,"p_pp": number,"p_sign": number,"p_source": string,"p_sp": number }; Returns: undefined
@@ -1169,6 +1303,9 @@ isOneToOne: false
       } },
 "require_dm":
 { Args: { "c": string }; Returns: undefined
+                           },
+"require_owner_or_dm":
+{ Args: { "p_character": string }; Returns: undefined
                            },
 "reveal_link":
 { Args: { "p_hidden"?: boolean,"p_link": string }; Returns: {
@@ -1320,9 +1457,46 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"set_prepared_spells":
+{ Args: { "p_character": string,"p_prepared": (string)[] }; Returns: Json
+                           },
 "shares_campaign":
 { Args: { "other": string }; Returns: boolean
                            },
+"simple_long_rest":
+{ Args: { "p_character": string }; Returns: {
+              "campaign_id": string,
+"character_id": string,
+"created_at": string,
+"created_by": string | null,
+"details": NonNullable<Json>,
+"id": string,
+"kind": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "rest_events"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"simple_long_rest_party":
+{ Args: { "p_campaign": string }; Returns: number
+                           },
+"spell_state_for":
+{ Args: { "p_character": string }; Returns: {
+              "campaign_id": string,
+"character_id": string,
+"concentration": Json | null,
+"prepare_open": boolean,
+"slots_used": (number)[],
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "character_spell_state"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "split_party_gold":
 { Args: { "p_party": string }; Returns: undefined
                            },

@@ -4,7 +4,13 @@ import { ErrorNotice } from '../components/ErrorNotice';
 import { IconLink, Paper, RibbonTabs, Toggle } from '../components/ui';
 import { friendlyMessage, toDataError } from '../data/errors';
 import { ClockWidget } from '../components/ClockWidget';
-import { useCampaign, useInviteCode, useLiveClock, useSetOptionalFeats } from '../hooks/useCampaigns';
+import {
+  useCampaign,
+  useInviteCode,
+  useLiveClock,
+  useSetOptionalFeats,
+  useSetPrepareAfterRestOnly,
+} from '../hooks/useCampaigns';
 import { useDmMode } from '../hooks/useDmMode';
 import { useMembers } from '../hooks/useMembers';
 import { useShowDmIndicator } from '../state/dmIndicator';
@@ -38,6 +44,7 @@ export function CampaignHubPage() {
   const invite = useInviteCode(campaignId, dmMode);
   useLiveClock(campaignId);
   const feats = useSetOptionalFeats(campaignId ?? '');
+  const prepareRule = useSetPrepareAfterRestOnly(campaignId ?? '');
   useShowDmIndicator(dmMode);
 
   if (!campaignId) return <Navigate to="/campaigns" replace />;
@@ -104,6 +111,21 @@ export function CampaignHubPage() {
                   {feats.isError
                     ? friendlyMessage(feats.error)
                     : 'Lets players take a feat instead of an Ability Score Improvement (the feats themselves come later).'}
+                </p>
+              </div>
+            )}
+            {dmMode && (
+              <div className={styles.dmSwitch}>
+                <Toggle
+                  checked={campaign.data.prepareAfterRestOnly ?? true}
+                  disabled={prepareRule.isPending}
+                  onChange={on => prepareRule.mutate(on)}
+                  label="Prepare spells after a rest"
+                />
+                <p className={styles.dmHint}>
+                  {prepareRule.isError
+                    ? friendlyMessage(prepareRule.error)
+                    : 'Players change their prepared spells only after a long rest, before they next cast with a slot.'}
                 </p>
               </div>
             )}

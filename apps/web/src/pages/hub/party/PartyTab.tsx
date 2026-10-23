@@ -8,6 +8,7 @@ import { toPurse, type Party, type Wallet } from '../../../data/party';
 import { useCharacters } from '../../../hooks/useCharacters';
 import { useLedger, useParty, useSplitPartyGold, useWallets } from '../../../hooks/useParty';
 import hub from '../hub.module.css';
+import { PartyLongRestButton } from '../../characters/spells/LongRestButton';
 import { LedgerList } from './LedgerList';
 import styles from './party.module.css';
 import { AwardCoinsForm, AwardXpForm, DepositForm } from './PartyForms';
@@ -100,6 +101,7 @@ export function PartyTab({ campaignId, dmMode }: Props) {
           <h2 id="party-awards" className={styles.heading}>
             Awards
           </h2>
+          <PartyLongRestButton campaignId={campaignId} />
           <AwardXpForm campaignId={campaignId} party={party.data} characters={characters.data} />
           <AwardCoinsForm campaignId={campaignId} party={party.data} characters={characters.data} />
         </section>

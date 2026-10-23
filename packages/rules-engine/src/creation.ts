@@ -548,6 +548,7 @@ export function buildCharacter(choices: CreationChoices, srd: CreationSrd): Buil
     toolProficiency: background.toolProficiency,
     ...(cls.spellcasting
       ? {
+          spellcastingAbility: cls.spellcasting.ability,
           spells: {
             cantrips: [...choices.spells.cantrips],
             prepared: [...choices.spells.prepared],

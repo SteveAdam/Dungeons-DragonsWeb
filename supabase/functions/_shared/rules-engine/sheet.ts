@@ -13,6 +13,7 @@ import {
 } from './core.ts';
 import { effectiveStat, isActive, type Effect, type GameClock } from './effects.ts';
 import { equippedGear, itemEffects, type InventoryItem } from './items.ts';
+import { spellAttackBonus, spellSaveDc } from './spellcasting.ts';
 import { checkRequirements, type AbilityScores, type Requirement, type RequirementResult } from './requirements.ts';
 
 export type SkillKey =
@@ -127,6 +128,8 @@ export interface CharacterSheet {
   originFeat?: string;
   /** The subclass's SRD id, once chosen (P2-10). */
   subclass?: string;
+  /** The class's spellcasting ability, for casters (P2-11). */
+  spellcastingAbility?: Ability;
   toolProficiency?: string;
   spells?: { cantrips: string[]; prepared: string[]; spellbook?: string[] };
   details?: CharacterDetails;
@@ -210,6 +213,8 @@ export interface ComputedSheet {
   activeEffects: Effect[];
   /** One line per condition (conditions do not change the sheet's numbers; they change individual rolls). */
   conditionNotes: string[];
+  /** For casters (P2-11): the spellcasting ability, spell save DC and spell attack bonus. */
+  spellcasting?: { ability: Ability; label: string; saveDc: number; attackBonus: number };
 }
 
 const signedPart = (label: string, value: number) => ({ label, value });
@@ -364,5 +369,15 @@ export function computeSheet(
     xp: levelProgress(sheet.xp, level),
     activeEffects: effects.filter(e => isActive(e, clock)),
     conditionNotes: [...new Set(state.conditions)].map(c => `${c[0].toUpperCase()}${c.slice(1)}: ${CONDITION_INFO[c]}`),
+    ...(sheet.spellcastingAbility
+      ? {
+          spellcasting: {
+            ability: sheet.spellcastingAbility,
+            label: ABILITY_LABELS[sheet.spellcastingAbility].label,
+            saveDc: spellSaveDc(pb, mod(sheet.spellcastingAbility)),
+            attackBonus: spellAttackBonus(pb, mod(sheet.spellcastingAbility)),
+          },
+        }
+      : {}),
   };
 }

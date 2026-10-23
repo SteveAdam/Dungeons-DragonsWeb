@@ -21,20 +21,27 @@ import {
 } from '../../hooks/useCharacters';
 import { useDmMode } from '../../hooks/useDmMode';
 import { useCharacterItems } from '../../hooks/useItems';
+import { useDetails } from '../../hooks/useSpells';
+import { listSrdClasses, listSrdSpells } from '../../data/srd';
+import { useQuery } from '@tanstack/react-query';
+import type { LevelUpClass } from '@dnd-manager/rules-engine';
 import { useMembers } from '../../hooks/useMembers';
 import { durationText, timeLeft } from '../../lib/gameClock';
 import { useShowDmIndicator } from '../../state/dmIndicator';
 import styles from './CharacterSheetPage.module.css';
 import { EffectsTool } from './EffectsTool';
 import { PackTab } from './pack/PackTab';
+import { DetailsTab } from './spells/DetailsTab';
+import { LongRestButton } from './spells/LongRestButton';
+import { SpellsTab } from './spells/SpellsTab';
 
 const TABS = [
   { id: 'sheet', label: 'Sheet', icon: ScrollText },
-  { id: 'details', label: 'Details', icon: UserRound, disabled: true, title: 'Coming soon' },
-  { id: 'spells', label: 'Spells', icon: BookOpen, disabled: true, title: 'Coming soon' },
+  { id: 'details', label: 'Details', icon: UserRound },
+  { id: 'spells', label: 'Spells', icon: BookOpen },
   { id: 'pack', label: 'Pack', icon: Backpack },
 ];
-const OPEN_TABS = ['sheet', 'pack'];
+const OPEN_TABS = ['sheet', 'pack', 'details', 'spells'];
 const signed = (n: number) => (n < 0 ? `${n}` : `+${n}`);
 const thousands = (n: number) => n.toLocaleString('en');
 
@@ -72,6 +79,25 @@ export function CharacterSheetPage() {
     [character.data, effects.data, items.data, clock],
   );
 
+  // P2-11: the Spells tab is for casters only; it needs the class table and the spell list
+  const isCaster = !!character.data?.sheet.spellcastingAbility;
+  const tabs = TABS.filter(t => t.id !== 'spells' || isCaster);
+  const wantsSpells = activeTab === 'spells' && isCaster;
+  const classes = useQuery({
+    queryKey: ['srd', 'classes'],
+    queryFn: listSrdClasses,
+    staleTime: Infinity,
+    enabled: wantsSpells,
+  });
+  const spellList = useQuery({
+    queryKey: ['srd', 'spells'],
+    queryFn: listSrdSpells,
+    staleTime: Infinity,
+    enabled: wantsSpells,
+  });
+  // the Details tab owns the alignment once it has one
+  const details = useDetails(characterId);
+
   const campaignName = campaign.data?.name ?? 'Campaign';
   const crumb = (
     <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
@@ -84,6 +110,9 @@ export function CharacterSheetPage() {
   );
 
   if (!OPEN_TABS.includes(activeTab)) {
+    return <Navigate to={`/campaigns/${campaignId}/characters/${characterId}`} replace />;
+  }
+  if (activeTab === 'spells' && character.data && !isCaster) {
     return <Navigate to={`/campaigns/${campaignId}/characters/${characterId}`} replace />;
   }
   if (character.isPending || items.isPending) {
@@ -148,16 +177,80 @@ export function CharacterSheetPage() {
         {isDm && <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />}
       </div>
       {dmMode && <ClockWidget campaignId={campaignId} />}
+      {dmMode && <LongRestButton characterId={characterId} name={data.name} />}
       <RibbonTabs
         aria-label="Character sections"
-        tabs={TABS}
+        tabs={tabs}
         value={activeTab}
         onChange={next =>
           navigate(`/campaigns/${campaignId}/characters/${characterId}${next === 'sheet' ? '' : `/${next}`}`)
         }
       />
 
-      {activeTab === 'pack' ? (
+      {activeTab === 'details' ? (
+        <Paper as="section" texture="full" role="tabpanel" aria-label="Details" className={styles.sheet}>
+          <DetailsTab characterId={characterId} campaignId={campaignId} />
+        </Paper>
+      ) : activeTab === 'spells' ? (
+        <Paper as="section" texture="full" role="tabpanel" aria-label="Spells" className={styles.sheet}>
+          {classes.isError || spellList.isError ? (
+            <ErrorNotice
+              error={classes.error ?? spellList.error}
+              onRetry={() => (classes.isError ? classes.refetch() : spellList.refetch())}
+            />
+          ) : !classes.data || !spellList.data ? (
+            <p role="status" className={styles.status}>
+              Opening the spellbook…
+            </p>
+          ) : (
+            (() => {
+              const cls = classes.data.find(c => c.name === data.sheet.className) as LevelUpClass | undefined;
+              return cls ? (
+                <>
+                  <div className={styles.targets}>
+                    <label htmlFor={`${id}-spell-ac`}>Target armour class</label>
+                    <Input
+                      id={`${id}-spell-ac`}
+                      type="number"
+                      min={1}
+                      max={40}
+                      placeholder="13"
+                      value={ac}
+                      onChange={e => setAc(e.target.value)}
+                      className={styles.targetInput}
+                    />
+                  </div>
+                  <SpellsTab
+                    characterId={characterId}
+                    sheet={data.sheet}
+                    computed={sheet}
+                    cls={cls}
+                    spells={spellList.data}
+                    dmMode={dmMode}
+                    prepareAfterRestOnly={campaign.data?.prepareAfterRestOnly ?? true}
+                    onSpellAttack={(anchor, spell) =>
+                      sheet.spellcasting &&
+                      open(anchor, `${spell} (spell attack)`, 'attack', spell, `spell:${spell}`, {
+                        bonus: sheet.spellcasting.attackBonus,
+                        proficient: true,
+                        breakdown: [
+                          {
+                            label: sheet.spellcasting.label,
+                            value: sheet.abilities[sheet.spellcasting.ability].modifier,
+                          },
+                          { label: 'Proficiency', value: sheet.proficiencyBonus },
+                        ],
+                      })
+                    }
+                  />
+                </>
+              ) : (
+                <p className={styles.muted}>{`The SRD has no class called ${data.sheet.className}.`}</p>
+              );
+            })()
+          )}
+        </Paper>
+      ) : activeTab === 'pack' ? (
         <Paper as="section" texture="full" role="tabpanel" aria-label="Pack" className={styles.sheet}>
           <PackTab
             campaignId={campaignId}
@@ -176,7 +269,7 @@ export function CharacterSheetPage() {
             </div>
             <Box label="Class and level">{`${data.sheet.className} ${sheet.level}`}</Box>
             <Box label="Background">{data.sheet.background}</Box>
-            <Box label="Alignment">{data.sheet.alignment}</Box>
+            <Box label="Alignment">{details.data?.alignment || data.sheet.alignment}</Box>
           </header>
 
           <div className={styles.box}>

@@ -33,6 +33,7 @@ describe('listCampaigns', () => {
         nextSessionAt: null,
         gameSeconds: 3600,
         optionalFeats: false,
+        prepareAfterRestOnly: true,
         createdAt: '2026-10-18T10:00:00Z',
       },
       {
@@ -42,6 +43,7 @@ describe('listCampaigns', () => {
         nextSessionAt: null,
         gameSeconds: 3600,
         optionalFeats: true,
+        prepareAfterRestOnly: true,
         createdAt: '2026-10-18T10:00:00Z',
       },
     ]);

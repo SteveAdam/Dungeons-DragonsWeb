@@ -19,6 +19,7 @@ export * from './items';
 export * from './legacy';
 export * from './levelup';
 export * from './progression';
+export * from './rest';
 export * from './requirements';
 export * from './sheet';
 export * from './spellcasting';

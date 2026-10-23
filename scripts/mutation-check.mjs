@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T60) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T65) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -536,6 +536,62 @@ end $f$;`,
     why: 'the record of hit points gained could be rewritten',
     sql: `drop trigger level_up_events_append_only_trg on level_up_events;`,
     fails: ['T60'],
+  },
+  {
+    name: 'anyone in the campaign can cast for a character (P2-11)',
+    why: 'a player could spend another player’s spell slots',
+    sql: `create or replace function require_owner_or_dm(p_character uuid) returns void language plpgsql stable security definer set search_path = public as $f$
+begin
+  if not is_member(character_campaign(p_character)) then raise exception 'You can only do that for your own character' using errcode = '42501'; end if;
+end $f$;`,
+    fails: ['T61'],
+  },
+  {
+    name: 'spell slots writable directly (P2-11)',
+    why: 'a player could reset their spent slots without resting',
+    sql: `grant insert, update on character_spell_state to authenticated;
+create policy "owners write spell state" on character_spell_state for all to authenticated using (owns_character(character_id)) with check (owns_character(character_id));`,
+    fails: ['T61'],
+  },
+  {
+    name: 'casting no longer checks for a free slot (P2-11)',
+    why: 'a caster could cast without end',
+    sql: `create or replace function class_slots(p_class text, p_level int) returns int[] language sql stable security definer set search_path = public as $f$ select array_fill(99, array[9]) $f$;`,
+    fails: ['T62'],
+  },
+  {
+    name: 'prepared spells change at any time (P2-11)',
+    why: 'the campaign’s "only after a rest" rule would mean nothing',
+    sql: `create or replace function spell_state_for(p_character uuid) returns character_spell_state language plpgsql security definer set search_path = public as $f$
+declare s character_spell_state;
+begin
+  insert into character_spell_state (character_id, campaign_id) values (p_character, character_campaign(p_character)) on conflict (character_id) do nothing;
+  select * into s from character_spell_state where character_id = p_character;
+  s.prepare_open := true;
+  return s;
+end $f$;`,
+    fails: ['T63'],
+  },
+  {
+    name: 'the simple long rest open to players (P2-11)',
+    why: 'players could rest whenever they liked',
+    sql: `create or replace function require_dm(c uuid) returns void language plpgsql stable security definer set search_path = public as $f$
+begin
+  if c is null or not is_member(c) then raise exception 'Only the DM can do that' using errcode = '42501'; end if;
+end $f$;`,
+    fails: ['T64'],
+  },
+  {
+    name: 'details readable by every member (P2-11)',
+    why: 'players would read each other’s private backstories',
+    sql: `create policy "members read details" on character_details for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T65'],
+  },
+  {
+    name: 'details limits removed (P2-11)',
+    why: 'a field could hold any amount of text, or unknown fields',
+    sql: `alter table character_details drop constraint character_details_data_check;`,
+    fails: ['T65'],
   },
   {
     name: 'hidden entities readable by members',

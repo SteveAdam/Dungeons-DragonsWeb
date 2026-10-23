@@ -1,0 +1,251 @@
+/* P2-11: the Spells and Details tabs */
+.tab {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.section {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+}
+
+.label {
+  margin: 0;
+  padding: 0;
+  color: var(--gold-dark);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-faded);
+  font-style: italic;
+}
+
+.alert {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.header div {
+  display: grid;
+  min-width: 8rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--ink-wash);
+}
+
+.header dt {
+  color: var(--gold-dark);
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.header dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.concentration {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 2px solid var(--verdigris);
+  border-radius: 0.25rem;
+  background: var(--ink-wash);
+}
+
+.concentration p {
+  margin: 0;
+}
+
+.dcHelper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.number {
+  width: 5.5rem;
+}
+
+.slots {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slots li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.slotLevel {
+  min-width: 6rem;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}
+
+.dot,
+.spent {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid var(--gold-dark);
+  border-radius: 50%;
+}
+
+/* a spent slot is filled */
+.spent {
+  background: var(--wax-red);
+}
+
+.spells {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.spell {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.spell p {
+  margin: 0;
+}
+
+.spellHead,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.name {
+  font-family: var(--font-heading);
+}
+
+.select,
+.textarea {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.checks {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.checks legend {
+  margin-bottom: 0.3rem;
+}
+
+/* Details tab */
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: 0.6rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.count {
+  color: var(--ink-faded);
+  font-size: 0.85rem;
+  justify-self: end;
+}
+
+.symbols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.symbols legend {
+  margin-bottom: 0.3rem;
+}
+
+.symbol {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--paper);
+  cursor: pointer;
+}
+
+.symbol:has(input:checked) {
+  border-width: 3px;
+  background: var(--ink-wash);
+}
+
+.symbol:has(input:focus-visible) {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.symbol input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.saved {
+  color: var(--ink-faded);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}

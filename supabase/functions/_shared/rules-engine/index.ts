@@ -20,6 +20,7 @@ export * from './items.ts';
 export * from './legacy.ts';
 export * from './levelup.ts';
 export * from './progression.ts';
+export * from './rest.ts';
 export * from './requirements.ts';
 export * from './sheet.ts';
 export * from './spellcasting.ts';

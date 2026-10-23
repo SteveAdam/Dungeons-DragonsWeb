@@ -8,6 +8,7 @@ import {
   joinCampaign,
   listCampaigns,
   setOptionalFeats,
+  setPrepareAfterRestOnly,
   subscribeToClock,
   type Campaign,
 } from '../data/campaigns';
@@ -83,6 +84,15 @@ export function useSetOptionalFeats(campaignId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (on: boolean) => setOptionalFeats(campaignId, on),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.campaign(campaignId), exact: true }),
+  });
+}
+
+/** DM only (P2-11): whether prepared spells change only after a long rest. */
+export function useSetPrepareAfterRestOnly(campaignId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (on: boolean) => setPrepareAfterRestOnly(campaignId, on),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.campaign(campaignId), exact: true }),
   });
 }

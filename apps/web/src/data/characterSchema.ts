@@ -65,6 +65,7 @@ export const characterSheetSchema = z.object({
   size: z.enum(['tiny', 'small', 'medium', 'large']).optional(),
   originFeat: z.string().max(80).optional(),
   subclass: z.string().max(80).optional(),
+  spellcastingAbility: ability.optional(),
   toolProficiency: z.string().max(200).optional(),
   spells: z
     .object({
@@ -91,3 +92,9 @@ export const effectDurationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('rest'), rest: z.enum(['short', 'long']) }),
   z.object({ kind: z.literal('permanent') }),
 ]) satisfies z.ZodType<Effect['duration']>;
+
+// zod drops keys a schema does not list, so a field added to CharacterSheet but not here would vanish on reading
+// (P2-9's and P2-11's fields did). This fails to compile when the two drift apart.
+type UnlistedSheetFields = Exclude<keyof CharacterSheet, keyof z.infer<typeof characterSheetSchema>>;
+const everySheetFieldListed: [UnlistedSheetFields] extends [never] ? true : UnlistedSheetFields = true;
+void everySheetFieldListed;

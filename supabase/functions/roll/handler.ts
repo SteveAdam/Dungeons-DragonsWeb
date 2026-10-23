@@ -283,6 +283,8 @@ export function effectOf(r: EffectRow): Effect {
 
 const isAbility = (key: string): key is Ability => (ABILITY_KEYS as readonly string[]).includes(key);
 const isSkill = (key: string): key is SkillKey => key in SKILLS;
+/** An attack key naming a spell, e.g. "spell:Fire Bolt" (P2-11). */
+export const SPELL_KEY = 'spell:';
 
 /**
  * The bonus, its breakdown, the roll mode and the odds, worked out from what the server knows. `dmMode` is the
@@ -316,6 +318,21 @@ export function computePreview(
     const save = computed.saves.find(s => s.ability === input.key)!;
     ({ ability, bonus, breakdown } = save);
     label = `${save.label} save`;
+  } else if (input.kind === 'attack' && input.key.startsWith(SPELL_KEY)) {
+    // P2-11: a spell attack with a cantrip or prepared spell, at the sheet's spell attack bonus
+    const spell = input.key.slice(SPELL_KEY.length);
+    const known = sheet.spells ? [...sheet.spells.cantrips, ...sheet.spells.prepared] : [];
+    if (!computed.spellcasting || !known.includes(spell)) {
+      throw new HttpError(404, `${computed.name} has no spell called ${spell} ready to cast`);
+    }
+    const sc = computed.spellcasting;
+    ability = sc.ability;
+    bonus = sc.attackBonus;
+    breakdown = [
+      { label: sc.label, value: computed.abilities[sc.ability].modifier },
+      { label: 'Proficiency', value: computed.proficiencyBonus },
+    ];
+    label = `${spell} (spell attack)`;
   } else if (input.kind === 'attack') {
     const attack = computed.attacks.find(a => a.id === input.key);
     if (!attack) throw new HttpError(404, `${computed.name} has no weapon called ${input.key}`);

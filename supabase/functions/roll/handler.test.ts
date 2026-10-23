@@ -295,3 +295,29 @@ Deno.test('a damaged item is set aside, not allowed to stop every roll', async (
   assert.equal(status, 200);
   assert.equal(body.bonus, 6);
 });
+
+Deno.test('spell attacks (P2-11): the spell attack bonus, for a cantrip or prepared spell only', async () => {
+  // Brannoc as a caster with Intelligence 9 (−1) and proficiency +3: spell attack +2
+  const caster = {
+    brannoc: {
+      sheet: { ...brannocSheet, spellcastingAbility: 'int', spells: { cantrips: ['Fire Bolt'], prepared: ['Shield'] } },
+    },
+  };
+  const bolt = { ...athletics, kind: 'attack', key: 'spell:Fire Bolt', target: 13 };
+  const { status, body } = await call(world(caster).deps, 'token-player', { action: 'preview', ...bolt });
+  assert.equal(status, 200);
+  assert.equal(body.bonus, 2);
+  assert.equal(body.label, 'Fire Bolt (spell attack)');
+  assert.deepEqual(body.bonusBreakdown, [
+    { label: 'Intelligence', value: -1 },
+    { label: 'Proficiency', value: 3 },
+  ]);
+  const unknown = await call(world(caster).deps, 'token-player', {
+    action: 'preview',
+    ...bolt,
+    key: 'spell:Disintegrate',
+  });
+  assert.equal(unknown.status, 404);
+  const fighter = await call(world().deps, 'token-player', { action: 'preview', ...bolt });
+  assert.equal(fighter.status, 404);
+});

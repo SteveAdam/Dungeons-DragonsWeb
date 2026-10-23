@@ -10,6 +10,8 @@ export interface Campaign {
   gameSeconds: number;
   /** P2-10: players may take a feat instead of an Ability Score Improvement (campaigns.settings.optionalFeats). */
   optionalFeats?: boolean;
+  /** P2-11: prepared spells change only after a long rest (campaigns.settings.prepareAfterRestOnly; on unless false). */
+  prepareAfterRestOnly?: boolean;
   createdAt: string;
 }
 
@@ -32,6 +34,7 @@ const toCampaign = (r: CampaignRow): Campaign => ({
   nextSessionAt: r.next_session_at,
   gameSeconds: Number(r.game_seconds ?? 0),
   optionalFeats: (r.settings as { optionalFeats?: unknown } | null)?.optionalFeats === true,
+  prepareAfterRestOnly: (r.settings as { prepareAfterRestOnly?: unknown } | null)?.prepareAfterRestOnly !== false,
   createdAt: r.created_at,
 });
 
@@ -116,10 +119,15 @@ export function subscribeToClock(campaignId: string, onTime: (gameSeconds: numbe
 }
 
 /** DM only (P2-10): turns the optional feat rule on or off, keeping the campaign's other settings. */
-export async function setOptionalFeats(campaignId: string, on: boolean): Promise<void> {
+export const setOptionalFeats = (campaignId: string, on: boolean) => setCampaignRule(campaignId, 'optionalFeats', on);
+/** DM only (P2-11): whether prepared spells change only after a long rest. */
+export const setPrepareAfterRestOnly = (campaignId: string, on: boolean) =>
+  setCampaignRule(campaignId, 'prepareAfterRestOnly', on);
+
+async function setCampaignRule(campaignId: string, key: 'optionalFeats' | 'prepareAfterRestOnly', on: boolean) {
   const { data, error } = await supabase.from('campaigns').select('settings').eq('id', campaignId).maybeSingle();
   if (error) throw toDataError(error);
-  const settings = { ...((data?.settings as Record<string, unknown> | null) ?? {}), optionalFeats: on };
+  const settings = { ...((data?.settings as Record<string, unknown> | null) ?? {}), [key]: on };
   const { data: updated, error: updateError } = await supabase
     .from('campaigns')
     .update({ settings: settings as never })
