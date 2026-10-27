@@ -13,18 +13,25 @@ import { Dices, Footprints, Save, Trash2, X } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
 import { Button, ICON_PROPS, iconClasses, Input, Paper, Tag, Toggle } from '../../components/ui';
 import { DataError, friendlyMessage } from '../../data/errors';
+import type { SubMap } from '../../data/maps';
 import { MIN_REGION_RADIUS, validateRegionChanges, type Region, type RegionChanges } from '../../data/regions';
 import { useDeleteRegion, useUpdateRegion } from '../../hooks/useRegions';
 import type { ImageSize } from '../../lib/mapCoordinates';
+import { DetailMapSection } from './DetailMapSection';
 import styles from './MapView.module.css';
 import { TERRAIN_ICONS, WEATHER_ICONS } from './regionIcons';
 
 interface Props {
   region: Region;
   mapId: string;
+  campaignId: string;
   mapSize: ImageSize;
+  /** The map beneath this region, if it has one (and the viewer may see it). */
+  subMap?: SubMap;
   /** DM with DM mode on: the editor. Otherwise a read-only view. */
   canEdit: boolean;
+  /** The map this region is on and every map above it: none of them can be linked beneath the region. */
+  excludeMapIds: readonly string[];
   onClose: () => void;
 }
 
@@ -72,7 +79,13 @@ function Conditions({ terrain, weather }: { terrain: Terrain; weather: Weather }
   );
 }
 
-function RegionEditor({ region, mapId, mapSize, onClose }: Omit<Props, 'canEdit'>) {
+function RegionEditor({
+  region,
+  mapId,
+  mapSize,
+  subMap,
+  onClose,
+}: Pick<Props, 'region' | 'mapId' | 'mapSize' | 'subMap' | 'onClose'>) {
   const id = useId();
   const update = useUpdateRegion(mapId);
   const remove = useDeleteRegion(mapId);
@@ -232,7 +245,11 @@ function RegionEditor({ region, mapId, mapSize, onClose }: Omit<Props, 'canEdit'
         </Button>
         {confirmDelete ? (
           <span className={styles.confirm}>
-            <span>Delete this region?</span>
+            <span>
+              {subMap
+                ? `Delete this region? Its detail map, ${subMap.name}, is kept as a separate map.`
+                : 'Delete this region?'}
+            </span>
             <Button
               disabled={remove.isPending}
               onClick={() =>
@@ -263,7 +280,7 @@ function RegionEditor({ region, mapId, mapSize, onClose }: Omit<Props, 'canEdit'
 }
 
 /** The right-hand panel (a bottom sheet on phones) for the selected region. */
-export function RegionPanel({ region, mapId, mapSize, canEdit, onClose }: Props) {
+export function RegionPanel({ region, mapId, campaignId, mapSize, subMap, canEdit, excludeMapIds, onClose }: Props) {
   return (
     <Paper as="aside" texture="flat" aria-label={`Region: ${region.name}`} className={styles.panel}>
       <header className={styles.panelHeader}>
@@ -273,9 +290,25 @@ export function RegionPanel({ region, mapId, mapSize, canEdit, onClose }: Props)
           <X {...ICON_PROPS} />
         </Button>
       </header>
+      <DetailMapSection
+        key={`sub-${region.id}`}
+        parent={{ kind: 'region', id: region.id }}
+        parentName={region.name}
+        campaignId={campaignId}
+        subMap={subMap}
+        canEdit={canEdit}
+        excludeMapIds={excludeMapIds}
+      />
       {/* key: a different region starts a fresh form */}
       {canEdit ? (
-        <RegionEditor key={region.id} region={region} mapId={mapId} mapSize={mapSize} onClose={onClose} />
+        <RegionEditor
+          key={region.id}
+          region={region}
+          mapId={mapId}
+          mapSize={mapSize}
+          subMap={subMap}
+          onClose={onClose}
+        />
       ) : (
         <div className={styles.view}>
           <Conditions terrain={region.terrain} weather={region.weather} />

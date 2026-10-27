@@ -479,14 +479,14 @@ isOneToOne: false
                   ]
                 },"maps": {
                   Row: {
-                    "campaign_id": string,"created_at": string,"fog_mode": string,"grid_size": number | null,"height": number,"id": string,"image_path": string,"name": string,"north_degrees": number,"parent_pin_id": string | null,"scale_unit": string,"scale_width": number | null,"visible_to_players": boolean,"width": number
+                    "campaign_id": string,"created_at": string,"fog_mode": string,"grid_size": number | null,"height": number,"id": string,"image_path": string,"name": string,"north_degrees": number,"parent_pin_id": string | null,"parent_region_id": string | null,"scale_unit": string,"scale_width": number | null,"visible_to_players": boolean,"width": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "campaign_id": string,"created_at"?: string,"fog_mode"?: string,"grid_size"?: number | null,"height": number,"id"?: string,"image_path": string,"name": string,"north_degrees"?: number,"parent_pin_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width": number
+                    "campaign_id": string,"created_at"?: string,"fog_mode"?: string,"grid_size"?: number | null,"height": number,"id"?: string,"image_path": string,"name": string,"north_degrees"?: number,"parent_pin_id"?: string | null,"parent_region_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width": number
                   }
                   Update: {
-                    "campaign_id"?: string,"created_at"?: string,"fog_mode"?: string,"grid_size"?: number | null,"height"?: number,"id"?: string,"image_path"?: string,"name"?: string,"north_degrees"?: number,"parent_pin_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width"?: number
+                    "campaign_id"?: string,"created_at"?: string,"fog_mode"?: string,"grid_size"?: number | null,"height"?: number,"id"?: string,"image_path"?: string,"name"?: string,"north_degrees"?: number,"parent_pin_id"?: string | null,"parent_region_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width"?: number
                   }
                   Relationships: [
                     {
@@ -500,6 +500,12 @@ isOneToOne: false
       columns: ["parent_pin_id"]
 isOneToOne: false
       referencedRelation: "pins"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "maps_parent_region_id_fkey"
+      columns: ["parent_region_id"]
+isOneToOne: false
+      referencedRelation: "regions"
       referencedColumns: ["id"]
     }
                   ]
@@ -1166,6 +1172,11 @@ isOneToOne: false
 "level_from_xp":
 { Args: { "xp": number }; Returns: number
                            },
+"map_ancestors":
+{ Args: { "as_player"?: boolean,"p_map": string }; Returns: {
+              "depth": number,"map_id": string,"name": string,"via_id": string,"via_kind": string
+            }[]
+                           },
 "map_campaign":
 { Args: { "m": string }; Returns: string
                            },
@@ -1251,6 +1262,9 @@ isOneToOne: false
 "owns_character":
 { Args: { "c": string }; Returns: boolean
                            },
+"parent_map":
+{ Args: { "m": string }; Returns: string
+                           },
 "party_campaign":
 { Args: { "p": string }; Returns: string
                            },
@@ -1264,6 +1278,9 @@ isOneToOne: false
                            },
 "pin_is_revealed":
 { Args: { "p": string }; Returns: boolean
+                           },
+"region_campaign":
+{ Args: { "r": string }; Returns: string
                            },
 "remove_link":
 { Args: { "p_link": string }; Returns: undefined

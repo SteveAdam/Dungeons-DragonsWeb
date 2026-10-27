@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T65) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T69) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(476);
+select plan(497);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1241,6 +1241,72 @@ select lives_ok($$ do $do$ begin
     update character_details set data = '{}' where character_id = tests.u('char:lyra');
     if found then raise exception 'update applied'; end if;
   end $do$ $$, 'T65: nor change them');
+reset role;
+
+-- P3-1 FIXTURE: layered maps. A visible world map with a hidden region and a visible region. Beneath the hidden
+-- region a region map (flagged visible), beneath its visible pin a hut map (flagged visible): only the hidden
+-- region hides them. Beneath the visible region a fully visible chain.
+insert into maps (id, campaign_id, name, image_path, width, height, visible_to_players) values
+  (tests.u('map:world'), tests.u('campaign'), 'Sword Coast', tests.u('campaign') || '/world.png', 100, 100, true);
+insert into regions (id, map_id, name, cx, cy, radius, visible_to_players) values
+  (tests.u('region:wood'), tests.u('map:world'), 'Mourning Wood', 10, 10, 5, false),
+  (tests.u('region:moor'),   tests.u('map:world'), 'High Moor',     50, 50, 5, true);
+insert into maps (id, campaign_id, parent_region_id, name, image_path, width, height, visible_to_players) values
+  (tests.u('map:wood'), tests.u('campaign'), tests.u('region:wood'), 'Mourning Wood map', tests.u('campaign') || '/wood.png', 100, 100, true),
+  (tests.u('map:moor'), tests.u('campaign'), tests.u('region:moor'),   'High Moor map',     tests.u('campaign') || '/moor.png', 100, 100, true);
+insert into pins (id, map_id, title, x, y, visible_to_players) values
+  (tests.u('pin:hut'),   tests.u('map:wood'), 'Hermit''s hut', 5, 5, true),
+  (tests.u('pin:cairn'), tests.u('map:moor'), 'Old cairn',     5, 5, true);
+insert into maps (id, campaign_id, parent_pin_id, name, image_path, width, height, visible_to_players) values
+  (tests.u('map:hut'),   tests.u('campaign'), tests.u('pin:hut'),   'Hermit''s hut map', tests.u('campaign') || '/hut.png',   100, 100, true),
+  (tests.u('map:cairn'), tests.u('campaign'), tests.u('pin:cairn'), 'Cairn map',         tests.u('campaign') || '/cairn.png', 100, 100, true);
+
+-- T66: a hidden region hides its detail map, the map beneath that, and both images, from players
+select tests.act_as('player');
+select is((select count(*)::int from maps where id in (tests.u('map:wood'), tests.u('map:hut'))), 0, 'T66: a player cannot read the map beneath a hidden region, nor the map beneath that');
+select is(can_read_map_image(tests.u('campaign') || '/wood.png') or can_read_map_image(tests.u('campaign') || '/hut.png'), false, 'T66: nor their images');
+select is((select count(*)::int from maps where id in (tests.u('map:moor'), tests.u('map:cairn'))), 2, 'T66: the chain beneath a visible region is readable (control)');
+select is(can_read_map_image(tests.u('campaign') || '/cairn.png'), true, 'T66: and so is its deepest image (control)');
+reset role;
+select tests.act_as('dm');
+select is((select count(*)::int from maps where id in (tests.u('map:wood'), tests.u('map:hut'))), 2, 'T66: the DM reads the hidden chain');
+reset role;
+update regions set visible_to_players = true where id = tests.u('region:wood');
+select tests.act_as('player');
+select is((select count(*)::int from maps where id = tests.u('map:hut')), 1, 'T66: revealing the region reveals the chain beneath it');
+reset role;
+update regions set visible_to_players = false where id = tests.u('region:wood');
+
+-- T67: a map can never be its own ancestor, and has at most one parent
+select tests.act_as('dm');
+select throws_ok($$ update maps set parent_pin_id = tests.u('pin:hut') where id = tests.u('map:world') $$, '22023', 'A map cannot be placed beneath itself or one of its own detail maps', 'T67: linking a map beneath its own grandchild is rejected');
+select throws_ok($$ update maps set parent_pin_id = tests.u('pin:hut'), parent_region_id = null where id = tests.u('map:wood') $$, '22023', 'A map cannot be placed beneath itself or one of its own detail maps', 'T67: so is linking a map beneath a pin on itself');
+select throws_ok($$ update maps set parent_region_id = tests.u('region:moor') where id = tests.u('map:hut') $$, '23514', null, 'T67: a map cannot have a parent pin and a parent region');
+select lives_ok($$ update maps set parent_pin_id = null, parent_region_id = tests.u('region:moor') where id = tests.u('map:hut') $$, 'T67: moving a map beneath another region works');
+select is((select visible_to_players from maps where id = tests.u('map:hut')), false, 'T67: a map players could not see stays hidden when it is moved');
+select lives_ok($$ update maps set parent_region_id = null, parent_pin_id = tests.u('pin:hut') where id = tests.u('map:hut') $$, 'T67: and back');
+reset role;
+update maps set visible_to_players = true where id = tests.u('map:hut');
+
+-- T68: map_ancestors gives the chain, and never a hidden ancestor to a player
+select tests.act_as('dm');
+select is((select string_agg(name || ' via ' || via_kind, ' < ' order by depth) from map_ancestors(tests.u('map:hut'))), 'Mourning Wood map via pin < Sword Coast via region', 'T68: the DM gets the whole chain, nearest first, with the link that leads down');
+select throws_ok($$ select * from map_ancestors(tests.u('map:hut'), true) $$, '42501', 'We could not find that map', 'T68: a DM previewing as a player gets what a player gets');
+reset role;
+select tests.act_as('player');
+select throws_ok($$ select * from map_ancestors(tests.u('map:hut')) $$, '42501', 'We could not find that map', 'T68: a player gets nothing for a map beneath a hidden region');
+select is((select string_agg(name, ' < ' order by depth) from map_ancestors(tests.u('map:cairn'))), 'High Moor map < Sword Coast', 'T68: and the chain of a map they can see');
+reset role;
+select tests.act_as('outsider');
+select throws_ok($$ select * from map_ancestors(tests.u('map:cairn')) $$, '42501', 'We could not find that map', 'T68: a stranger gets nothing');
+reset role;
+
+-- T69: deleting a parent pin or region leaves the detail map as a top-level map, hidden if its parent was
+select tests.act_as('dm');
+select lives_ok($$ delete from regions where id = tests.u('region:wood') $$, 'T69: the DM deletes the hidden region');
+select is((select coalesce(parent_region_id::text, 'top level') || ', visible ' || visible_to_players from maps where id = tests.u('map:wood')), 'top level, visible false', 'T69: its map is kept as a hidden top-level map');
+select lives_ok($$ delete from pins where id = tests.u('pin:cairn') $$, 'T69: the DM deletes the visible pin');
+select is((select coalesce(parent_pin_id::text, 'top level') || ', visible ' || visible_to_players from maps where id = tests.u('map:cairn')), 'top level, visible true', 'T69: its map is kept as a top-level map, as visible as before');
 reset role;
 
 select * from finish();

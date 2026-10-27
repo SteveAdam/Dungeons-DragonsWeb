@@ -260,6 +260,14 @@
   gap: 0.5rem;
 }
 
+.linkPicker {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border: 1px dashed var(--gold-dark);
+  border-radius: 0.25rem;
+}
+
 .enter {
   padding: 0.45rem 0.9rem;
   border: 1px solid var(--gold-dark);

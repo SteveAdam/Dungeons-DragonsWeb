@@ -16,13 +16,22 @@ interface Props {
   campaignId: string;
   onUploaded: (map: CampaignMap) => void;
   onCancel: () => void;
-  /** Upload a map beneath this pin (a sub-map) instead of a top-level map. */
+  /** Upload a map beneath this pin (a detail map) instead of a top-level map. */
   parentPinId?: string;
+  /** Or beneath this region. */
+  parentRegionId?: string;
   title?: string;
 }
 
 /** Name + image. Checks the file in the browser first and offers to shrink very wide images. */
-export function MapUploadForm({ campaignId, onUploaded, onCancel, parentPinId, title = 'Add a map' }: Props) {
+export function MapUploadForm({
+  campaignId,
+  onUploaded,
+  onCancel,
+  parentPinId,
+  parentRegionId,
+  title = 'Add a map',
+}: Props) {
   const ids = useId();
   const upload = useUploadMap(campaignId);
   const [name, setName] = useState('');
@@ -69,7 +78,10 @@ export function MapUploadForm({ campaignId, onUploaded, onCancel, parentPinId, t
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!file || offer) return;
-    upload.mutate({ name, file, visibleToPlayers: visible, parentPinId }, { onSuccess: map => onUploaded(map) });
+    upload.mutate(
+      { name, file, visibleToPlayers: visible, parentPinId, parentRegionId },
+      { onSuccess: map => onUploaded(map) },
+    );
   }
 
   const busy = checking || upload.isPending;

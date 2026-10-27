@@ -1,12 +1,12 @@
-import { DoorOpen, ImagePlus, Music, Save, Trash2, X } from 'lucide-react';
+import { Music, Save, Trash2, X } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
-import { Button, ICON_PROPS, iconClasses, IconLink, Input, Paper, Tag, Toggle } from '../../components/ui';
+import { Button, ICON_PROPS, iconClasses, Input, Paper, Tag, Toggle } from '../../components/ui';
 import { DataError, friendlyMessage } from '../../data/errors';
 import type { SubMap } from '../../data/maps';
 import { PIN_SIZE, PIN_TYPES, validatePinChanges, type Pin, type PinChanges, type PinType } from '../../data/pins';
 import { useDeletePin, usePinNotes, useSavePinNotes, useUpdatePin } from '../../hooks/useMapView';
 import type { ImageSize } from '../../lib/mapCoordinates';
-import { MapUploadForm } from '../hub/MapUploadForm';
+import { DetailMapSection } from './DetailMapSection';
 import { PIN_TYPE_ICONS, PIN_TYPE_LABELS } from './pinIcons';
 import styles from './MapView.module.css';
 
@@ -20,49 +20,9 @@ interface Props {
   subMap?: SubMap;
   /** DM with DM mode on: the editor, with DM notes. Otherwise a read-only view without them. */
   canEdit: boolean;
+  /** The map this pin is on and every map above it: none of them can be linked beneath the pin. */
+  excludeMapIds: readonly string[];
   onClose: () => void;
-}
-
-/**
- * The map beneath a pin: an "Enter" link for everyone who can see it, and for a DM on a location pin without
- * one, a way to add it. It sits outside the pin editor because the upload is a form of its own.
- */
-function SubMapSection({
-  pin,
-  type,
-  campaignId,
-  subMap,
-  canEdit,
-}: Pick<Props, 'pin' | 'campaignId' | 'subMap' | 'canEdit'> & {
-  /** The type chosen in the editor right now, which may not be saved yet. */
-  type: PinType;
-}) {
-  const [adding, setAdding] = useState(false);
-  if (subMap) {
-    return (
-      <div className={styles.subMap}>
-        <IconLink to={`/campaigns/${campaignId}/maps/${subMap.id}`} icon={DoorOpen} className={styles.enter}>
-          {`Enter ${subMap.name}`}
-        </IconLink>
-        {canEdit && !subMap.visibleToPlayers && <Tag>Map hidden from players</Tag>}
-      </div>
-    );
-  }
-  if (!canEdit || type !== 'location') return null;
-  return adding ? (
-    <MapUploadForm
-      campaignId={campaignId}
-      parentPinId={pin.id}
-      title={`A map beneath ${pin.title}`}
-      onCancel={() => setAdding(false)}
-      onUploaded={() => setAdding(false)}
-    />
-  ) : (
-    <Button variant="ghost" className={iconClasses.host} onClick={() => setAdding(true)}>
-      <ImagePlus {...ICON_PROPS} className={iconClasses.icon} />
-      Add a map beneath this pin
-    </Button>
-  );
 }
 
 const splitList = (text: string) =>
@@ -396,8 +356,8 @@ function PinEditor({
 }
 
 /** The right-hand panel (a bottom sheet on phones) for the selected pin. */
-export function PinPanel({ pin, mapId, campaignId, mapSize, subMap, canEdit, onClose }: Props) {
-  // the Type picked in the editor, remembered per pin, so "Add a map beneath" follows it before saving
+export function PinPanel({ pin, mapId, campaignId, mapSize, subMap, canEdit, excludeMapIds, onClose }: Props) {
+  // the Type picked in the editor, remembered per pin, so "Link detail map" follows it before saving
   const [typeInForm, setTypeInForm] = useState<{ pinId: string; type: PinType } | null>(null);
   const type = typeInForm?.pinId === pin.id ? typeInForm.type : pin.type;
   return (
@@ -409,13 +369,16 @@ export function PinPanel({ pin, mapId, campaignId, mapSize, subMap, canEdit, onC
           <X {...ICON_PROPS} />
         </Button>
       </header>
-      <SubMapSection
+      {/* detail maps hang beneath location pins */}
+      <DetailMapSection
         key={`sub-${pin.id}`}
-        pin={pin}
-        type={type}
+        parent={{ kind: 'pin', id: pin.id }}
+        parentName={pin.title}
         campaignId={campaignId}
         subMap={subMap}
         canEdit={canEdit}
+        canLink={type === 'location'}
+        excludeMapIds={excludeMapIds}
       />
       {/* key: a different pin starts a fresh form */}
       {canEdit ? (

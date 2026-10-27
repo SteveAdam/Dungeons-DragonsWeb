@@ -150,10 +150,15 @@ Cloudflare R2) means writing one new `MapImageStore` implementation.
 - The map fills its frame edge to edge: the frame spans the full width, and the image covers it (anything
   taller than the screen is a pan away; panning stops at the map's edges). It refills when the panel opens or the
   window resizes, unless you have zoomed or dragged the map yourself. Zooming out stops at the whole map.
-- **Maps beneath pins.** A DM can add a map beneath a location pin ("Add a map beneath this pin" in its panel).
-  Such pins carry a layers badge. Their panel shows "Enter ‹map›", and a double-click on the pin enters directly.
-  The breadcrumb follows the nesting (campaign › world › kingdom › town). Hiding a pin hides everything beneath
-  it (enforced by row level security), and deleting it keeps its map as a separate hidden map.
+- **Layered maps (P3-1).** A detail map hangs beneath a location pin or a region, never both. In DM mode the
+  panel offers "Link detail map": pick an existing map of the campaign or upload a new one; "Unlink" makes it a
+  top-level map again. Linked pins and regions carry a layers badge; their panel shows "Enter ‹map›", and a
+  double-click enters directly. The breadcrumb links every map above (campaign › Sword Coast › Mourning Wood ›
+  Hermit's hut), from `map_ancestors` in the database; "Up one level" (or Alt+Up) goes to the parent, and DM mode
+  carries over. A map can never end up beneath itself (a trigger refuses it). Hiding a pin or region hides
+  everything beneath it at any depth, images included (row level security), and a player's breadcrumb never
+  names a hidden map. Deleting the parent keeps the detail map as a top-level map, hidden if its parent was;
+  moving a map players could not see keeps it hidden.
 - **Moving pins.** In DM mode, drag a pin, or type its X and Y in the panel. The move shows at once and is
   rolled back if saving fails.
 - **Regions (terrain and weather).** "Add region", then click the centre and the edge: a circle with its own

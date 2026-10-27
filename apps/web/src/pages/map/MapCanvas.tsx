@@ -47,6 +47,9 @@ export interface MapCanvasProps {
   /** Pins that have a map beneath them: they get a layers badge, and a double-click enters the map. */
   subMapPinIds: ReadonlySet<string>;
   onEnterSubMap: (pinId: string) => void;
+  /** Regions that have a map beneath them, the same way. */
+  subMapRegionIds: ReadonlySet<string>;
+  onEnterRegionMap: (regionId: string) => void;
   /** DM mode: pins can be dragged to a new place. */
   canMovePins: boolean;
   onMovePin: (pinId: string, point: ImagePoint) => void;
@@ -96,7 +99,7 @@ export interface RegionCircle {
 }
 
 // Only fixed markup goes into these icons: the region's name is shown by a React tooltip, never as HTML.
-function weatherIcon(region: Region, selected: boolean): L.DivIcon {
+function weatherIcon(region: Region, selected: boolean, hasSubMap: boolean): L.DivIcon {
   const classes = [
     styles.weather,
     region.visibleToPlayers ? '' : styles.sealHidden,
@@ -106,7 +109,7 @@ function weatherIcon(region: Region, selected: boolean): L.DivIcon {
     .join(' ');
   return L.divIcon({
     className: styles.sealHost,
-    html: `<span class="${classes}">${weatherMarkup[region.weather]}</span>`,
+    html: `<span class="${classes}">${weatherMarkup[region.weather]}${hasSubMap ? `<span class="${styles.badge}">${layersMarkup}</span>` : ''}</span>`,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
     tooltipAnchor: [0, 17],
@@ -211,7 +214,9 @@ function RegionShape({
   selected,
   busy,
   editable,
+  hasSubMap,
   onSelect,
+  onEnter,
   onChange,
 }: {
   region: Region;
@@ -220,7 +225,10 @@ function RegionShape({
   /** Placing a pin or drawing a region: clicks belong to the map, and nothing can be dragged. */
   busy: boolean;
   editable: boolean;
+  /** The region has a detail map beneath it: a layers badge, and a double-click enters the map. */
+  hasSubMap: boolean;
   onSelect: () => void;
+  onEnter: () => void;
   onChange: (changes: Pick<RegionChanges, 'cx' | 'cy' | 'radius'>) => void;
 }) {
   const map = useMap();
@@ -230,6 +238,7 @@ function RegionShape({
   const name = [
     `${region.name} (${TERRAIN_INFO[region.terrain].label}, ${WEATHER_INFO[region.weather].label.toLowerCase()}`,
     region.visibleToPlayers ? '' : ', hidden from players',
+    hasSubMap ? ', has a map beneath: double-click to enter' : '',
     ')',
   ].join('');
   const className = [
@@ -243,6 +252,9 @@ function RegionShape({
   const select = () => {
     if (!busy) onSelect();
   };
+  const enter = () => {
+    if (!busy && hasSubMap) onEnter();
+  };
   return (
     <>
       <Circle
@@ -252,17 +264,18 @@ function RegionShape({
         center={centre}
         radius={region.radius}
         pathOptions={{ className, fillOpacity: 0.55, weight: selected ? 4 : 2 }}
-        eventHandlers={{ click: select }}
+        eventHandlers={{ click: select, dblclick: enter }}
       />
       <Marker
         key={`${region.id}:${name}`}
         position={centre}
-        icon={weatherIcon(region, selected)}
+        icon={weatherIcon(region, selected, hasSubMap)}
         title={name}
         keyboard
         draggable={editable && !busy}
         eventHandlers={{
           click: select,
+          dblclick: enter,
           keydown: (event: L.LeafletKeyboardEvent) => {
             const key = event.originalEvent.key;
             if (key === 'Enter' || key === ' ') {
@@ -424,6 +437,8 @@ export function MapCanvas({
   onPlace,
   subMapPinIds,
   onEnterSubMap,
+  subMapRegionIds,
+  onEnterRegionMap,
   canMovePins,
   onMovePin,
   regions,
@@ -471,7 +486,9 @@ export function MapCanvas({
           selected={region.id === selectedRegionId}
           busy={busy}
           editable={canEditRegions}
+          hasSubMap={subMapRegionIds.has(region.id)}
           onSelect={() => onSelectRegion(region.id)}
+          onEnter={() => onEnterRegionMap(region.id)}
           onChange={changes => onChangeRegion(region.id, changes)}
         />
       ))}

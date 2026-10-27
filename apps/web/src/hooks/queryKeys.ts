@@ -8,8 +8,9 @@ export const queryKeys = {
   map: (mapId: string, includeHidden: boolean) => ['maps', mapId, { includeHidden }] as const,
   pins: (mapId: string, includeHidden: boolean) => ['maps', mapId, 'pins', { includeHidden }] as const,
   regions: (mapId: string, includeHidden: boolean) => ['maps', mapId, 'regions', { includeHidden }] as const,
-  subMaps: (mapId: string, includeHidden: boolean, pinIds: string[]) =>
-    ['maps', mapId, 'submaps', { includeHidden, pins: pinIds.join(',') }] as const,
+  subMaps: (mapId: string, includeHidden: boolean, pinIds: string[], regionIds: string[]) =>
+    ['maps', mapId, 'submaps', { includeHidden, pins: pinIds.join(','), regions: regionIds.join(',') }] as const,
+  allMaps: (campaignId: string) => ['campaigns', campaignId, 'maps', 'all'] as const,
   mapTrail: (mapId: string, includeHidden: boolean) => ['maps', mapId, 'trail', { includeHidden }] as const,
   characters: (campaignId: string) => ['campaigns', campaignId, 'characters'] as const,
   character: (characterId: string) => ['characters', characterId] as const,

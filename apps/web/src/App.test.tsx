@@ -50,7 +50,6 @@ const PAGES = [
   '/campaigns/c1',
   '/campaigns/c1/entities',
   '/campaigns/c1/characters/ch1',
-  '/sheet',
   '/theme',
   '/dev/odds',
   '/dev/srd',

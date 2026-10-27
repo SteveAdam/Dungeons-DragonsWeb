@@ -31,6 +31,8 @@ vi.mock('./MapCanvas', () => ({
     onMovePin,
     subMapPinIds,
     onEnterSubMap,
+    subMapRegionIds,
+    onEnterRegionMap,
     regions,
     onSelectRegion,
     drawMode,
@@ -57,6 +59,9 @@ vi.mock('./MapCanvas', () => ({
       {regions.map(r => (
         <span key={r.id}>
           <button onClick={() => onSelectRegion(r.id)}>{`region: ${r.name}`}</button>
+          {subMapRegionIds.has(r.id) && (
+            <button onClick={() => onEnterRegionMap(r.id)}>{`enter region: ${r.name}`}</button>
+          )}
           {canEditRegions && (
             <button onClick={() => onChangeRegion(r.id, { cx: 500, cy: 400 })}>{`move region: ${r.name}`}</button>
           )}
@@ -105,6 +110,7 @@ const map: CampaignMap = {
   visibleToPlayers: true,
   fogMode: 'shared',
   parentPinId: null,
+  parentRegionId: null,
   createdAt: '',
   tools: { scaleWidth: null, scaleUnit: 'mi', northDegrees: 0, gridSize: null },
 };
@@ -144,7 +150,8 @@ function signInAs(role: 'dm' | 'player') {
     role === 'dm' && includeHidden ? [tavern, lair] : [tavern],
   );
   vi.mocked(notesApi.getPinNotes).mockResolvedValue('The cave floods at high tide');
-  vi.mocked(mapsApi.listSubMaps).mockResolvedValue(new Map());
+  vi.mocked(mapsApi.listSubMaps).mockResolvedValue({ byPin: new Map(), byRegion: new Map() });
+  vi.mocked(mapsApi.listAllMaps).mockResolvedValue([]);
   vi.mocked(mapsApi.getMapTrail).mockResolvedValue([]);
   vi.mocked(regionsApi.listRegions).mockImplementation(async (_id, { includeHidden }) =>
     role === 'dm' && includeHidden ? [sands, wraithwood] : [sands],
@@ -371,18 +378,22 @@ describe('maps beneath pins', () => {
     visibleToPlayers: true,
     createdAt: '',
     parentPinId: 'p1',
+    parentRegionId: null,
   };
 
   it('a pin with a map beneath shows an Enter link, and entering opens that map', async () => {
     signInAs('player');
-    vi.mocked(mapsApi.listSubMaps).mockResolvedValue(new Map([['p1', kingdom]]));
+    vi.mocked(mapsApi.listSubMaps).mockResolvedValue({ byPin: new Map([['p1', kingdom]]), byRegion: new Map() });
     const user = userEvent.setup();
     renderMap();
 
     await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' }));
     const enter = await screen.findByRole('link', { name: 'Enter The Kingdom' });
     expect(enter).toHaveAttribute('href', '/campaigns/c1/maps/m-kingdom');
-    expect(mapsApi.listSubMaps).toHaveBeenCalledWith(['p1'], { includeHidden: false });
+    expect(mapsApi.listSubMaps).toHaveBeenCalledWith(
+      { pinIds: ['p1'], regionIds: [sands.id] },
+      { includeHidden: false },
+    );
 
     vi.mocked(mapsApi.getMap).mockResolvedValue({ ...map, id: 'm-kingdom', name: 'The Kingdom', parentPinId: 'p1' });
     vi.mocked(mapsApi.getMapTrail).mockResolvedValue([{ mapId: 'm1', name: 'Port Vellum' }]);
@@ -393,18 +404,19 @@ describe('maps beneath pins', () => {
     expect(mapsApi.getMap).toHaveBeenLastCalledWith('m-kingdom', { includeHidden: false });
   });
 
-  it('a DM can add a map beneath a location pin, but not beneath other types', async () => {
+  it('a DM can link a detail map beneath a location pin, but not beneath other types', async () => {
     signInAs('dm');
     const user = userEvent.setup();
     renderMap();
 
     await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' })); // location
-    await user.click(await screen.findByRole('button', { name: 'Add a map beneath this pin' }));
-    expect(screen.getByRole('form', { name: 'A map beneath The Drowned Rat' })).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Link detail map' }));
+    await user.click(screen.getByRole('button', { name: 'Upload a new map' }));
+    expect(screen.getByRole('form', { name: 'A detail map beneath The Drowned Rat' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'pin: Smugglers’ cave' })); // faction
     await screen.findByRole('complementary', { name: /Smugglers/ });
-    expect(screen.queryByRole('button', { name: 'Add a map beneath this pin' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Link detail map' })).not.toBeInTheDocument();
   });
 
   it('the option follows the Type picked in the editor, before saving', async () => {
@@ -413,17 +425,17 @@ describe('maps beneath pins', () => {
     renderMap();
     await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' })); // location
     const panel = await screen.findByRole('complementary', { name: /The Drowned Rat/ });
-    await within(panel).findByRole('button', { name: 'Add a map beneath this pin' });
+    await within(panel).findByRole('button', { name: 'Link detail map' });
 
     await user.selectOptions(within(panel).getByRole('combobox', { name: 'Type' }), 'character');
-    expect(within(panel).queryByRole('button', { name: 'Add a map beneath this pin' })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: 'Link detail map' })).not.toBeInTheDocument();
     await user.selectOptions(within(panel).getByRole('combobox', { name: 'Type' }), 'location');
-    expect(within(panel).getByRole('button', { name: 'Add a map beneath this pin' })).toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: 'Link detail map' })).toBeInTheDocument();
 
     // the faction pin starts from its own saved type, not the one picked for the tavern
     await user.click(screen.getByRole('button', { name: 'pin: Smugglers’ cave' }));
     await screen.findByRole('complementary', { name: /Smugglers/ });
-    expect(screen.queryByRole('button', { name: 'Add a map beneath this pin' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Link detail map' })).not.toBeInTheDocument();
   });
 
   it('players never get the option', async () => {
@@ -431,18 +443,187 @@ describe('maps beneath pins', () => {
     const user = userEvent.setup();
     renderMap();
     await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' }));
-    expect(screen.queryByRole('button', { name: 'Add a map beneath this pin' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Link detail map' })).not.toBeInTheDocument();
   });
 
   it('warns that the map beneath is kept when its pin is deleted', async () => {
     signInAs('dm');
-    vi.mocked(mapsApi.listSubMaps).mockResolvedValue(new Map([['p1', kingdom]]));
+    vi.mocked(mapsApi.listSubMaps).mockResolvedValue({ byPin: new Map([['p1', kingdom]]), byRegion: new Map() });
     const user = userEvent.setup();
     renderMap();
     await user.click(await screen.findByRole('button', { name: 'pin: The Drowned Rat' }));
     await screen.findByRole('link', { name: 'Enter The Kingdom' });
     await user.click(screen.getByRole('button', { name: 'Delete pin' }));
     expect(screen.getByText(/The Kingdom, is kept as a separate hidden map/)).toBeInTheDocument();
+  });
+});
+
+describe('layered maps (P3-1)', () => {
+  const oasis = {
+    id: 'm-oasis',
+    name: 'Oasis of Sefir',
+    imagePath: 'c1/oasis.png',
+    visibleToPlayers: true,
+    createdAt: '',
+    parentPinId: null,
+    parentRegionId: 'r1',
+  };
+  const linkable = (id: string, name: string, over: Partial<mapsApi.LinkableMap> = {}): mapsApi.LinkableMap => ({
+    id,
+    name,
+    imagePath: `c1/${id}.png`,
+    visibleToPlayers: true,
+    createdAt: '',
+    parentPinId: null,
+    parentRegionId: null,
+    ...over,
+  });
+
+  it('a region with a detail map shows an Enter link, and a double-click enters it', async () => {
+    signInAs('player');
+    vi.mocked(mapsApi.listSubMaps).mockResolvedValue({ byPin: new Map(), byRegion: new Map([['r1', oasis]]) });
+    const user = userEvent.setup();
+    renderMap();
+
+    await user.click(await screen.findByRole('button', { name: 'region: The Glass Sands' }));
+    const panel = await screen.findByRole('complementary', { name: 'Region: The Glass Sands' });
+    expect(within(panel).getByRole('link', { name: 'Enter Oasis of Sefir' })).toHaveAttribute(
+      'href',
+      '/campaigns/c1/maps/m-oasis',
+    );
+    expect(within(panel).queryByRole('button', { name: 'Unlink' })).not.toBeInTheDocument();
+
+    vi.mocked(mapsApi.getMap).mockResolvedValue({
+      ...map,
+      id: 'm-oasis',
+      name: 'Oasis of Sefir',
+      parentRegionId: 'r1',
+    });
+    vi.mocked(mapsApi.getMapTrail).mockResolvedValue([{ mapId: 'm1', name: 'Port Vellum' }]);
+    await user.click(screen.getByRole('button', { name: 'enter region: The Glass Sands' }));
+    const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    await waitFor(() => expect(within(crumbs).getByText('Oasis of Sefir')).toHaveAttribute('aria-current', 'page'));
+    // a player's trail is asked for as a player
+    expect(mapsApi.getMapTrail).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'm-oasis' }), {
+      includeHidden: false,
+    });
+  });
+
+  it('the breadcrumb links every map above; Up one level and Alt+Up go to the parent', async () => {
+    signInAs('dm');
+    vi.mocked(mapsApi.getMap).mockImplementation(async id =>
+      id === 'm-hut'
+        ? { ...map, id: 'm-hut', name: "Hermit's hut", parentPinId: 'p-hut' }
+        : { ...map, id: 'm-wood', name: 'Mourning Wood', parentRegionId: 'r-wood' },
+    );
+    vi.mocked(mapsApi.getMapTrail).mockImplementation(async m =>
+      m.id === 'm-hut'
+        ? [
+            { mapId: 'm-world', name: 'Sword Coast' },
+            { mapId: 'm-wood', name: 'Mourning Wood' },
+          ]
+        : [{ mapId: 'm-world', name: 'Sword Coast' }],
+    );
+    const user = userEvent.setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/campaigns/c1/maps/m-hut']}>
+          <Routes>
+            <Route path="/campaigns/:campaignId/maps/:mapId" element={<MapViewPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    // the breadcrumb shown while the map loads is replaced, so wait for the trail before holding on to it
+    await screen.findByRole('link', { name: 'Mourning Wood' });
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(
+      within(crumbs)
+        .getAllByRole('link')
+        .map(a => a.textContent),
+    ).toEqual(['The Sunken Crown', 'Sword Coast', 'Mourning Wood']);
+    expect(within(crumbs).getByText("Hermit's hut")).toHaveAttribute('aria-current', 'page');
+    const upLink = screen.getByRole('link', { name: 'Up one level' });
+    expect(upLink).toHaveAttribute('href', '/campaigns/c1/maps/m-wood');
+    expect(upLink).toHaveAttribute('aria-keyshortcuts', 'Alt+ArrowUp');
+
+    // DM mode survives the trip up
+    await user.keyboard('{Alt>}{ArrowUp}{/Alt}');
+    await waitFor(() =>
+      expect(within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByText('Mourning Wood')).toHaveAttribute(
+        'aria-current',
+        'page',
+      ),
+    );
+    expect(screen.getByRole('switch', { name: /DM mode/ })).toBeChecked();
+    expect(mapsApi.getMapTrail).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'm-wood' }), {
+      includeHidden: true,
+    });
+    expect(screen.getByRole('link', { name: 'Up one level' })).toHaveAttribute('href', '/campaigns/c1/maps/m-world');
+  });
+
+  it('a top-level map has no Up one level', async () => {
+    signInAs('player');
+    renderMap();
+    await screen.findByRole('button', { name: 'pin: The Drowned Rat' });
+    expect(screen.queryByRole('link', { name: 'Up one level' })).not.toBeInTheDocument();
+  });
+
+  it('a DM links an existing map beneath a region; this map and the maps above it are not offered', async () => {
+    signInAs('dm');
+    vi.mocked(mapsApi.getMapTrail).mockResolvedValue([{ mapId: 'm-world', name: 'Sword Coast' }]);
+    vi.mocked(mapsApi.getMap).mockResolvedValue({ ...map, parentPinId: 'p-port' });
+    vi.mocked(mapsApi.listAllMaps).mockResolvedValue([
+      linkable('m-world', 'Sword Coast'),
+      linkable('m1', 'Port Vellum', { parentPinId: 'p-port' }),
+      linkable('m-oasis', 'Oasis of Sefir', { visibleToPlayers: false }),
+    ]);
+    vi.mocked(mapsApi.linkMap).mockResolvedValue({ ...map, id: 'm-oasis', parentRegionId: 'r1' });
+    const user = userEvent.setup();
+    renderMap();
+
+    await user.click(await screen.findByRole('button', { name: 'region: The Glass Sands' }));
+    const panel = await screen.findByRole('complementary', { name: 'Region: The Glass Sands' });
+    await user.click(within(panel).getByRole('button', { name: 'Link detail map' }));
+    const picker = await within(panel).findByRole('combobox', { name: 'An existing map' });
+    expect(
+      within(picker)
+        .getAllByRole('option')
+        .map(o => o.textContent),
+    ).toEqual(['Choose a map…', 'Oasis of Sefir (top level, hidden)']);
+    await user.selectOptions(picker, 'm-oasis');
+    await user.click(within(panel).getByRole('button', { name: 'Link this map' }));
+    await waitFor(() => expect(mapsApi.linkMap).toHaveBeenCalledWith('m-oasis', { kind: 'region', id: 'r1' }));
+  });
+
+  it('a DM unlinks a detail map; the refusal for a cycle is shown in plain words', async () => {
+    signInAs('dm');
+    vi.mocked(mapsApi.listSubMaps).mockResolvedValue({ byPin: new Map(), byRegion: new Map([['r1', oasis]]) });
+    vi.mocked(mapsApi.linkMap).mockRejectedValue(
+      new DataError('validation', 'A map cannot be placed beneath itself or one of its own detail maps.'),
+    );
+    const user = userEvent.setup();
+    renderMap();
+
+    await user.click(await screen.findByRole('button', { name: 'region: The Glass Sands' }));
+    const panel = await screen.findByRole('complementary', { name: 'Region: The Glass Sands' });
+    await user.click(await within(panel).findByRole('button', { name: 'Unlink' }));
+    expect(mapsApi.linkMap).toHaveBeenCalledWith('m-oasis', null);
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(/beneath itself/);
+  });
+
+  it('warns that the detail map is kept when its region is deleted', async () => {
+    signInAs('dm');
+    vi.mocked(mapsApi.listSubMaps).mockResolvedValue({ byPin: new Map(), byRegion: new Map([['r1', oasis]]) });
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'region: The Glass Sands' }));
+    const panel = await screen.findByRole('complementary', { name: 'Region: The Glass Sands' });
+    await within(panel).findByRole('link', { name: 'Enter Oasis of Sefir' });
+    await user.click(within(panel).getByRole('button', { name: 'Delete region' }));
+    expect(within(panel).getByText(/Oasis of Sefir, is kept as a separate map/)).toBeInTheDocument();
   });
 });
 

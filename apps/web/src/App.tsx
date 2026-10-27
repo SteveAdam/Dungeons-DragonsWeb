@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { DoorOpen, ScrollText, SlidersHorizontal, Swords } from 'lucide-react';
+import { DoorOpen, SlidersHorizontal, Swords } from 'lucide-react';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useAuth } from './auth/authContext';
 import { LoginPage } from './auth/LoginPage';
@@ -11,7 +11,6 @@ import { DeskFrame, ICON_PROPS, IconLink, iconClasses } from './components/ui';
 import { CampaignHubPage } from './pages/CampaignHubPage';
 import { CampaignListPage } from './pages/CampaignListPage';
 import { HomePage } from './pages/HomePage';
-import { SheetDemoPage } from './pages/SheetDemoPage';
 import styles from './App.module.css';
 
 // /theme exists only in development: in a production build import.meta.env.DEV is false,
@@ -36,9 +35,6 @@ function HeaderActions() {
       <DmModeIndicator />
       <IconLink to="/campaigns" icon={Swords}>
         Campaigns
-      </IconLink>
-      <IconLink to="/sheet" icon={ScrollText}>
-        Character sheet
       </IconLink>
       <details className={styles.display}>
         <summary className={iconClasses.host}>
@@ -128,7 +124,6 @@ export function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/sheet" element={<SheetDemoPage />} />
         {ThemePage && (
           <Route
             path="/theme"

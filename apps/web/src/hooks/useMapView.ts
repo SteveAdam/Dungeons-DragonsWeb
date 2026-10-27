@@ -4,10 +4,13 @@ import {
   createMap,
   getMap,
   getMapTrail,
+  linkMap,
+  listAllMaps,
   listSubMaps,
   setMapTools,
   setMapVisible,
   type CampaignMap,
+  type MapParent,
   type MapTools,
 } from '../data/maps';
 import { getPinNotes, savePinNotes } from '../data/pinSecrets';
@@ -31,20 +34,36 @@ export const usePins = (mapId: string | undefined, includeHidden: boolean) =>
     enabled: !!mapId,
   });
 
-/** The maps beneath this map's pins, keyed by pin id. Same hidden-data rule as the pins themselves. */
-export const useSubMaps = (mapId: string | undefined, pinIds: string[], includeHidden: boolean) =>
+/** The maps beneath this map's pins and regions, keyed by parent. Same hidden-data rule as the pins themselves. */
+export const useSubMaps = (mapId: string | undefined, pinIds: string[], regionIds: string[], includeHidden: boolean) =>
   useQuery({
-    queryKey: queryKeys.subMaps(mapId ?? '', includeHidden, pinIds),
-    queryFn: () => listSubMaps(pinIds, { includeHidden }),
-    enabled: !!mapId && pinIds.length > 0,
+    queryKey: queryKeys.subMaps(mapId ?? '', includeHidden, pinIds, regionIds),
+    queryFn: () => listSubMaps({ pinIds, regionIds }, { includeHidden }),
+    enabled: !!mapId && pinIds.length + regionIds.length > 0,
   });
+
+/** Every map of the campaign, for the DM's "Link detail map" picker. Pass enabled=false until it is opened. */
+export const useAllMaps = (campaignId: string, enabled: boolean) =>
+  useQuery({ queryKey: queryKeys.allMaps(campaignId), queryFn: () => listAllMaps(campaignId), enabled });
+
+/** DMs only: link a map beneath a pin or region, or unlink it (parent null). */
+export function useLinkMap(campaignId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ mapId, parent }: { mapId: string; parent: MapParent | null }) => linkMap(mapId, parent),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['campaigns', campaignId, 'maps'] });
+      client.invalidateQueries({ queryKey: ['maps'] });
+    },
+  });
+}
 
 /** The maps above this one, for the breadcrumb. */
 export const useMapTrail = (map: CampaignMap | undefined, includeHidden: boolean) =>
   useQuery({
     queryKey: queryKeys.mapTrail(map?.id ?? '', includeHidden),
     queryFn: () => getMapTrail(map as CampaignMap, { includeHidden }),
-    enabled: !!map?.parentPinId,
+    enabled: !!(map?.parentPinId || map?.parentRegionId),
   });
 
 /** DM notes: pass enabled=false outside DM mode, so the request is never made. */
@@ -137,8 +156,10 @@ export interface MapUpload {
   name: string;
   file: File;
   visibleToPlayers: boolean;
-  /** Put the new map beneath this pin (a sub-map). */
+  /** Put the new map beneath this pin (a detail map). */
   parentPinId?: string;
+  /** Or beneath this region. */
+  parentRegionId?: string;
 }
 
 /**
@@ -148,7 +169,13 @@ export interface MapUpload {
 export function useUploadMap(campaignId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, file, visibleToPlayers, parentPinId }: MapUpload): Promise<CampaignMap> => {
+    mutationFn: async ({
+      name,
+      file,
+      visibleToPlayers,
+      parentPinId,
+      parentRegionId,
+    }: MapUpload): Promise<CampaignMap> => {
       if (!name.trim()) throw new DataError('validation', 'Give the map a name.');
       const image = await mapImageStore.upload(campaignId, file);
       try {
@@ -159,6 +186,7 @@ export function useUploadMap(campaignId: string) {
           height: image.height,
           visibleToPlayers,
           parentPinId,
+          parentRegionId,
         });
       } catch (error) {
         // best effort: a failed cleanup must not hide the real error

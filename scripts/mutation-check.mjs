@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T65) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T69) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -625,6 +625,42 @@ begin if c is null or not is_member(c) then raise exception 'Only the DM can do 
     why: 'visitors could call is_dm over the REST API',
     sql: `grant execute on function is_dm(uuid) to anon;`,
     fails: ['T16'],
+  },
+  {
+    name: 'map visibility walks up through pins only (P3-1)',
+    why: 'a map beneath a hidden region, and everything beneath it, would be readable',
+    sql: `create or replace function map_is_revealed(m uuid) returns boolean language sql stable security definer set search_path = public as $$
+  with recursive chain (map_id, ok, parent_pin_id, depth) as (
+    select id, visible_to_players, parent_pin_id, 0 from maps where id = m
+    union all
+    select up.id, up.visible_to_players and pn.visible_to_players, up.parent_pin_id, chain.depth + 1
+    from chain join pins pn on pn.id = chain.parent_pin_id join maps up on up.id = pn.map_id where chain.depth < 32)
+  select coalesce(bool_and(ok), false) from chain $$;`,
+    fails: ['T66'],
+  },
+  {
+    name: 'cycle check removed (P3-1)',
+    why: 'a map could be linked beneath its own detail map, and moving a hidden map could publish it',
+    sql: `create or replace function maps_check_parent() returns trigger language plpgsql security definer set search_path = public as $f$
+begin return new; end $f$;`,
+    fails: ['T67'],
+  },
+  {
+    name: 'map_ancestors ignores visibility (P3-1)',
+    why: 'a player could read the names of hidden maps above a hidden map',
+    sql: `create or replace function map_ancestors(p_map uuid, as_player boolean default false)
+returns table (map_id uuid, name text, depth int, via_kind text, via_id uuid)
+language sql stable security definer set search_path = public as $f$
+  with recursive chain (id, depth) as (
+    select p_map, 0 union all select parent_map(chain.id), chain.depth + 1 from chain where parent_map(chain.id) is not null and chain.depth < 20)
+  select chain.id, mp.name, chain.depth, 'pin'::text, null::uuid from chain join maps mp on mp.id = chain.id where chain.depth > 0 $f$;`,
+    fails: ['T68'],
+  },
+  {
+    name: 'deleting a hidden region publishes its detail map (P3-1)',
+    why: 'the map beneath a hidden region would become a visible top-level map',
+    sql: `drop trigger regions_hide_orphaned_submaps_trg on regions;`,
+    fails: ['T69'],
   },
 ];
 

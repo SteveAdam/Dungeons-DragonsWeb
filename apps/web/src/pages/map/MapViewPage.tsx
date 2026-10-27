@@ -1,4 +1,5 @@
 import {
+  ArrowUp,
   ChevronRight,
   CircleDashed,
   Eye,
@@ -14,6 +15,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { Button, ICON_PROPS, iconClasses, IconLink, Tag, Toggle } from '../../components/ui';
 import { friendlyMessage } from '../../data/errors';
+import type { MapTrailStep } from '../../data/maps';
 import type { Pin } from '../../data/pins';
 import type { Region } from '../../data/regions';
 import { useCampaign } from '../../hooks/useCampaigns';
@@ -44,6 +46,7 @@ import { PinSearch } from './PinSearch';
 import { RegionPanel } from './RegionPanel';
 
 const NO_SUB_MAPS: ReadonlySet<string> = new Set();
+const NO_TRAIL: MapTrailStep[] = [];
 const NO_REGIONS: Region[] = [];
 const NO_PINS: Pin[] = [];
 
@@ -55,7 +58,8 @@ type Selection = { kind: 'pin' | 'region'; id: string } | { kind: 'settings' };
  */
 export function MapViewPage() {
   const { mapId = '' } = useParams();
-  // a new map (entering a sub-map, or going back up) starts fresh: new Leaflet view, no selection
+  // a new map (entering a detail map, or going back up) starts fresh: new Leaflet view, no selection. DM mode
+  // lives in a store outside the page, so it carries over.
   return <MapView key={mapId} />;
 }
 
@@ -69,7 +73,6 @@ function MapView() {
   const map = useMap(mapId, dmMode);
   const pins = usePins(mapId, dmMode);
   const pinIds = useMemo(() => (pins.data ?? []).map(p => p.id), [pins.data]);
-  const subMaps = useSubMaps(mapId, pinIds, dmMode);
   const trail = useMapTrail(map.data, dmMode);
   const image = useMapImageUrl(map.data?.imagePath);
   const createPin = useCreatePin(mapId);
@@ -78,6 +81,12 @@ function MapView() {
   const regions = useRegions(mapId, dmMode);
   const createRegion = useCreateRegion(mapId);
   const updateRegion = useUpdateRegion(mapId);
+  const regionIds = useMemo(() => (regions.data ?? []).map(r => r.id), [regions.data]);
+  const subMaps = useSubMaps(mapId, pinIds, regionIds, dmMode);
+  const steps = trail.data ?? NO_TRAIL;
+  const up = steps.length > 0 ? steps[steps.length - 1] : null;
+  // the maps that cannot go beneath a pin or region on this map: this one and every map above it
+  const excludeMapIds = useMemo(() => [mapId, ...steps.map(s => s.mapId)], [mapId, steps]);
 
   // one thing is open in the side panel at a time: a pin, a region or the map settings
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -92,9 +101,27 @@ function MapView() {
   const placing = tool === 'pin' && dmMode && layers.pins;
   const drawing = tool === 'region' && dmMode && layers.regions;
   const measuring = tool === 'measure';
-  const subMapPinIds = useMemo(() => (subMaps.data ? new Set(subMaps.data.keys()) : NO_SUB_MAPS), [subMaps.data]);
+  const subMapPinIds = useMemo(() => (subMaps.data ? new Set(subMaps.data.byPin.keys()) : NO_SUB_MAPS), [subMaps.data]);
+  const subMapRegionIds = useMemo(
+    () => (subMaps.data ? new Set(subMaps.data.byRegion.keys()) : NO_SUB_MAPS),
+    [subMaps.data],
+  );
   const selectPin = (id: string) => setSelection({ kind: 'pin', id });
   const toggleTool = (which: 'pin' | 'region' | 'measure') => setTool(t => (t === which ? null : which));
+
+  // Alt+Up goes up one level, as the button does (MAP-2). Not while typing, where Alt+Up may mean something else.
+  useEffect(() => {
+    if (!up) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.key !== 'ArrowUp') return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      e.preventDefault();
+      navigate(`/campaigns/${campaignId}/maps/${up.mapId}`);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [up, navigate, campaignId]);
 
   // Escape leaves add-pin, draw-region or measuring mode
   useEffect(() => {
@@ -110,7 +137,7 @@ function MapView() {
       <IconLink to={`/campaigns/${campaignId}/maps`} icon={Swords}>
         {campaignName}
       </IconLink>
-      {(trail.data ?? []).map(step => (
+      {steps.map(step => (
         <span key={step.mapId} className={styles.crumb}>
           <ChevronRight {...ICON_PROPS} className={styles.crumbSep} />
           <IconLink to={`/campaigns/${campaignId}/maps/${step.mapId}`} icon={MapIcon}>
@@ -158,6 +185,16 @@ function MapView() {
     <main className={styles.page}>
       <div className={styles.topBar}>
         {breadcrumb}
+        {up && (
+          <IconLink
+            to={`/campaigns/${campaignId}/maps/${up.mapId}`}
+            icon={ArrowUp}
+            aria-keyshortcuts="Alt+ArrowUp"
+            title="Up one level (Alt+Up)"
+          >
+            Up one level
+          </IconLink>
+        )}
         {isDm && <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />}
       </div>
 
@@ -282,7 +319,12 @@ function MapView() {
               label={current.name}
               subMapPinIds={subMapPinIds}
               onEnterSubMap={pinId => {
-                const sub = subMaps.data?.get(pinId);
+                const sub = subMaps.data?.byPin.get(pinId);
+                if (sub) navigate(`/campaigns/${campaignId}/maps/${sub.id}`);
+              }}
+              subMapRegionIds={subMapRegionIds}
+              onEnterRegionMap={regionId => {
+                const sub = subMaps.data?.byRegion.get(regionId);
                 if (sub) navigate(`/campaigns/${campaignId}/maps/${sub.id}`);
               }}
               regions={layers.regions ? (regions.data ?? NO_REGIONS) : NO_REGIONS}
@@ -337,8 +379,9 @@ function MapView() {
             mapId={current.id}
             campaignId={campaignId}
             mapSize={size}
-            subMap={subMaps.data?.get(selected.id)}
+            subMap={subMaps.data?.byPin.get(selected.id)}
             canEdit={dmMode}
+            excludeMapIds={excludeMapIds}
             onClose={() => setSelection(null)}
           />
         )}
@@ -346,8 +389,11 @@ function MapView() {
           <RegionPanel
             region={selectedRegion}
             mapId={current.id}
+            campaignId={campaignId}
             mapSize={size}
+            subMap={subMaps.data?.byRegion.get(selectedRegion.id)}
             canEdit={dmMode}
+            excludeMapIds={excludeMapIds}
             onClose={() => setSelection(null)}
           />
         )}

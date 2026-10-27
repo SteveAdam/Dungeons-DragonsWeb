@@ -14,7 +14,10 @@ export interface CampaignMap extends MapSummary {
   width: number;
   height: number;
   fogMode: 'shared' | 'per_group';
+  /** The pin this map hangs beneath (a detail map), or null. A map has at most one parent: a pin or a region. */
   parentPinId: string | null;
+  /** The region this map hangs beneath, or null. */
+  parentRegionId: string | null;
   tools: MapTools;
 }
 
@@ -39,6 +42,7 @@ interface MapRow {
   visible_to_players: boolean;
   fog_mode: string;
   parent_pin_id: string | null;
+  parent_region_id: string | null;
   created_at: string;
   scale_width: number | null;
   scale_unit: string;
@@ -48,7 +52,7 @@ interface MapRow {
 
 const SUMMARY_COLUMNS = 'id, name, image_path, visible_to_players, created_at';
 const MAP_COLUMNS =
-  'id, campaign_id, name, image_path, width, height, visible_to_players, fog_mode, parent_pin_id, created_at, scale_width, scale_unit, north_degrees, grid_size';
+  'id, campaign_id, name, image_path, width, height, visible_to_players, fog_mode, parent_pin_id, parent_region_id, created_at, scale_width, scale_unit, north_degrees, grid_size';
 
 const toSummary = (
   r: Pick<MapRow, 'id' | 'name' | 'image_path' | 'visible_to_players' | 'created_at'>,
@@ -67,6 +71,7 @@ const toMap = (r: MapRow): CampaignMap => ({
   height: r.height,
   fogMode: r.fog_mode === 'per_group' ? 'per_group' : 'shared',
   parentPinId: r.parent_pin_id,
+  parentRegionId: r.parent_region_id,
   tools: {
     scaleWidth: r.scale_width == null ? null : Number(r.scale_width),
     scaleUnit: r.scale_unit === 'ft' ? 'ft' : 'mi',
@@ -76,12 +81,17 @@ const toMap = (r: MapRow): CampaignMap => ({
 });
 
 /**
- * Top-level maps of a campaign (sub-maps hang off pins). With includeHidden false the request itself asks
+ * Top-level maps of a campaign (detail maps hang beneath pins and regions). With includeHidden false the request itself asks
  * only for visible maps, so "preview as player" never fetches hidden data. Players are filtered by the
  * database either way.
  */
 export async function listMaps(campaignId: string, options: { includeHidden: boolean }): Promise<MapSummary[]> {
-  let query = supabase.from('maps').select(SUMMARY_COLUMNS).eq('campaign_id', campaignId).is('parent_pin_id', null);
+  let query = supabase
+    .from('maps')
+    .select(SUMMARY_COLUMNS)
+    .eq('campaign_id', campaignId)
+    .is('parent_pin_id', null)
+    .is('parent_region_id', null);
   if (!options.includeHidden) query = query.eq('visible_to_players', true);
 
   const { data, error } = await query.order('created_at', { ascending: true });
@@ -106,8 +116,10 @@ export interface NewMap {
   width: number;
   height: number;
   visibleToPlayers: boolean;
-  /** Set to put this map beneath a pin (a sub-map). The pin must be on a map in the same campaign. */
+  /** Set to put this map beneath a pin (a detail map). The pin must be on a map in the same campaign. */
   parentPinId?: string | null;
+  /** Or beneath a region. Never both. */
+  parentRegionId?: string | null;
 }
 
 /** DMs only. The image must already be uploaded (see lib/storage). */
@@ -126,6 +138,7 @@ export async function createMap(campaignId: string, map: NewMap): Promise<Campai
       height: map.height,
       visible_to_players: map.visibleToPlayers,
       ...(map.parentPinId ? { parent_pin_id: map.parentPinId } : {}),
+      ...(map.parentRegionId ? { parent_region_id: map.parentRegionId } : {}),
     })
     .select(MAP_COLUMNS)
     .single();
@@ -173,68 +186,112 @@ export async function setMapTools(mapId: string, tools: MapTools): Promise<Campa
   return toMap(data as MapRow);
 }
 
-/** A map that hangs beneath a pin. */
+/** A map that hangs beneath a pin or a region (a detail map). */
 export interface SubMap extends MapSummary {
-  parentPinId: string;
+  parentPinId: string | null;
+  parentRegionId: string | null;
 }
+
+export interface SubMaps {
+  byPin: Map<string, SubMap>;
+  byRegion: Map<string, SubMap>;
+}
+
+const SUB_MAP_COLUMNS = 'id, name, image_path, visible_to_players, created_at, parent_pin_id, parent_region_id';
 
 /**
- * The maps beneath the given pins, keyed by pin. With includeHidden false the request asks only for visible
- * maps (players are also filtered by row level security, which hides a map whose parent pin is hidden).
+ * The maps beneath the given pins and regions, keyed by parent. With includeHidden false the requests ask only
+ * for visible maps (players are also filtered by row level security, which hides a map while anything above it
+ * is hidden).
  */
-export async function listSubMaps(pinIds: string[], options: { includeHidden: boolean }): Promise<Map<string, SubMap>> {
-  const byPin = new Map<string, SubMap>();
-  if (pinIds.length === 0) return byPin;
-  let query = supabase
-    .from('maps')
-    .select('id, name, image_path, visible_to_players, created_at, parent_pin_id')
-    .in('parent_pin_id', pinIds);
-  if (!options.includeHidden) query = query.eq('visible_to_players', true);
-  const { data, error } = await query.order('created_at', { ascending: true });
-  if (error) throw toDataError(error);
-  for (const row of (data ?? []) as MapRow[]) {
-    // one map per pin: if a DM somehow made two, the first one wins
-    if (row.parent_pin_id && !byPin.has(row.parent_pin_id)) {
-      byPin.set(row.parent_pin_id, { ...toSummary(row), parentPinId: row.parent_pin_id });
+export async function listSubMaps(
+  parents: { pinIds: string[]; regionIds: string[] },
+  options: { includeHidden: boolean },
+): Promise<SubMaps> {
+  const result: SubMaps = { byPin: new Map(), byRegion: new Map() };
+  const lists = [
+    { column: 'parent_pin_id', ids: parents.pinIds, into: result.byPin },
+    { column: 'parent_region_id', ids: parents.regionIds, into: result.byRegion },
+  ] as const;
+  for (const { column, ids, into } of lists) {
+    if (ids.length === 0) continue;
+    let query = supabase.from('maps').select(SUB_MAP_COLUMNS).in(column, ids);
+    if (!options.includeHidden) query = query.eq('visible_to_players', true);
+    const { data, error } = await query.order('created_at', { ascending: true });
+    if (error) throw toDataError(error);
+    for (const row of (data ?? []) as MapRow[]) {
+      const parent = row[column];
+      // one map per parent: if a DM somehow made two, the first one wins
+      if (parent && !into.has(parent)) {
+        into.set(parent, { ...toSummary(row), parentPinId: row.parent_pin_id, parentRegionId: row.parent_region_id });
+      }
     }
   }
-  return byPin;
+  return result;
 }
 
-/** One step up the breadcrumb: a map above the current one, reached through one of its pins. */
+/** One step up the breadcrumb: a map above the current one. */
 export interface MapTrailStep {
   mapId: string;
   name: string;
 }
 
 /**
- * The maps above this one, top first (world, region, town…). Stops at the top, at a map the caller cannot see,
- * or after 12 steps. Without includeHidden it never requests a hidden map or pin.
+ * The maps above this one, top first (world, region, town…), from map_ancestors in the database. Without
+ * includeHidden the database answers as it would for a player, so a DM previewing never receives a hidden name.
  */
 export async function getMapTrail(
-  map: Pick<CampaignMap, 'parentPinId'>,
+  map: Pick<CampaignMap, 'id' | 'parentPinId' | 'parentRegionId'>,
   options: { includeHidden: boolean },
 ): Promise<MapTrailStep[]> {
-  const trail: MapTrailStep[] = [];
-  let parentPinId = map.parentPinId;
-  for (let depth = 0; parentPinId && depth < 12; depth++) {
-    let pinQuery = supabase.from('pins').select('map_id').eq('id', parentPinId);
-    if (!options.includeHidden) pinQuery = pinQuery.eq('visible_to_players', true);
-    const { data: pin, error: pinError } = await pinQuery.maybeSingle();
-    if (pinError) throw toDataError(pinError);
-    if (!pin) break;
+  if (!map.parentPinId && !map.parentRegionId) return [];
+  const { data, error } = await supabase.rpc('map_ancestors', { p_map: map.id, as_player: !options.includeHidden });
+  if (error) throw toDataError(error);
+  return [...(data ?? [])].sort((a, b) => b.depth - a.depth).map(row => ({ mapId: row.map_id, name: row.name }));
+}
 
-    let mapQuery = supabase
-      .from('maps')
-      .select('id, name, parent_pin_id')
-      .eq('id', (pin as { map_id: string }).map_id);
-    if (!options.includeHidden) mapQuery = mapQuery.eq('visible_to_players', true);
-    const { data: parent, error: mapError } = await mapQuery.maybeSingle();
-    if (mapError) throw toDataError(mapError);
-    if (!parent) break;
-    const row = parent as Pick<MapRow, 'id' | 'name' | 'parent_pin_id'>;
-    trail.unshift({ mapId: row.id, name: row.name });
-    parentPinId = row.parent_pin_id;
+/** A map of the campaign as the "Link detail map" picker lists it (DMs only). */
+export interface LinkableMap extends MapSummary {
+  parentPinId: string | null;
+  parentRegionId: string | null;
+}
+
+/** Every map of a campaign, top-level or not, by name. DMs only. */
+export async function listAllMaps(campaignId: string): Promise<LinkableMap[]> {
+  const { data, error } = await supabase
+    .from('maps')
+    .select(SUB_MAP_COLUMNS)
+    .eq('campaign_id', campaignId)
+    .order('name', { ascending: true });
+  if (error) throw toDataError(error);
+  return ((data ?? []) as MapRow[]).map(r => ({
+    ...toSummary(r),
+    parentPinId: r.parent_pin_id,
+    parentRegionId: r.parent_region_id,
+  }));
+}
+
+export type MapParent = { kind: 'pin' | 'region'; id: string };
+
+/**
+ * DMs only: hang a map beneath a pin or region, or (parent null) make it a top-level map again. The database
+ * refuses a link that would put a map beneath itself, and keeps a map hidden when players could not see it before.
+ */
+export async function linkMap(mapId: string, parent: MapParent | null): Promise<CampaignMap> {
+  const { data, error } = await supabase
+    .from('maps')
+    .update({
+      parent_pin_id: parent?.kind === 'pin' ? parent.id : null,
+      parent_region_id: parent?.kind === 'region' ? parent.id : null,
+    })
+    .eq('id', mapId)
+    .select(MAP_COLUMNS)
+    .maybeSingle();
+  if (error) {
+    const e = error as { code?: string; message?: string };
+    if (e.code === '22023' && e.message) throw new DataError('validation', `${e.message}.`);
+    throw toDataError(error);
   }
-  return trail;
+  if (!data) throw new DataError('forbidden');
+  return toMap(data as MapRow);
 }
