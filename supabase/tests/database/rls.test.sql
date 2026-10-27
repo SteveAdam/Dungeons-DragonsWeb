@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T69) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T73) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(497);
+select plan(529);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1307,6 +1307,83 @@ select lives_ok($$ delete from regions where id = tests.u('region:wood') $$, 'T6
 select is((select coalesce(parent_region_id::text, 'top level') || ', visible ' || visible_to_players from maps where id = tests.u('map:wood')), 'top level, visible false', 'T69: its map is kept as a hidden top-level map');
 select lives_ok($$ delete from pins where id = tests.u('pin:cairn') $$, 'T69: the DM deletes the visible pin');
 select is((select coalesce(parent_pin_id::text, 'top level') || ', visible ' || visible_to_players from maps where id = tests.u('map:cairn')), 'top level, visible true', 'T69: its map is kept as a top-level map, as visible as before');
+reset role;
+
+-- P3-2 FIXTURE: the Mourning Wood region on the visible map, with a thornwolf pack (35%, night only), Orsa the
+-- hedge witch (folk, noticed), a hidden mossy shrine (DC 14), an always-there bandit pair, a spawn pin and DM notes.
+-- The clock is put at noon (12:00 on day 1) through the clock_move flag, as advance_clock would.
+insert into regions (id, map_id, name, cx, cy, radius, visible_to_players) values
+  (tests.u('region:content'), tests.u('map:visible'), 'Mourning Wood', 40, 40, 10, true);
+insert into entities (id, campaign_id, type, name) values
+  (tests.u('ent:orsa'), tests.u('campaign'), 'npc', 'Orsa'),
+  (tests.u('ent:lore'), tests.u('campaign'), 'lore', 'Old legend');
+insert into region_content (id, region_id, kind, name, monster_ref, state, spawn_rule) values
+  (tests.u('rc:wolves'), tests.u('region:content'), 'creature', 'Thornwolf pack', 'srd:wolf', 'hidden',
+   '{"mode":"chance","chance":35,"timeOfDay":"night","count":{"min":1,"max":3}}'),
+  (tests.u('rc:bandits'), tests.u('region:content'), 'creature', 'Bandit pair', null, 'noticed',
+   '{"mode":"always","chance":100,"timeOfDay":"any","count":{"min":2,"max":2}}');
+insert into region_content (id, region_id, kind, name, entity_id, state) values
+  (tests.u('rc:orsa'), tests.u('region:content'), 'folk', 'Orsa the hedge witch', tests.u('ent:orsa'), 'noticed');
+insert into region_content (id, region_id, kind, name, state, hint_text, discovery_dc) values
+  (tests.u('rc:shrine'), tests.u('region:content'), 'find', 'Mossy shrine', 'hidden', 'Something glints', 14);
+insert into region_content_secrets (content_id, dm_notes) values (tests.u('rc:shrine'), 'The shrine holds a cursed idol');
+insert into spawn_pins (id, map_id, x, y, kind, label, content_id) values
+  (tests.u('spawn:wolves'), tests.u('map:visible'), 45, 45, 'creature', 'Wolf den', tests.u('rc:wolves'));
+select set_config('app.clock_move', 'on', true);
+update campaigns set game_seconds = 12 * 3600 where id = tests.u('campaign');
+select set_config('app.clock_move', '', true);
+
+-- T70: region content, its secrets, spawn pins and the encounter log are the DM's alone
+select tests.act_as('player');
+select is((select count(*)::int from region_content), 0, 'T70: a player reads no region content');
+select is((select count(*)::int from region_content_secrets), 0, 'T70: nor its DM notes');
+select is((select count(*)::int from spawn_pins), 0, 'T70: nor spawn pins');
+select is((select count(*)::int from encounter_rolls), 0, 'T70: nor the encounter log');
+select throws_ok($$ insert into region_content (region_id, kind, name) values (tests.u('region:content'), 'find', 'Fake') $$, '42501', null, 'T70: a player cannot add region content');
+select throws_ok($$ insert into spawn_pins (map_id, x, y) values (tests.u('map:visible'), 1, 1) $$, '42501', null, 'T70: nor spawn pins');
+select throws_ok($$ select roll_random_encounter(tests.u('region:content')) $$, '42501', 'Only the DM can do that', 'T70: a player cannot roll a random encounter');
+select throws_ok($$ select set_daylight_hours(tests.u('campaign'), 5, 20) $$, '42501', 'Only the DM can do that', 'T70: nor set the daylight hours');
+reset role;
+select tests.act_as('outsider');
+select is((select count(*)::int from region_content) + (select count(*)::int from spawn_pins), 0, 'T70: a stranger reads nothing');
+select throws_ok($$ select roll_random_encounter(tests.u('region:content')) $$, '42501', 'Only the DM can do that', 'T70: nor rolls');
+reset role;
+select tests.act_as('dm');
+select is((select count(*)::int from region_content where region_id = tests.u('region:content')), 4, 'T70: the DM reads the region content');
+select is((select dm_notes from region_content_secrets where content_id = tests.u('rc:shrine')), 'The shrine holds a cursed idol', 'T70: and its DM notes');
+select is((select label from spawn_pins where id = tests.u('spawn:wolves')), 'Wolf den', 'T70: and the spawn pins');
+select lives_ok($$ update region_content set state = 'hinted' where id = tests.u('rc:shrine') $$, 'T70: and changes them');
+reset role;
+
+-- T71: the spawn rules, over many secure rolls (the 35% window is 3.1 standard deviations wide)
+select ok((select count(*) filter (where evaluate_spawn('{"mode":"chance","chance":35,"timeOfDay":"any","count":{"min":1,"max":1}}', true) > 0) from generate_series(1, 10000)) between 3350 and 3650, 'T71: a 35% chance triggers between 33.5% and 36.5% of 10,000 times');
+select is((select (count(*) filter (where evaluate_spawn('{"mode":"always","chance":0,"timeOfDay":"any","count":{"min":1,"max":1}}', false) > 0))::int from generate_series(1, 500)), 500, 'T71: always always triggers');
+select is((select (count(*) filter (where evaluate_spawn('{"mode":"always","chance":100,"timeOfDay":"night","count":{"min":1,"max":3}}', is_daytime(12, 6, 18)) > 0))::int from generate_series(1, 500)), 0, 'T71: a night entry never triggers at noon');
+select is((select (count(*) filter (where evaluate_spawn('{"mode":"time","chance":0,"timeOfDay":"night","count":{"min":1,"max":1}}', is_daytime(23, 6, 18)) > 0))::int from generate_series(1, 200)), 200, 'T71: a time entry always triggers at its time of day');
+select is((select array[min(n), max(n)] from (select evaluate_spawn('{"mode":"always","chance":100,"timeOfDay":"any","count":{"min":2,"max":5}}', true) n from generate_series(1, 2000)) s), array[2, 5], 'T71: the count stays within min and max, and reaches both');
+select is(array[is_daytime(5, 6, 18), is_daytime(6, 6, 18), is_daytime(17, 6, 18), is_daytime(18, 6, 18), is_daytime(23, 20, 4), is_daytime(12, 20, 4)], array[false, true, true, false, true, false], 'T71: daylight runs from the start hour up to the end hour, and may wrap past midnight');
+
+-- T72: the random encounter roll at noon, and its log
+select tests.act_as('dm');
+select is((select string_agg((r ->> 'name') || ' x' || (r ->> 'count'), ', ') from jsonb_array_elements((select roll_random_encounter(tests.u('region:content')) -> 'results')) r), 'Bandit pair x2', 'T72: at noon only the always-there bandits come; the night-only thornwolves never do');
+select is((select (hour, is_day, region_name)::text from encounter_rolls where region_id = tests.u('region:content')), '(12,t,"Mourning Wood")', 'T72: the roll is logged with the hour and the region');
+select lives_ok($$ select set_daylight_hours(tests.u('campaign'), 13, 20) $$, 'T72: the DM moves daylight to 13:00');
+select is((select (roll_random_encounter(tests.u('region:content')) ->> 'isDay')), 'false', 'T72: and noon is now night');
+select throws_ok($$ select set_daylight_hours(tests.u('campaign'), 6, 24) $$, '22023', 'Daylight hours are whole hours from 0 to 23', 'T72: hours run from 0 to 23');
+select lives_ok($$ do $do$ begin
+    update encounter_rolls set hour = 0;
+    if found then raise exception 'update applied'; end if;
+  end $do$ $$, 'T72: the DM cannot change the log through the API');
+reset role;
+select throws_ok($$ delete from encounter_rolls $$, 'P0001', 'This log is append-only: entries cannot be changed or deleted', 'T72: nor can the database owner');
+
+-- T73: entries keep their shape and their links stay in the campaign
+select tests.act_as('dm');
+select throws_ok($$ update region_content set spawn_rule = '{"mode":"chance","chance":135,"timeOfDay":"any","count":{"min":1,"max":1}}' where id = tests.u('rc:wolves') $$, '23514', null, 'T73: a chance above 100 is refused');
+select throws_ok($$ update region_content set spawn_rule = '{"mode":"always","chance":0,"timeOfDay":"any","count":{"min":3,"max":1}}' where id = tests.u('rc:wolves') $$, '23514', null, 'T73: a count with min above max is refused');
+select throws_ok($$ update region_content set details = '{"stock":[{"itemRef":"rope","priceCp":-1}]}' where id = tests.u('rc:orsa') $$, '23514', null, 'T73: a shop price cannot be negative');
+select throws_ok($$ update region_content set entity_id = tests.u('ent:lore') where id = tests.u('rc:orsa') $$, '22023', 'The linked entry must be an NPC or item of this campaign', 'T73: only an NPC or item can be linked');
+select throws_ok($$ update region_content set entity_id = tests.u('ent:foreign') where id = tests.u('rc:orsa') $$, '22023', 'The linked entry must be an NPC or item of this campaign', 'T73: and only from this campaign');
 reset role;
 
 select * from finish();

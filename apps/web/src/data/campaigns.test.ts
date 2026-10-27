@@ -34,6 +34,7 @@ describe('listCampaigns', () => {
         gameSeconds: 3600,
         optionalFeats: false,
         prepareAfterRestOnly: true,
+        daylight: { start: 6, end: 18 },
         createdAt: '2026-10-18T10:00:00Z',
       },
       {
@@ -44,10 +45,24 @@ describe('listCampaigns', () => {
         gameSeconds: 3600,
         optionalFeats: true,
         prepareAfterRestOnly: true,
+        daylight: { start: 6, end: 18 },
         createdAt: '2026-10-18T10:00:00Z',
       },
     ]);
     expect(supabase.from).toHaveBeenCalledWith('campaigns');
+  });
+  it('reads the daylight hours (P3-2), falling back to 6 to 18 for missing or impossible hours', async () => {
+    from({
+      data: [
+        { ...row, settings: { daylightStartHour: 5, daylightEndHour: 20 } },
+        { ...row, id: 'c2', settings: { daylightStartHour: 25, daylightEndHour: 'dusk' } },
+      ],
+      error: null,
+    });
+    expect((await listCampaigns()).map(c => c.daylight)).toEqual([
+      { start: 5, end: 20 },
+      { start: 6, end: 18 },
+    ]);
   });
   it('returns an empty list for no rows', async () => {
     from({ data: null, error: null });

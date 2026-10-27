@@ -6,6 +6,7 @@ import {
   EyeOff,
   Map as MapIcon,
   MapPinPlus,
+  PawPrint,
   Ruler,
   Settings2,
   Swords,
@@ -17,7 +18,9 @@ import { Button, ICON_PROPS, iconClasses, IconLink, Tag, Toggle } from '../../co
 import { friendlyMessage } from '../../data/errors';
 import type { MapTrailStep } from '../../data/maps';
 import type { Pin } from '../../data/pins';
+import type { RegionContent } from '../../data/regionContent';
 import type { Region } from '../../data/regions';
+import type { SpawnPin } from '../../data/spawnPins';
 import { useCampaign } from '../../hooks/useCampaigns';
 import { useDmMode } from '../../hooks/useDmMode';
 import {
@@ -30,6 +33,7 @@ import {
   useSubMaps,
   useUpdatePin,
 } from '../../hooks/useMapView';
+import { useCreateSpawnPin, useRegionContent, useSpawnPins, useUpdateSpawnPin } from '../../hooks/useRegionContent';
 import { useCreateRegion, useRegions, useUpdateRegion } from '../../hooks/useRegions';
 import type { ImagePoint } from '../../lib/mapCoordinates';
 import { gridCellPx } from '../../lib/mapGeometry';
@@ -44,13 +48,16 @@ import { MeasureBar } from './MeasureBar';
 import { PinPanel } from './PinPanel';
 import { PinSearch } from './PinSearch';
 import { RegionPanel } from './RegionPanel';
+import { SpawnPinPanel } from './SpawnPinPanel';
 
 const NO_SUB_MAPS: ReadonlySet<string> = new Set();
 const NO_TRAIL: MapTrailStep[] = [];
 const NO_REGIONS: Region[] = [];
 const NO_PINS: Pin[] = [];
 
-type Selection = { kind: 'pin' | 'region'; id: string } | { kind: 'settings' };
+type Selection = { kind: 'pin' | 'region' | 'spawn'; id: string } | { kind: 'settings' };
+const NO_SPAWN_PINS: SpawnPin[] = [];
+const NO_CONTENT: RegionContent[] = [];
 
 /**
  * Map view, prep mode (P0-8). Everything hidden is requested only while a DM has DM mode on, so a player and a
@@ -83,6 +90,11 @@ function MapView() {
   const updateRegion = useUpdateRegion(mapId);
   const regionIds = useMemo(() => (regions.data ?? []).map(r => r.id), [regions.data]);
   const subMaps = useSubMaps(mapId, pinIds, regionIds, dmMode);
+  // spawn pins and region content are DM only: asked for only while DM mode is on
+  const spawnPins = useSpawnPins(mapId, dmMode);
+  const content = useRegionContent(regionIds, dmMode);
+  const createSpawnPin = useCreateSpawnPin(mapId);
+  const updateSpawnPin = useUpdateSpawnPin(mapId);
   const steps = trail.data ?? NO_TRAIL;
   const up = steps.length > 0 ? steps[steps.length - 1] : null;
   // the maps that cannot go beneath a pin or region on this map: this one and every map above it
@@ -90,7 +102,7 @@ function MapView() {
 
   // one thing is open in the side panel at a time: a pin, a region or the map settings
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [tool, setTool] = useState<'pin' | 'region' | 'measure' | null>(null);
+  const [tool, setTool] = useState<'pin' | 'region' | 'spawn' | 'measure' | null>(null);
   const [layers, setLayers] = useState<LayerState>({ pins: true, regions: true, grid: true, compass: true });
   const [route, setRoute] = useState<ImagePoint[]>([]);
   const [focus, setFocus] = useState<{ x: number; y: number; key: number } | null>(null);
@@ -101,13 +113,16 @@ function MapView() {
   const placing = tool === 'pin' && dmMode && layers.pins;
   const drawing = tool === 'region' && dmMode && layers.regions;
   const measuring = tool === 'measure';
+  const spawning = tool === 'spawn' && dmMode;
+  const selectedSpawn =
+    dmMode && selection?.kind === 'spawn' ? (spawnPins.data?.find(p => p.id === selection.id) ?? null) : null;
   const subMapPinIds = useMemo(() => (subMaps.data ? new Set(subMaps.data.byPin.keys()) : NO_SUB_MAPS), [subMaps.data]);
   const subMapRegionIds = useMemo(
     () => (subMaps.data ? new Set(subMaps.data.byRegion.keys()) : NO_SUB_MAPS),
     [subMaps.data],
   );
   const selectPin = (id: string) => setSelection({ kind: 'pin', id });
-  const toggleTool = (which: 'pin' | 'region' | 'measure') => setTool(t => (t === which ? null : which));
+  const toggleTool = (which: 'pin' | 'region' | 'spawn' | 'measure') => setTool(t => (t === which ? null : which));
 
   // Alt+Up goes up one level, as the button does (MAP-2). Not while typing, where Alt+Up may mean something else.
   useEffect(() => {
@@ -180,7 +195,10 @@ function MapView() {
     setVisible.error ??
     pins.error ??
     regions.error ??
-    subMaps.error;
+    subMaps.error ??
+    spawnPins.error ??
+    createSpawnPin.error ??
+    updateSpawnPin.error;
   return (
     <main className={styles.page}>
       <div className={styles.topBar}>
@@ -223,6 +241,15 @@ function MapView() {
           >
             <CircleDashed {...ICON_PROPS} className={iconClasses.icon} />
             {drawing ? 'Click the centre, then the edge' : 'Add region'}
+          </Button>
+          <Button
+            variant={spawning ? 'primary' : 'ghost'}
+            aria-pressed={spawning}
+            className={iconClasses.host}
+            onClick={() => toggleTool('spawn')}
+          >
+            <PawPrint {...ICON_PROPS} className={iconClasses.icon} />
+            {spawning ? 'Click the map to place it' : 'Add spawn pin'}
           </Button>
           <Button
             variant={selection?.kind === 'settings' ? 'primary' : 'ghost'}
@@ -362,6 +389,22 @@ function MapView() {
               onMeasurePoint={point => setRoute(r => [...r, point])}
               gridCellPx={layers.grid ? cell : null}
               focus={focus}
+              spawnPins={dmMode ? (spawnPins.data ?? NO_SPAWN_PINS) : NO_SPAWN_PINS}
+              selectedSpawnPinId={selectedSpawn?.id ?? null}
+              onSelectSpawnPin={id => setSelection({ kind: 'spawn', id })}
+              onMoveSpawnPin={(id, point) => updateSpawnPin.mutate({ id, changes: point })}
+              spawnMode={spawning}
+              onPlaceSpawnPin={point =>
+                createSpawnPin.mutate(
+                  { at: point, kind: 'creature' },
+                  {
+                    onSuccess: sp => {
+                      setSelection({ kind: 'spawn', id: sp.id });
+                      setTool(null);
+                    },
+                  },
+                )
+              }
             />
           ) : image.isError ? (
             <ErrorNotice error={image.error} onRetry={() => image.refetch()} />
@@ -394,6 +437,16 @@ function MapView() {
             subMap={subMaps.data?.byRegion.get(selectedRegion.id)}
             canEdit={dmMode}
             excludeMapIds={excludeMapIds}
+            onClose={() => setSelection(null)}
+          />
+        )}
+        {selectedSpawn && (
+          <SpawnPinPanel
+            key={selectedSpawn.id}
+            pin={selectedSpawn}
+            mapId={current.id}
+            content={content.data ?? NO_CONTENT}
+            regions={regions.data ?? NO_REGIONS}
             onClose={() => setSelection(null)}
           />
         )}

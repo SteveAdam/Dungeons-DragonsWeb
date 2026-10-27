@@ -11,6 +11,9 @@ export const queryKeys = {
   subMaps: (mapId: string, includeHidden: boolean, pinIds: string[], regionIds: string[]) =>
     ['maps', mapId, 'submaps', { includeHidden, pins: pinIds.join(','), regions: regionIds.join(',') }] as const,
   allMaps: (campaignId: string) => ['campaigns', campaignId, 'maps', 'all'] as const,
+  regionContent: (regionIds: string[]) => ['region-content', regionIds.join(',')] as const,
+  contentNotes: (contentId: string) => ['region-content', 'notes', contentId] as const,
+  spawnPins: (mapId: string) => ['maps', mapId, 'spawn-pins'] as const,
   mapTrail: (mapId: string, includeHidden: boolean) => ['maps', mapId, 'trail', { includeHidden }] as const,
   characters: (campaignId: string) => ['campaigns', campaignId, 'characters'] as const,
   character: (characterId: string) => ['characters', characterId] as const,

@@ -12,6 +12,7 @@ export * from './creation';
 export * from './currency';
 export * from './dice';
 export * from './effects';
+export * from './encounters';
 export * from './environment';
 export * from './equipment';
 export * from './fixtures';

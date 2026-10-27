@@ -484,6 +484,23 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
 - The web app's sheet schema has a compile-time check that it lists every field of the stored sheet; zod drops
   unlisted fields, which is how P2-9's fields and then `spellcastingAbility` went missing on reading.
 
+## Region content, spawn pins and random encounters (P3-2)
+
+- **In this region** (region panel, DM mode only): tabs Creatures, Folk, Finds (with interactables) and Shops. Each
+  entry shows its discovery state (HIDDEN, HINTED, NOTICED, FOUND), its discovery DC and skill, and its spawn rule
+  in plain words ("35% chance, at night, 1 to 3", from `spawnRuleSummary` in the rules engine).
+- An entry has a name, an optional NPC or item from the registry, a monster reference (free text until the
+  monster library), a description, the hint players get before they find it, a spawn rule, shop stock in copper
+  pieces, and DM notes kept in their own table (`region_content_secrets`).
+- **Roll random encounter** (Creatures tab) runs `roll_random_encounter` on the server. Creature entries whose
+  time of day matches the game-clock hour (`(game_seconds / 3600) mod 24` against the campaign's daylight hours,
+  6 to 18 unless changed under the button) turn up: `always` and `time` entries every time, `chance` entries
+  on a d100 at or below the chance. The dice are pgcrypto bytes with rejection sampling, never `random()`. Each
+  roll goes into the append-only `encounter_rolls` log, and the panel offers the log line to copy.
+- **Spawn pins** ("Add spawn pin" in the DM tools): dashed markers for creatures, finds, interactables and
+  traps, which can be dragged and linked to a region entry. They are drawn and requested only in DM mode.
+- Everything above is DM only in row level security (pgTAP T70 to T73). Players get masked rows in P3-3.
+
 ## End-to-end test (P2-12)
 
 `e2e/` is a Playwright test of the whole of Phase 2 with three browser contexts, a DM and two players, against

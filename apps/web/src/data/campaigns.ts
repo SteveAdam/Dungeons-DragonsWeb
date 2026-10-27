@@ -1,3 +1,4 @@
+import { DEFAULT_DAYLIGHT, type DaylightHours } from '@dnd-manager/rules-engine';
 import { supabase } from '../lib/supabase';
 import { DataError, toDataError } from './errors';
 
@@ -12,6 +13,8 @@ export interface Campaign {
   optionalFeats?: boolean;
   /** P2-11: prepared spells change only after a long rest (campaigns.settings.prepareAfterRestOnly; on unless false). */
   prepareAfterRestOnly?: boolean;
+  /** P3-2: when day is, for the day/night rule of spawn rules (campaigns.settings; default 6 to 18). */
+  daylight?: DaylightHours;
   createdAt: string;
 }
 
@@ -27,6 +30,17 @@ interface CampaignRow {
 
 const COLUMNS = 'id, name, rules_edition, next_session_at, game_seconds, settings, created_at';
 
+const hour = (v: unknown, fallback: number) =>
+  Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 23 ? (v as number) : fallback;
+
+function daylightFrom(settings: unknown): DaylightHours {
+  const s = (settings ?? {}) as { daylightStartHour?: unknown; daylightEndHour?: unknown };
+  return {
+    start: hour(s.daylightStartHour, DEFAULT_DAYLIGHT.start),
+    end: hour(s.daylightEndHour, DEFAULT_DAYLIGHT.end),
+  };
+}
+
 const toCampaign = (r: CampaignRow): Campaign => ({
   id: r.id,
   name: r.name,
@@ -35,6 +49,7 @@ const toCampaign = (r: CampaignRow): Campaign => ({
   gameSeconds: Number(r.game_seconds ?? 0),
   optionalFeats: (r.settings as { optionalFeats?: unknown } | null)?.optionalFeats === true,
   prepareAfterRestOnly: (r.settings as { prepareAfterRestOnly?: unknown } | null)?.prepareAfterRestOnly !== false,
+  daylight: daylightFrom(r.settings),
   createdAt: r.created_at,
 });
 

@@ -17,6 +17,7 @@ import type { SubMap } from '../../data/maps';
 import { MIN_REGION_RADIUS, validateRegionChanges, type Region, type RegionChanges } from '../../data/regions';
 import { useDeleteRegion, useUpdateRegion } from '../../hooks/useRegions';
 import type { ImageSize } from '../../lib/mapCoordinates';
+import { RegionContentSection } from './content/RegionContentSection';
 import { DetailMapSection } from './DetailMapSection';
 import styles from './MapView.module.css';
 import { TERRAIN_ICONS, WEATHER_ICONS } from './regionIcons';
@@ -299,16 +300,20 @@ export function RegionPanel({ region, mapId, campaignId, mapSize, subMap, canEdi
         canEdit={canEdit}
         excludeMapIds={excludeMapIds}
       />
-      {/* key: a different region starts a fresh form */}
+      {/* key: a different region starts a fresh form. The content section is DM only: never rendered for
+          players, so never requested. */}
       {canEdit ? (
-        <RegionEditor
-          key={region.id}
-          region={region}
-          mapId={mapId}
-          mapSize={mapSize}
-          subMap={subMap}
-          onClose={onClose}
-        />
+        <>
+          <RegionEditor
+            key={region.id}
+            region={region}
+            mapId={mapId}
+            mapSize={mapSize}
+            subMap={subMap}
+            onClose={onClose}
+          />
+          <RegionContentSection key={`content-${region.id}`} region={region} campaignId={campaignId} />
+        </>
       ) : (
         <div className={styles.view}>
           <Conditions terrain={region.terrain} weather={region.weather} />

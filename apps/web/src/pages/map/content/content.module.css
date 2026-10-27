@@ -1,0 +1,89 @@
+/* Region content (P3-2): the DM's tabs of creatures, folk, finds and shops inside the region panel. */
+
+.section {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--gold-dark);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.5rem;
+  align-items: center;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+}
+
+.entryName {
+  font-weight: 700;
+}
+
+.meta {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+}
+
+.rule {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+}
+
+.summary {
+  margin: 0;
+  font-style: italic;
+}
+
+.stockLine {
+  display: grid;
+  grid-template-columns: 1fr 7rem auto;
+  gap: 0.4rem;
+  align-items: end;
+}
+
+.result {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border: 1px dashed var(--gold-dark);
+  border-radius: 0.25rem;
+}
+
+.logLine {
+  margin: 0;
+  font-family: var(--font-plain);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.daylight {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.daylight input {
+  width: 5rem;
+}

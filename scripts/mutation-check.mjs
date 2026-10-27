@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T69) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T73) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -661,6 +661,54 @@ language sql stable security definer set search_path = public as $f$
     why: 'the map beneath a hidden region would become a visible top-level map',
     sql: `drop trigger regions_hide_orphaned_submaps_trg on regions;`,
     fails: ['T69'],
+  },
+  {
+    name: 'region content readable by members (P3-2)',
+    why: 'players would read hidden creatures, finds and their discovery DCs',
+    sql: `create policy "members read region content" on region_content for select to authenticated using (is_member(region_campaign(region_id)));`,
+    fails: ['T70'],
+  },
+  {
+    name: 'region content DM notes readable by members (P3-2)',
+    why: 'players would read the DM notes on region content',
+    sql: `create policy "members read content secrets" on region_content_secrets for select to authenticated using (is_member(content_campaign(content_id)));`,
+    fails: ['T70'],
+  },
+  {
+    name: 'spawn pins readable by members (P3-2)',
+    why: 'players would see where the DM has placed creatures and traps',
+    sql: `create policy "members read spawn pins" on spawn_pins for select to authenticated using (is_member(map_campaign(map_id)));`,
+    fails: ['T70'],
+  },
+  {
+    name: 'anyone in the campaign can roll a random encounter (P3-2)',
+    why: 'players could roll encounters and learn what lives in a region from the result',
+    sql: `create or replace function require_dm(c uuid) returns void language plpgsql stable security definer set search_path = public as $f$
+begin if c is null or not is_member(c) then raise exception 'Only the DM can do that' using errcode = '42501'; end if; end $f$;`,
+    fails: ['T70'],
+  },
+  {
+    name: 'spawn rule ignores the time of day (P3-2)',
+    why: 'night-only creatures would turn up at noon',
+    sql: `create or replace function evaluate_spawn(rule jsonb, daytime boolean) returns int language plpgsql volatile set search_path = public as $f$
+begin
+  if rule ->> 'mode' = 'chance' and roll_die(100) > (rule ->> 'chance')::int then return 0; end if;
+  return (rule -> 'count' ->> 'min')::int;
+end $f$;`,
+    // T72 fails too when the 35% thornwolves happen to come at noon; T71's night-at-noon check always fails
+    fails: ['T71'],
+  },
+  {
+    name: 'spawn rule check removed (P3-2)',
+    why: 'a chance above 100% or an impossible count could be saved',
+    sql: `alter table region_content drop constraint region_content_spawn_rule_check;`,
+    fails: ['T73'],
+  },
+  {
+    name: 'region content link check removed (P3-2)',
+    why: 'region content could point at lore entries or at another campaign’s NPCs',
+    sql: `drop trigger region_content_check_trg on region_content;`,
+    fails: ['T73'],
   },
 ];
 

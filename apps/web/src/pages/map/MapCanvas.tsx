@@ -21,6 +21,7 @@ import {
 } from 'react-leaflet';
 import { DEFAULT_PIN_COLOR, PIN_COLOR_PATTERN, PIN_SIZE, type Pin } from '../../data/pins';
 import { MIN_REGION_RADIUS, type Region, type RegionChanges } from '../../data/regions';
+import type { SpawnPin } from '../../data/spawnPins';
 import {
   clampToImage,
   containZoom,
@@ -34,6 +35,7 @@ import {
 import styles from './MapCanvas.module.css';
 import { PIN_TYPE_ICONS, PIN_TYPE_LABELS } from './pinIcons';
 import { WEATHER_ICONS } from './regionIcons';
+import { SPAWN_PIN_ICONS, SPAWN_PIN_LABELS } from './spawnIcons';
 
 export interface MapCanvasProps {
   imageUrl: string;
@@ -73,6 +75,34 @@ export interface MapCanvasProps {
   focus: { x: number; y: number; key: number } | null;
   /** Accessible name for the map region, e.g. the map's name. */
   label: string;
+  /** DM mode only (P3-2): spawn pins, drawn as dashed markers. Pass none outside DM mode. */
+  spawnPins: SpawnPin[];
+  selectedSpawnPinId: string | null;
+  onSelectSpawnPin: (id: string) => void;
+  onMoveSpawnPin: (id: string, point: ImagePoint) => void;
+  /** While true, a click on the map places a spawn pin there. */
+  spawnMode: boolean;
+  onPlaceSpawnPin: (point: ImagePoint) => void;
+}
+
+/** The spawn pin icons as SVG markup, built once per kind. */
+const spawnMarkup = Object.fromEntries(
+  Object.entries(SPAWN_PIN_ICONS).map(([kind, Icon]) => [
+    kind,
+    renderToStaticMarkup(createElement(Icon, { size: '60%', strokeWidth: 2, 'aria-hidden': true })),
+  ]),
+) as Record<SpawnPin['kind'], string>;
+
+/** A spawn pin: a dashed paper token with the kind's icon. Never on a player's map. */
+function spawnIcon(pin: SpawnPin, selected: boolean): L.DivIcon {
+  const classes = [styles.spawn, selected ? styles.sealSelected : ''].filter(Boolean).join(' ');
+  return L.divIcon({
+    className: styles.sealHost,
+    html: `<span class="${classes}">${spawnMarkup[pin.kind] ?? ''}</span>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    tooltipAnchor: [0, 14],
+  });
 }
 
 /** The type icon as SVG markup, built once per type (Leaflet markers take HTML strings). */
@@ -454,8 +484,14 @@ export function MapCanvas({
   gridCellPx,
   focus,
   label,
+  spawnPins,
+  selectedSpawnPinId,
+  onSelectSpawnPin,
+  onMoveSpawnPin,
+  spawnMode,
+  onPlaceSpawnPin,
 }: MapCanvasProps) {
-  const busy = addMode || drawMode || measuring;
+  const busy = addMode || drawMode || measuring || spawnMode;
   const bounds = useMemo(() => imageBounds(size), [size]);
   return (
     <MapContainer
@@ -476,6 +512,7 @@ export function MapCanvas({
       <KeepImageFilled width={size.width} height={size.height} />
       {gridCellPx && <GridOverlay size={size} cell={gridCellPx} />}
       <PlaceOnClick active={addMode} size={size} onPlace={onPlace} />
+      <PlaceOnClick active={spawnMode} size={size} onPlace={onPlaceSpawnPin} />
       <MeasureLayer active={measuring} size={size} points={measurePoints} onPoint={onMeasurePoint} />
       <PanTo size={size} focus={focus} />
       {regions.map(region => (
@@ -493,6 +530,33 @@ export function MapCanvas({
         />
       ))}
       {drawMode && <DrawRegion size={size} onDraw={onDrawRegion} />}
+      {spawnPins.map(sp => {
+        const name = `Spawn pin: ${sp.label || SPAWN_PIN_LABELS[sp.kind]} (${SPAWN_PIN_LABELS[sp.kind]}, DM only)`;
+        return (
+          <Marker
+            key={`${sp.id}:${name}`}
+            position={toLatLng(sp, size)}
+            icon={spawnIcon(sp, sp.id === selectedSpawnPinId)}
+            title={name}
+            keyboard
+            draggable={!busy}
+            eventHandlers={{
+              click: () => onSelectSpawnPin(sp.id),
+              keydown: (event: L.LeafletKeyboardEvent) => {
+                const key = event.originalEvent.key;
+                if (key === 'Enter' || key === ' ') {
+                  event.originalEvent.preventDefault();
+                  onSelectSpawnPin(sp.id);
+                }
+              },
+              dragend: (event: L.DragEndEvent) => {
+                const point = clampToImage(toImagePoint((event.target as L.Marker).getLatLng(), size), size);
+                onMoveSpawnPin(sp.id, point);
+              },
+            }}
+          />
+        );
+      })}
       {pins.map(pin => {
         const hasSubMap = subMapPinIds.has(pin.id);
         const name = [

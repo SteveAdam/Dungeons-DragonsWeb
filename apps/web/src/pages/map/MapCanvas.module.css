@@ -52,6 +52,18 @@
   opacity: 0.6;
 }
 
+/* A spawn pin (P3-2, DM mode only): a dashed paper token, so it never reads as a pin players can see. */
+.spawn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px dashed var(--wax-red);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
+  color: var(--wax-red);
+}
+
 /* Selected: a gold ring around the seal. */
 .sealSelected {
   box-shadow:

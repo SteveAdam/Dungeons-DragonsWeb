@@ -203,6 +203,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"encounter_rolls": {
+                  Row: {
+                    "campaign_id": string,"created_at": string,"game_seconds": number,"hour": number,"id": string,"is_day": boolean,"region_id": string,"region_name": string,"results": NonNullable<Json>,"rolled_by": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"created_at"?: string,"game_seconds": number,"hour": number,"id"?: string,"is_day": boolean,"region_id": string,"region_name": string,"results": NonNullable<Json>,"rolled_by": string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"created_at"?: string,"game_seconds"?: number,"hour"?: number,"id"?: string,"is_day"?: boolean,"region_id"?: string,"region_name"?: string,"results"?: NonNullable<Json>,"rolled_by"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "encounter_rolls_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"entities": {
                   Row: {
                     "campaign_id": string,"created_at": string,"folder_id": string | null,"id": string,"name": string,"sort_order": number,"type": Database["public"]['Enums']["entity_type"],"updated_at": string,"visible_to_players": boolean
@@ -673,6 +693,52 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"region_content": {
+                  Row: {
+                    "created_at": string,"details": NonNullable<Json>,"discovery_dc": number | null,"discovery_skill": string,"entity_id": string | null,"hint_text": string | null,"id": string,"kind": string,"monster_ref": string | null,"name": string,"region_id": string,"sort_order": number,"spawn_rule": NonNullable<Json>,"state": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"details"?: NonNullable<Json>,"discovery_dc"?: number | null,"discovery_skill"?: string,"entity_id"?: string | null,"hint_text"?: string | null,"id"?: string,"kind": string,"monster_ref"?: string | null,"name": string,"region_id": string,"sort_order"?: number,"spawn_rule"?: NonNullable<Json>,"state"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"details"?: NonNullable<Json>,"discovery_dc"?: number | null,"discovery_skill"?: string,"entity_id"?: string | null,"hint_text"?: string | null,"id"?: string,"kind"?: string,"monster_ref"?: string | null,"name"?: string,"region_id"?: string,"sort_order"?: number,"spawn_rule"?: NonNullable<Json>,"state"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "region_content_entity_id_fkey"
+      columns: ["entity_id"]
+isOneToOne: false
+      referencedRelation: "entities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "region_content_region_id_fkey"
+      columns: ["region_id"]
+isOneToOne: false
+      referencedRelation: "regions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"region_content_secrets": {
+                  Row: {
+                    "content_id": string,"dm_notes": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "content_id": string,"dm_notes"?: string
+                  }
+                  Update: {
+                    "content_id"?: string,"dm_notes"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "region_content_secrets_content_id_fkey"
+      columns: ["content_id"]
+isOneToOne: true
+      referencedRelation: "region_content"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"regions": {
                   Row: {
                     "created_at": string,"cx": number,"cy": number,"description": string,"id": string,"map_id": string,"name": string,"radius": number,"shape": string,"terrain": string,"visible_to_players": boolean,"weather": string
@@ -736,6 +802,32 @@ isOneToOne: false
       columns: ["character_id"]
 isOneToOne: false
       referencedRelation: "characters"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"spawn_pins": {
+                  Row: {
+                    "content_id": string | null,"created_at": string,"id": string,"kind": string,"label": string,"map_id": string,"x": number,"y": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "content_id"?: string | null,"created_at"?: string,"id"?: string,"kind"?: string,"label"?: string,"map_id": string,"x": number,"y": number
+                  }
+                  Update: {
+                    "content_id"?: string | null,"created_at"?: string,"id"?: string,"kind"?: string,"label"?: string,"map_id"?: string,"x"?: number,"y"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "spawn_pins_content_id_fkey"
+      columns: ["content_id"]
+isOneToOne: false
+      referencedRelation: "region_content"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "spawn_pins_map_id_fkey"
+      columns: ["map_id"]
+isOneToOne: false
+      referencedRelation: "maps"
       referencedColumns: ["id"]
     }
                   ]
@@ -1017,6 +1109,12 @@ isOneToOne: false
               "cp": number,"gp": number,"pp": number,"sp": number
             }[]
                            },
+"content_campaign":
+{ Args: { "c": string }; Returns: string
+                           },
+"content_details_ok":
+{ Args: { "d": Json }; Returns: boolean
+                           },
 "create_character_from_wizard":
 { Args: { "p_actor": string,"p_campaign": string,"p_gp": number,"p_items": Json,"p_name": string,"p_roll"?: string,"p_sheet": Json }; Returns: string
                            },
@@ -1136,6 +1234,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"evaluate_spawn":
+{ Args: { "daytime": boolean,"rule": Json }; Returns: number
+                           },
 "folder_campaign":
 { Args: { "object_name": string }; Returns: string
                            },
@@ -1144,6 +1245,9 @@ isOneToOne: false
                            },
 "free_entity_name":
 { Args: { "base": string,"c": string }; Returns: string
+                           },
+"is_daytime":
+{ Args: { "day_end": number,"day_start": number,"hour": number }; Returns: boolean
                            },
 "is_dm":
 { Args: { "c": string }; Returns: boolean
@@ -1431,6 +1535,12 @@ isOneToOne: false
 "roll_pool":
 { Args: { "count": number,"sides": number }; Returns: (number)[]
                            },
+"roll_random_encounter":
+{ Args: { "p_region": string }; Returns: Json
+                           },
+"set_daylight_hours":
+{ Args: { "p_campaign": string,"p_end": number,"p_start": number }; Returns: undefined
+                           },
 "set_entity_visibility":
 { Args: { "p_entity": string,"p_visible": boolean }; Returns: {
               "campaign_id": string,
@@ -1498,6 +1608,9 @@ isOneToOne: false
       } },
 "simple_long_rest_party":
 { Args: { "p_campaign": string }; Returns: number
+                           },
+"spawn_rule_ok":
+{ Args: { "r": Json }; Returns: boolean
                            },
 "spell_state_for":
 { Args: { "p_character": string }; Returns: {

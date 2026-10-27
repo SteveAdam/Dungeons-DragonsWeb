@@ -14,6 +14,9 @@ import type { Pin } from '../../data/pins';
 import * as pinsApi from '../../data/pins';
 import type { Region } from '../../data/regions';
 import * as regionsApi from '../../data/regions';
+import * as contentApi from '../../data/regionContent';
+import type { SpawnPin } from '../../data/spawnPins';
+import * as spawnApi from '../../data/spawnPins';
 import { useDmModeStore } from '../../state/dmModeStore';
 import type { MapCanvasProps } from './MapCanvas';
 import { MapViewPage } from './MapViewPage';
@@ -42,6 +45,10 @@ vi.mock('./MapCanvas', () => ({
     measuring,
     onMeasurePoint,
     gridCellPx,
+    spawnPins,
+    onSelectSpawnPin,
+    spawnMode,
+    onPlaceSpawnPin,
   }: MapCanvasProps) => (
     <div
       data-testid="map"
@@ -49,7 +56,12 @@ vi.mock('./MapCanvas', () => ({
       data-adding={String(addMode)}
       data-drawing={String(drawMode)}
       data-grid={String(gridCellPx)}
+      data-spawning={String(spawnMode)}
     >
+      {spawnPins.map(sp => (
+        <button key={sp.id} onClick={() => onSelectSpawnPin(sp.id)}>{`spawn: ${sp.label}`}</button>
+      ))}
+      {spawnMode && <button onClick={() => onPlaceSpawnPin({ x: 120, y: 80 })}>spawn click</button>}
       {measuring && (
         <>
           <button onClick={() => onMeasurePoint({ x: 0, y: 500 })}>measure from the west edge</button>
@@ -96,6 +108,11 @@ vi.mock('../../data/regions', async importOriginal => ({
   deleteRegion: vi.fn(),
 }));
 vi.mock('../../data/pinSecrets');
+vi.mock('../../data/regionContent', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/regionContent')>()),
+  listRegionContent: vi.fn(async () => []),
+}));
+vi.mock('../../data/spawnPins');
 vi.mock('../../data/maps');
 vi.mock('../../data/campaigns');
 vi.mock('../../data/members');
@@ -152,6 +169,8 @@ function signInAs(role: 'dm' | 'player') {
   vi.mocked(notesApi.getPinNotes).mockResolvedValue('The cave floods at high tide');
   vi.mocked(mapsApi.listSubMaps).mockResolvedValue({ byPin: new Map(), byRegion: new Map() });
   vi.mocked(mapsApi.listAllMaps).mockResolvedValue([]);
+  vi.mocked(spawnApi.listSpawnPins).mockResolvedValue([]);
+  vi.mocked(contentApi.listRegionContent).mockResolvedValue([]);
   vi.mocked(mapsApi.getMapTrail).mockResolvedValue([]);
   vi.mocked(regionsApi.listRegions).mockImplementation(async (_id, { includeHidden }) =>
     role === 'dm' && includeHidden ? [sands, wraithwood] : [sands],
@@ -624,6 +643,75 @@ describe('layered maps (P3-1)', () => {
     await within(panel).findByRole('link', { name: 'Enter Oasis of Sefir' });
     await user.click(within(panel).getByRole('button', { name: 'Delete region' }));
     expect(within(panel).getByText(/Oasis of Sefir, is kept as a separate map/)).toBeInTheDocument();
+  });
+});
+
+describe('region content and spawn pins stay with the DM (P3-2)', () => {
+  const den: SpawnPin = { id: 'sp1', mapId: 'm1', x: 50, y: 60, kind: 'creature', label: 'Wolf den', contentId: null };
+
+  it.each([
+    ['a player', 'player' as const, true],
+    ['a DM previewing as a player', 'dm' as const, false],
+  ])('%s never requests region content or spawn pins', async (_who, role, dmMode) => {
+    useDmModeStore.setState({ dmMode });
+    signInAs(role);
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'region: The Glass Sands' }));
+    const panel = await screen.findByRole('complementary', { name: 'Region: The Glass Sands' });
+    expect(within(panel).queryByRole('region', { name: 'Region content' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^spawn:/ })).not.toBeInTheDocument();
+    expect(contentApi.listRegionContent).not.toHaveBeenCalled();
+    expect(spawnApi.listSpawnPins).not.toHaveBeenCalled();
+  });
+
+  it('a DM places a spawn pin, links it to a region entry and saves it', async () => {
+    signInAs('dm');
+    vi.mocked(spawnApi.listSpawnPins).mockResolvedValue([]);
+    vi.mocked(spawnApi.createSpawnPin).mockResolvedValue(den);
+    vi.mocked(contentApi.listRegionContent).mockResolvedValue([
+      {
+        id: 'e-wolves',
+        regionId: 'r1',
+        kind: 'creature',
+        name: 'Thornwolf pack',
+        entityId: null,
+        monsterRef: null,
+        description: '',
+        quantity: null,
+        stock: [],
+        state: 'hidden',
+        hintText: null,
+        discoveryDc: null,
+        discoverySkill: 'perception',
+        spawnRule: { mode: 'chance', chance: 35, timeOfDay: 'night', count: { min: 1, max: 3 } },
+        sortOrder: 0,
+      },
+    ]);
+    vi.mocked(spawnApi.updateSpawnPin).mockResolvedValue({ ...den, contentId: 'e-wolves' });
+    const user = userEvent.setup();
+    renderMap();
+
+    await user.click(await screen.findByRole('button', { name: 'Add spawn pin' }));
+    expect(screen.getByTestId('map')).toHaveAttribute('data-spawning', 'true');
+    vi.mocked(spawnApi.listSpawnPins).mockResolvedValue([den]);
+    await user.click(screen.getByRole('button', { name: 'spawn click' }));
+    expect(spawnApi.createSpawnPin).toHaveBeenCalledWith('m1', { x: 120, y: 80 }, 'creature');
+
+    const panel = await screen.findByRole('complementary', { name: 'Spawn pin: Wolf den' });
+    expect(contentApi.listRegionContent).toHaveBeenCalledWith(['r1', 'r2']);
+    const link = within(panel).getByLabelText('Region entry');
+    await waitFor(() => expect(within(link).getAllByRole('option')).toHaveLength(2));
+    await user.selectOptions(link, 'e-wolves');
+    await user.click(within(panel).getByRole('button', { name: 'Save spawn pin' }));
+    await waitFor(() =>
+      expect(spawnApi.updateSpawnPin).toHaveBeenCalledWith('sp1', {
+        label: 'Wolf den',
+        kind: 'creature',
+        contentId: 'e-wolves',
+      }),
+    );
+    expect(screen.getByRole('button', { name: 'spawn: Wolf den' })).toBeInTheDocument();
   });
 });
 
