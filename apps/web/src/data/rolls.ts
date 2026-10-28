@@ -72,7 +72,7 @@ export interface RollPreview {
 
 type Row = Database['public']['Tables']['rolls']['Row'];
 
-const toRoll = (r: Row): RollRow => ({
+export const toRoll = (r: Row): RollRow => ({
   id: r.id,
   campaignId: r.campaign_id,
   characterId: r.character_id,
@@ -97,7 +97,7 @@ const toRoll = (r: Row): RollRow => ({
  * Turns a failed call to the roll function into a DataError, keeping the server's own explanation (for example
  * "You can only roll for your own character" or "cannot use the Greatsword yet: Strength 17 needed").
  */
-async function functionError(error: unknown): Promise<DataError> {
+export async function functionError(error: unknown): Promise<DataError> {
   const e = (error ?? {}) as { name?: string; context?: Response };
   if (e.name === 'FunctionsHttpError' && e.context) {
     const status = e.context.status;
@@ -106,7 +106,7 @@ async function functionError(error: unknown): Promise<DataError> {
       .then((body: { error?: unknown }) => (typeof body?.error === 'string' ? body.error : undefined))
       .catch(() => undefined);
     if (status === 401) return new DataError('signed-out');
-    if (status === 429) return new DataError('rate-limited');
+    if (status === 429) return new DataError('rate-limited', message);
     if (status === 403) return new DataError('forbidden', message);
     if (status === 404 && !message) return new DataError('unknown', DICE_SERVER_DOWN);
     if ([400, 404, 409, 422].includes(status)) return new DataError('validation', message);

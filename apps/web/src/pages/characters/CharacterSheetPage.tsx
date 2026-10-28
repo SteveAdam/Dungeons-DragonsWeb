@@ -7,7 +7,18 @@ import { useId, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { OddsPopup, type OddsCheck } from '../../components/odds/OddsPopup';
-import { ICON_PROPS, IconLink, Input, Paper, RibbonTabs, Tag, Toggle } from '../../components/ui';
+import {
+  Cell,
+  ICON_PROPS,
+  IconLink,
+  Input,
+  PageGrid,
+  Paper,
+  RibbonTabs,
+  SectionTitle,
+  Tag,
+  Toggle,
+} from '../../components/ui';
 import { friendlyMessage } from '../../data/errors';
 import { rollForCharacter, type CharacterRollRequest } from '../../data/rolls';
 import { ClockWidget } from '../../components/ClockWidget';
@@ -28,6 +39,7 @@ import type { LevelUpClass } from '@dnd-manager/rules-engine';
 import { useMembers } from '../../hooks/useMembers';
 import { durationText, timeLeft } from '../../lib/gameClock';
 import { useShowDmIndicator } from '../../state/dmIndicator';
+import { HerePanel } from './here/HerePanel';
 import styles from './CharacterSheetPage.module.css';
 import { EffectsTool } from './EffectsTool';
 import { PackTab } from './pack/PackTab';
@@ -170,166 +182,148 @@ export function CharacterSheetPage() {
   const lockedWeapons = sheet.attacks.filter(a => !a.usable);
 
   return (
-    <main className={styles.page}>
-      <div className={styles.topBar}>
+    <PageGrid className={styles.frame}>
+      <Cell className={styles.topBar}>
         {crumb}
         {owner && <span className={styles.player}>{`Played by ${owner.displayName}`}</span>}
         {isDm && <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />}
-      </div>
-      {dmMode && <ClockWidget campaignId={campaignId} />}
-      {dmMode && <LongRestButton characterId={characterId} name={data.name} />}
-      <RibbonTabs
-        aria-label="Character sections"
-        tabs={tabs}
-        value={activeTab}
-        onChange={next =>
-          navigate(`/campaigns/${campaignId}/characters/${characterId}${next === 'sheet' ? '' : `/${next}`}`)
-        }
-      />
+      </Cell>
+      {dmMode && (
+        // the DM's desk row: the clock beside the long rest strip, each on its own parchment
+        <Cell className={styles.dmDesk}>
+          <ClockWidget campaignId={campaignId} />
+          <Paper as="div" texture="flat" className={styles.dmTools}>
+            <LongRestButton characterId={characterId} name={data.name} />
+          </Paper>
+        </Cell>
+      )}
+      <HerePanel campaignId={campaignId} characterId={characterId} />
+      <Cell className={styles.body}>
+        <RibbonTabs
+          aria-label="Character sections"
+          tabs={tabs}
+          value={activeTab}
+          onChange={next =>
+            navigate(`/campaigns/${campaignId}/characters/${characterId}${next === 'sheet' ? '' : `/${next}`}`)
+          }
+        />
 
-      {activeTab === 'details' ? (
-        <Paper as="section" texture="full" role="tabpanel" aria-label="Details" className={styles.sheet}>
-          <DetailsTab characterId={characterId} campaignId={campaignId} />
-        </Paper>
-      ) : activeTab === 'spells' ? (
-        <Paper as="section" texture="full" role="tabpanel" aria-label="Spells" className={styles.sheet}>
-          {classes.isError || spellList.isError ? (
-            <ErrorNotice
-              error={classes.error ?? spellList.error}
-              onRetry={() => (classes.isError ? classes.refetch() : spellList.refetch())}
-            />
-          ) : !classes.data || !spellList.data ? (
-            <p role="status" className={styles.status}>
-              Opening the spellbook…
-            </p>
-          ) : (
-            (() => {
-              const cls = classes.data.find(c => c.name === data.sheet.className) as LevelUpClass | undefined;
-              return cls ? (
-                <>
-                  <div className={styles.targets}>
-                    <label htmlFor={`${id}-spell-ac`}>Target armour class</label>
-                    <Input
-                      id={`${id}-spell-ac`}
-                      type="number"
-                      min={1}
-                      max={40}
-                      placeholder="13"
-                      value={ac}
-                      onChange={e => setAc(e.target.value)}
-                      className={styles.targetInput}
+        {activeTab === 'details' ? (
+          <Paper as="section" texture="full" role="tabpanel" aria-label="Details" className={styles.sheet}>
+            <DetailsTab characterId={characterId} campaignId={campaignId} />
+          </Paper>
+        ) : activeTab === 'spells' ? (
+          <Paper as="section" texture="full" role="tabpanel" aria-label="Spells" className={styles.sheet}>
+            {classes.isError || spellList.isError ? (
+              <ErrorNotice
+                error={classes.error ?? spellList.error}
+                onRetry={() => (classes.isError ? classes.refetch() : spellList.refetch())}
+              />
+            ) : !classes.data || !spellList.data ? (
+              <p role="status" className={styles.status}>
+                Opening the spellbook…
+              </p>
+            ) : (
+              (() => {
+                const cls = classes.data.find(c => c.name === data.sheet.className) as LevelUpClass | undefined;
+                return cls ? (
+                  <>
+                    <div className={styles.targets}>
+                      <label htmlFor={`${id}-spell-ac`}>Target armour class</label>
+                      <Input
+                        id={`${id}-spell-ac`}
+                        type="number"
+                        min={1}
+                        max={40}
+                        placeholder="13"
+                        value={ac}
+                        onChange={e => setAc(e.target.value)}
+                        className={styles.targetInput}
+                      />
+                    </div>
+                    <SpellsTab
+                      characterId={characterId}
+                      sheet={data.sheet}
+                      computed={sheet}
+                      cls={cls}
+                      spells={spellList.data}
+                      dmMode={dmMode}
+                      prepareAfterRestOnly={campaign.data?.prepareAfterRestOnly ?? true}
+                      onSpellAttack={(anchor, spell) =>
+                        sheet.spellcasting &&
+                        open(anchor, `${spell} (spell attack)`, 'attack', spell, `spell:${spell}`, {
+                          bonus: sheet.spellcasting.attackBonus,
+                          proficient: true,
+                          breakdown: [
+                            {
+                              label: sheet.spellcasting.label,
+                              value: sheet.abilities[sheet.spellcasting.ability].modifier,
+                            },
+                            { label: 'Proficiency', value: sheet.proficiencyBonus },
+                          ],
+                        })
+                      }
                     />
-                  </div>
-                  <SpellsTab
-                    characterId={characterId}
-                    sheet={data.sheet}
-                    computed={sheet}
-                    cls={cls}
-                    spells={spellList.data}
-                    dmMode={dmMode}
-                    prepareAfterRestOnly={campaign.data?.prepareAfterRestOnly ?? true}
-                    onSpellAttack={(anchor, spell) =>
-                      sheet.spellcasting &&
-                      open(anchor, `${spell} (spell attack)`, 'attack', spell, `spell:${spell}`, {
-                        bonus: sheet.spellcasting.attackBonus,
-                        proficient: true,
-                        breakdown: [
-                          {
-                            label: sheet.spellcasting.label,
-                            value: sheet.abilities[sheet.spellcasting.ability].modifier,
-                          },
-                          { label: 'Proficiency', value: sheet.proficiencyBonus },
-                        ],
-                      })
-                    }
-                  />
-                </>
-              ) : (
-                <p className={styles.muted}>{`The SRD has no class called ${data.sheet.className}.`}</p>
-              );
-            })()
-          )}
-        </Paper>
-      ) : activeTab === 'pack' ? (
-        <Paper as="section" texture="full" role="tabpanel" aria-label="Pack" className={styles.sheet}>
-          <PackTab
-            campaignId={campaignId}
-            character={data}
-            effects={effects.data ?? []}
-            clock={clock}
-            dmMode={dmMode}
-          />
-        </Paper>
-      ) : (
-        <Paper as="section" texture="full" role="tabpanel" aria-label="Sheet" className={styles.sheet}>
-          <header className={styles.header}>
-            <div>
-              <h1 className={styles.name}>{data.name}</h1>
-              <p className={styles.muted}>{data.sheet.species}</p>
-            </div>
-            <Box label="Class and level">{`${data.sheet.className} ${sheet.level}`}</Box>
-            <Box label="Background">{data.sheet.background}</Box>
-            <Box label="Alignment">{details.data?.alignment || data.sheet.alignment}</Box>
-          </header>
-
-          <div className={styles.box}>
-            <div className={styles.boxHead}>
-              <span className={styles.label}>Experience</span>
-              <span className={styles.muted}>
-                {sheet.xp.nextLevelAt === null
-                  ? `${thousands(sheet.xp.total)}: the highest level`
-                  : `${thousands(sheet.xp.total)} of ${thousands(sheet.xp.nextLevelAt)} for Level ${sheet.xp.level + 1}`}
-              </span>
-            </div>
-            {sheet.xp.pending > 0 && (
-              <div className={styles.levelUp}>
-                <Tag>{`Level up available: ${sheet.xp.pending} ${sheet.xp.pending === 1 ? 'level' : 'levels'} (level ${sheet.xp.level} by XP)`}</Tag>
-                <IconLink to={`/campaigns/${campaignId}/characters/${characterId}/level-up`} icon={TrendingUp}>
-                  Level up
-                </IconLink>
-                <span className={styles.small}>{`The sheet stays at level ${sheet.level} until you level up.`}</span>
-              </div>
+                  </>
+                ) : (
+                  <p className={styles.muted}>{`The SRD has no class called ${data.sheet.className}.`}</p>
+                );
+              })()
             )}
-            <Bar label="Experience" value={sheet.xp.intoLevel} max={sheet.xp.intoLevel + sheet.xp.toNext} />
-          </div>
-
-          <div className={styles.columns}>
-            <section aria-label="Ability scores" className={styles.abilities}>
-              {Object.values(sheet.abilities).map(a => (
-                <div key={a.ability} className={styles.ability}>
-                  <span className={styles.label}>{a.label}</span>
-                  <b className={a.score !== a.base ? styles.boosted : ''}>{a.score}</b>
-                  <span>{signed(a.modifier)}</span>
-                  {a.applied.length > 0 && <span className={styles.small}>{`${a.applied[0].name}`}</span>}
+          </Paper>
+        ) : activeTab === 'pack' ? (
+          <Paper as="section" texture="full" role="tabpanel" aria-label="Pack" className={styles.sheet}>
+            <PackTab
+              campaignId={campaignId}
+              character={data}
+              effects={effects.data ?? []}
+              clock={clock}
+              dmMode={dmMode}
+            />
+          </Paper>
+        ) : (
+          // The book spread: who the character is on the left page, what they can do on the right. The pages sit side
+          // by side on wide screens and stack on narrower ones.
+          <section role="tabpanel" aria-label="Sheet" className={styles.spread}>
+            <Paper as="div" texture="full" className={`${styles.leaf} ${styles.leafLeft}`}>
+              <header className={styles.header}>
+                <div className={styles.title}>
+                  <h1 className={styles.name}>{data.name}</h1>
+                  <p className={styles.muted}>{data.sheet.species}</p>
                 </div>
-              ))}
-            </section>
+                <div className={styles.facts}>
+                  <Box label="Class and level">{`${data.sheet.className} ${sheet.level}`}</Box>
+                  <Box label="Background">{data.sheet.background}</Box>
+                  <Box label="Alignment">{details.data?.alignment || data.sheet.alignment}</Box>
+                </div>
+              </header>
 
-            <div className={styles.column}>
-              <div className={styles.targets}>
-                <span>
-                  <label htmlFor={`${id}-dc`}>DC</label>
-                  <Input
-                    id={`${id}-dc`}
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="Ask your DM"
-                    value={dc}
-                    onChange={e => setDc(e.target.value)}
-                  />
-                </span>
-                <span>
-                  <label htmlFor={`${id}-ac`}>Target armour class</label>
-                  <Input
-                    id={`${id}-ac`}
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="Ask your DM"
-                    value={ac}
-                    onChange={e => setAc(e.target.value)}
-                  />
-                </span>
+              <div className={styles.box}>
+                <div className={styles.boxHead}>
+                  <span className={styles.label}>Experience</span>
+                  <span className={styles.muted}>
+                    {sheet.xp.nextLevelAt === null
+                      ? `${thousands(sheet.xp.total)}: the highest level`
+                      : `${thousands(sheet.xp.total)} of ${thousands(sheet.xp.nextLevelAt)} for Level ${sheet.xp.level + 1}`}
+                  </span>
+                </div>
+                <Bar label="Experience" value={sheet.xp.intoLevel} max={sheet.xp.intoLevel + sheet.xp.toNext} />
               </div>
+
+              <section aria-label="Ability scores" className={styles.abilitySection}>
+                <SectionTitle>Ability scores</SectionTitle>
+                <div className={styles.abilities}>
+                  {Object.values(sheet.abilities).map(a => (
+                    <div key={a.ability} className={styles.ability}>
+                      <span className={styles.label}>{a.label}</span>
+                      <b className={a.score !== a.base ? styles.boosted : ''}>{a.score}</b>
+                      <span>{signed(a.modifier)}</span>
+                      {a.applied.length > 0 && <span className={styles.small}>{`${a.applied[0].name}`}</span>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
               <RollList
                 title="Saving throws"
                 rows={sheet.saves.map(s => ({ key: s.ability, label: s.label, roll: s, marks: s.proficient ? 1 : 0 }))}
@@ -337,68 +331,6 @@ export function CharacterSheetPage() {
                   open(anchor, `${row.label} saving throw`, 'save', row.label, row.key, row.roll)
                 }
               />
-              <RollList
-                title="Skills"
-                hint="tap to roll"
-                rows={sheet.skills.map(s => ({
-                  key: s.key,
-                  label: s.label,
-                  roll: s,
-                  marks: s.expertise ? 2 : s.proficient ? 1 : 0,
-                }))}
-                onPick={(anchor, row) => open(anchor, `${row.label} check`, 'check', row.label, row.key, row.roll)}
-              />
-            </div>
-
-            <div className={styles.column}>
-              <div className={styles.stats}>
-                <Stat label="Armour" value={String(sheet.armorClass.value)} />
-                <Stat label="Initiative" value={signed(sheet.initiative.bonus)} />
-                <Stat label="Speed" value={String(sheet.speed.value)} />
-                <Stat label="Proficiency" value={signed(sheet.proficiencyBonus)} />
-              </div>
-              <p className={styles.muted}>{`Passive Perception ${sheet.passivePerception}`}</p>
-
-              <div className={styles.box}>
-                <div className={styles.boxHead}>
-                  <span className={styles.label}>Hit points</span>
-                  <span>
-                    {`${sheet.hp.current} of ${sheet.hp.max}${sheet.hp.temp ? ` (+${sheet.hp.temp} temporary)` : ''} · Hit dice ${sheet.hitDice.remaining}${sheet.hitDice.die}`}
-                  </span>
-                </div>
-                <Bar label="Hit points" value={sheet.hp.current} max={sheet.hp.max} />
-              </div>
-
-              <section aria-labelledby={`${id}-attacks`} className={styles.box}>
-                <h2 id={`${id}-attacks`} className={styles.label}>
-                  Attacks
-                </h2>
-                <ul className={styles.list}>
-                  {sheet.attacks
-                    .filter(a => a.usable)
-                    .map(a => (
-                      <li key={a.id}>
-                        <button
-                          type="button"
-                          className={styles.attack}
-                          onClick={e => open(e.currentTarget, a.name, 'attack', a.name, a.id, a)}
-                        >
-                          <span>
-                            {a.name}
-                            {a.mastery && <span className={styles.muted}>{` · ${a.mastery}`}</span>}
-                            {a.unlockedBy && (
-                              <span className={styles.small}>
-                                {`usable for ${a.unlockedBy.expiresAtSeconds ? timeLeft(a.unlockedBy.expiresAtSeconds, clock) : 'now'} (${a.unlockedBy.name})`}
-                              </span>
-                            )}
-                          </span>
-                          <b className={styles.big}>{signed(a.bonus)}</b>
-                          <span>{`${a.damage} ${a.damageType}`}</span>
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              </section>
 
               <section aria-labelledby={`${id}-effects`} className={styles.box}>
                 <h2 id={`${id}-effects`} className={styles.label}>
@@ -461,13 +393,109 @@ export function CharacterSheetPage() {
                   <p className={styles.muted}>Locked items cannot be used until the need is met.</p>
                 )}
               </section>
-            </div>
-          </div>
-        </Paper>
-      )}
+            </Paper>
 
+            <Paper as="div" texture="full" className={`${styles.leaf} ${styles.leafRight}`}>
+              <div className={styles.stats}>
+                <Stat label="Armour" value={String(sheet.armorClass.value)} />
+                <Stat label="Initiative" value={signed(sheet.initiative.bonus)} />
+                <Stat label="Speed" value={String(sheet.speed.value)} />
+                <Stat label="Proficiency" value={signed(sheet.proficiencyBonus)} />
+              </div>
+              <p className={styles.muted}>{`Passive Perception ${sheet.passivePerception}`}</p>
+
+              <div className={styles.box}>
+                <div className={styles.boxHead}>
+                  <span className={styles.label}>Hit points</span>
+                  <span>
+                    {`${sheet.hp.current} of ${sheet.hp.max}${sheet.hp.temp ? ` (+${sheet.hp.temp} temporary)` : ''} · Hit dice ${sheet.hitDice.remaining}${sheet.hitDice.die}`}
+                  </span>
+                </div>
+                <Bar label="Hit points" value={sheet.hp.current} max={sheet.hp.max} />
+              </div>
+
+              <div className={styles.targets}>
+                <span>
+                  <label htmlFor={`${id}-dc`}>DC</label>
+                  <Input
+                    id={`${id}-dc`}
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Ask your DM"
+                    value={dc}
+                    onChange={e => setDc(e.target.value)}
+                  />
+                </span>
+                <span>
+                  <label htmlFor={`${id}-ac`}>Target armour class</label>
+                  <Input
+                    id={`${id}-ac`}
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Ask your DM"
+                    value={ac}
+                    onChange={e => setAc(e.target.value)}
+                  />
+                </span>
+              </div>
+
+              <RollList
+                title="Skills"
+                hint="tap to roll"
+                large
+                rows={sheet.skills.map(s => ({
+                  key: s.key,
+                  label: s.label,
+                  roll: s,
+                  marks: s.expertise ? 2 : s.proficient ? 1 : 0,
+                }))}
+                onPick={(anchor, row) => open(anchor, `${row.label} check`, 'check', row.label, row.key, row.roll)}
+              />
+
+              <section aria-labelledby={`${id}-attacks`} className={styles.attacks}>
+                <SectionTitle id={`${id}-attacks`}>Attacks</SectionTitle>
+                <ul className={styles.list}>
+                  {sheet.attacks
+                    .filter(a => a.usable)
+                    .map(a => (
+                      <li key={a.id}>
+                        <button
+                          type="button"
+                          className={styles.attack}
+                          onClick={e => open(e.currentTarget, a.name, 'attack', a.name, a.id, a)}
+                        >
+                          <span>
+                            {a.name}
+                            {a.mastery && <span className={styles.muted}>{` · ${a.mastery}`}</span>}
+                            {a.unlockedBy && (
+                              <span className={styles.small}>
+                                {`usable for ${a.unlockedBy.expiresAtSeconds ? timeLeft(a.unlockedBy.expiresAtSeconds, clock) : 'now'} (${a.unlockedBy.name})`}
+                              </span>
+                            )}
+                          </span>
+                          <b className={styles.big}>{signed(a.bonus)}</b>
+                          <span>{`${a.damage} ${a.damageType}`}</span>
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              </section>
+
+              {sheet.xp.pending > 0 && (
+                <div className={styles.levelUp}>
+                  <Tag>{`Level up available: ${sheet.xp.pending} ${sheet.xp.pending === 1 ? 'level' : 'levels'} (level ${sheet.xp.level} by XP)`}</Tag>
+                  <IconLink to={`/campaigns/${campaignId}/characters/${characterId}/level-up`} icon={TrendingUp}>
+                    Level up
+                  </IconLink>
+                  <span className={styles.small}>{`The sheet stays at level ${sheet.level} until you level up.`}</span>
+                </div>
+              )}
+            </Paper>
+          </section>
+        )}
+      </Cell>
       {odds && <ServerOdds {...odds} onClose={() => setOdds(null)} />}
-    </main>
+    </PageGrid>
   );
 }
 
@@ -550,21 +578,30 @@ interface RollRowData {
 function RollList({
   title,
   hint,
+  large = false,
   rows,
   onPick,
 }: {
   title: string;
   hint?: string;
+  /** A section of its own (blackletter title, two columns of rows) rather than a small box. */
+  large?: boolean;
   rows: RollRowData[];
   onPick: (anchor: HTMLElement, row: RollRowData) => void;
 }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className={styles.box}>
-      <h2 id={id} className={styles.label}>
-        {title} {hint && <span className={styles.muted}>{hint}</span>}
-      </h2>
-      <ul className={styles.list}>
+    <section aria-labelledby={id} className={large ? styles.rollSection : styles.box}>
+      {large ? (
+        <SectionTitle id={id}>
+          {title} {hint && <span className={styles.hint}>{hint}</span>}
+        </SectionTitle>
+      ) : (
+        <h2 id={id} className={styles.label}>
+          {title} {hint && <span className={styles.muted}>{hint}</span>}
+        </h2>
+      )}
+      <ul className={large ? `${styles.list} ${styles.twoColumns}` : styles.list}>
         {rows.map(row => (
           <li key={row.key}>
             <button

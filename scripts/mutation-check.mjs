@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T73) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T78) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -709,6 +709,62 @@ end $f$;`,
     why: 'region content could point at lore entries or at another campaign’s NPCs',
     sql: `drop trigger region_content_check_trg on region_content;`,
     fails: ['T73'],
+  },
+  {
+    name: 'every member reads every party group (P3-3)',
+    why: 'a player would see where the other groups are and who is in them',
+    sql: `drop policy "read own groups" on party_groups;
+create policy "read own groups" on party_groups for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T74'],
+  },
+  {
+    name: 'discoveries readable by members (P3-3)',
+    why: 'players would learn which entries exist in a region from the discovery table',
+    sql: `create policy "members read discoveries" on content_discoveries for select to authenticated using (is_member(group_campaign(group_id)));`,
+    fails: ['T76'],
+  },
+  {
+    name: 'get_here returns hidden entries (P3-3)',
+    why: 'the Here tab would list hidden names before anyone found them',
+    sql: `create or replace function get_here(p_character uuid) returns jsonb language sql stable security definer set search_path = public as $f$
+  select jsonb_build_object('group', null, 'region', null,
+    'entries', (select jsonb_agg(jsonb_build_object('name', rc.name, 'actions', '["talk"]'::jsonb) order by rc.sort_order)
+                from region_content rc join party_groups pg on pg.region_id = rc.region_id
+                join party_group_members pm on pm.group_id = pg.id where pm.character_id = p_character),
+    'hints', '[]'::jsonb) $f$;`,
+    fails: ['T76'],
+  },
+  {
+    name: 'passive scores ignored on entering a region (P3-3)',
+    why: 'every hidden entry would be revealed when a group walks in',
+    sql: `create or replace function move_group(p_actor uuid, p_group uuid, p_map uuid, p_region uuid, p_passives jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $f$
+declare e record; revealed jsonb := '[]'::jsonb;
+begin
+  if not exists (select 1 from members where campaign_id = group_campaign(p_group) and user_id = p_actor and role = 'dm') then
+    raise exception 'Only the DM can do that' using errcode = '42501'; end if;
+  update party_groups set map_id = p_map, region_id = p_region where id = p_group;
+  for e in select id, name from region_content where region_id = p_region order by sort_order loop
+    if record_discovery(e.id, p_group, 'noticed') then revealed := revealed || to_jsonb(e.name); end if;
+  end loop;
+  return revealed;
+end $f$;`,
+    fails: ['T75'],
+  },
+  {
+    name: 'search cooldown removed (P3-3)',
+    why: 'a player could search again and again until the dice came good',
+    sql: `drop trigger region_searches_append_only_trg on region_searches;
+alter table region_searches rename to region_searches_old;
+create table region_searches (like region_searches_old);
+create rule never_store as on insert to region_searches do instead nothing;`,
+    fails: ['T77'],
+  },
+  {
+    name: 'discovery notices readable by every member (P3-3)',
+    why: 'the other group would be told what this group noticed',
+    sql: `create policy "members read notices" on discovery_notices for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T78'],
   },
 ];
 

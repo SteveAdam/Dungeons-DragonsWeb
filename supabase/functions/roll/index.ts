@@ -1,7 +1,7 @@
 // P2-2: the roll Edge Function. The logic is in handler.ts; this file connects it to the database.
 //
 // It reads with the service role (the caller's token is checked first, and handler.ts decides what they may do),
-// and calls public.roll_d20, which only the service role may execute.
+// and calls public.roll_d20, search_region and move_group, which only the service role may execute.
 import { createClient } from '@supabase/supabase-js';
 import { handle, type RollDeps } from './handler.ts';
 
@@ -80,6 +80,16 @@ const deps: RollDeps = {
   async gameSeconds(campaignId) {
     const row = orThrow(await admin.from('campaigns').select('game_seconds').eq('id', campaignId).single());
     return Number(row?.game_seconds ?? 0);
+  },
+  async loadGroup(groupId) {
+    const group = orThrow(await admin.from('party_groups').select('campaign_id').eq('id', groupId).maybeSingle());
+    if (!group) return null;
+    const members = orThrow(await admin.from('party_group_members').select('character_id').eq('group_id', groupId));
+    return { campaignId: group.campaign_id, characterIds: (members ?? []).map(m => m.character_id) };
+  },
+  async rpc(name, args) {
+    const { data, error } = await admin.rpc(name, args as never);
+    return { data, error: error ? { code: error.code, message: error.message } : null };
   },
   async rollD20(args) {
     const { data, error } = await admin.rpc('roll_d20', args);

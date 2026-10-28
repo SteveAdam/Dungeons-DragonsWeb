@@ -86,6 +86,11 @@
   --font-body: 'IM Fell English', Georgia, serif;
   --font-plain: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
+  /* layout kit: the page grid. 12 columns from 1100px, 6 from 700px, 1 below (see components/ui/Layout). */
+  --page-max: 85rem;
+  --page-gutter: 1.5rem;
+  --page-margin: 2.5rem;
+
   --focus-ring: 3px solid var(--gold);
 
   /* Terrain regions on maps: a ground colour and a mark colour per terrain. The marks are the hand-drawn

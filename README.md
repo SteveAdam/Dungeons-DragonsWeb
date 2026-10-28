@@ -109,6 +109,19 @@ The D&D logo itself is a Wizards of the Coast trademark and is not used. In deve
 every component and both display settings ("Reduce texture" and "Plain font"). Both settings are also in the header's
 Display menu, are saved in localStorage and are applied as `data-` attributes on `<html>`.
 
+**Layout kit** (`components/ui/Layout`): pages sit on a 12-column grid (`PageGrid`, `Cell span`), 6 columns from 700
+to 1099px and one column on phones, at most `--page-max` wide. The parts: `SectionTitle` (blackletter over a double
+rule), `Band` (a red line of news across the grid), `StepCard` (a numbered, dashed-rule link card) and `Dice` (corner
+decoration). The campaign hub is the first page on it: the chronicle spread and the table rules beside the DM desk,
+the band, then the tabs; the Maps tab is a gallery of tilted pictures. The character sheet is a book spread: who the
+character is on the left page (name, facts, experience, ability scores, saves, effects, equipment), what they can do on
+the right (armour, initiative, speed, proficiency, hit points, skills in two columns, attacks), with a shaded spine;
+the pages stack below 1100px, and the DM's clock and long rest sit in a desk row above. The map view has a red band
+across the top (the breadcrumb through the layers, Up one level, the DM switch), a tool rail on the left (DM tools,
+then measuring, layers and pin search), and the map table with its pin or region ledger on the right; below 1100px the
+rail becomes a row above the table, and on phones the ledger is a bottom sheet. One rule: ink text only sits on paper, so
+anything on the brick desk is its own parchment surface (as the game clock now is) or gold and paper-coloured text.
+
 Contrast (WCAG 2.1; body text needs 4.5:1):
 
 | Pair                    | Ratio | Result                                      |
@@ -500,6 +513,28 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
 - **Spawn pins** ("Add spawn pin" in the DM tools): dashed markers for creatures, finds, interactables and
   traps, which can be dragged and linked to a region entry. They are drawn and requested only in DM mode.
 - Everything above is DM only in row level security (pgTAP T70 to T73). Players get masked rows in P3-3.
+
+## Party groups, discovery and the Here tab (P3-3)
+
+- **Party groups** (hub › Party, DM mode): location groups, not the official Party. Create groups, drag characters
+  into them (or use each card's menu), pick a map and region and **Move group here**. A character is in at most one
+  group per campaign. Each group lists what it has discovered.
+- **Moving a group** goes through the roll Edge Function (`move-group`), which works out each member's passive
+  scores (10 + the skill bonus, from the sheet on the server) and calls `move_group`. Entering a region reveals its
+  noticed and found entries, and every hidden or hinted entry whose DC is at or below the group's best passive in
+  that entry's skill.
+- **The Here tab** (character page; a ribbon on the right edge, a bottom sheet on phones) lists, from `get_here`,
+  what the character's group knows: discovered entries with their public fields and actions (Talk, Act and Buy are
+  placeholders, Examine shows the description) and hints as kind plus hint text. Hidden entries, DM notes, DCs,
+  spawn rules and other groups' data never leave the database; players cannot read `region_content`,
+  `content_discoveries` or the secrets.
+- **Search** opens the odds popup with the odds hidden ("The DM has not shown the difficulty"). The roll function
+  (`search`) rolls one d20 with the character's Perception bonus, logged like any roll, and compares it plus the
+  character's bonus in each entry's own skill with that entry's DC. Only what was found comes back. One search per
+  character per region every 10 minutes (`campaigns.settings.searchCooldownMinutes`).
+- **Notices**: each discovery writes a line to `discovery_notices` (readable only by the group's members), sent over
+  realtime as a notice ("You notice Mossy shrine") and a refresh of the Here list.
+- pgTAP T74 to T78; manual script in `docs/p3-3-manual-test.md`.
 
 ## End-to-end test (P2-12)
 

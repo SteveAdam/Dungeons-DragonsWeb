@@ -6,6 +6,8 @@
 // Actions (POST, JSON body):
 //   preview  { campaignId, characterId, kind, key, target }  -> { bonus, bonusBreakdown, mode, reasons, chance, critChance, ... }
 //   roll     the same, plus hidden (DM only)                  -> the logged roll row
+//   search   { campaignId, characterId }                       -> { roll, found: [{ name, kind }] }   (P3-3)
+//   move-group { campaignId, groupId, mapId, regionId } (DM)   -> { revealed: [name] }                 (P3-3)
 //
 // Everything that touches the database or the token is in RollDeps, so the tests can run without a server.
 import {
@@ -95,6 +97,29 @@ export interface RollDeps {
   gameSeconds(campaignId: string): Promise<number>;
   /** Calls public.roll_d20 with the service role. */
   rollD20(args: RollD20Args): Promise<{ data: unknown; error: { code?: string; message: string } | null }>;
+  /** P3-3: the group's campaign and the characters in it, or null when there is no such group. */
+  loadGroup(groupId: string): Promise<{ campaignId: string; characterIds: string[] } | null>;
+  /** P3-3: calls public.search_region or public.move_group with the service role. */
+  rpc(
+    name: 'search_region' | 'move_group',
+    args: Record<string, unknown>,
+  ): Promise<{ data: unknown; error: { code?: string; message: string } | null }>;
+}
+
+/** P3-3: search the region the character's group is in. */
+export interface SearchInput {
+  action: 'search';
+  campaignId: string;
+  characterId: string;
+}
+
+/** P3-3: move a group (DM only); its members' passive scores reveal what they notice on arrival. */
+export interface MoveGroupInput {
+  action: 'move-group';
+  campaignId: string;
+  groupId: string;
+  mapId: string | null;
+  regionId: string | null;
 }
 
 export interface RollInput {
@@ -147,10 +172,35 @@ const json = (status: number, body: unknown) =>
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const optionalId = (v: unknown, name: string): string | null => {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== 'string' || !UUID.test(v)) throw new HttpError(400, `${name} must be an id or null`);
+  return v;
+};
+
 /** Reads the request body. Only these fields are read: a `bonus` or `advantage` sent along is never looked at. */
-export function parseInput(body: unknown): RollInput {
+export function parseInput(body: unknown): RollInput | SearchInput | MoveGroupInput {
   const b = (body ?? {}) as Record<string, unknown>;
-  if (b.action !== 'preview' && b.action !== 'roll') throw new HttpError(400, 'action must be preview or roll');
+  if (b.action === 'search' || b.action === 'move-group') {
+    if (typeof b.campaignId !== 'string' || !UUID.test(b.campaignId)) throw new HttpError(400, 'campaignId is missing');
+    if (b.action === 'search') {
+      if (typeof b.characterId !== 'string' || !UUID.test(b.characterId)) {
+        throw new HttpError(400, 'characterId is missing');
+      }
+      return { action: 'search', campaignId: b.campaignId, characterId: b.characterId };
+    }
+    if (typeof b.groupId !== 'string' || !UUID.test(b.groupId)) throw new HttpError(400, 'groupId is missing');
+    return {
+      action: 'move-group',
+      campaignId: b.campaignId,
+      groupId: b.groupId,
+      mapId: optionalId(b.mapId, 'mapId'),
+      regionId: optionalId(b.regionId, 'regionId'),
+    };
+  }
+  if (b.action !== 'preview' && b.action !== 'roll') {
+    throw new HttpError(400, 'action must be preview, roll, search or move-group');
+  }
   if (typeof b.campaignId !== 'string' || !UUID.test(b.campaignId)) throw new HttpError(400, 'campaignId is missing');
   if (typeof b.characterId !== 'string' || !UUID.test(b.characterId)) {
     throw new HttpError(400, 'characterId is missing');
@@ -379,6 +429,74 @@ export function computePreview(
 
 const ROLL_ERRORS: Record<string, number> = { PT429: 429, '42501': 403, '22023': 422 };
 
+/**
+ * P3-3: every skill's bonus for a d20 test (with the Exhaustion penalty) and its passive score. A passive score is
+ * 10 + the skill's bonus; it is not a d20 test, so Exhaustion does not lower it.
+ */
+export function skillScores(
+  sheet: CharacterSheet,
+  effects: readonly Effect[],
+  gameSeconds: number,
+  state: CharacterState,
+  items?: readonly InventoryItem[],
+): { bonuses: Record<SkillKey, number>; passives: Record<SkillKey, number> } {
+  const computed = computeSheet(sheet, effects, { seconds: gameSeconds }, state, items);
+  const bonuses = {} as Record<SkillKey, number>;
+  const passives = {} as Record<SkillKey, number>;
+  for (const skill of computed.skills) {
+    const penalty = conditionEffects(state, { role: 'self', kind: 'check', ability: skill.ability }).d20Penalty;
+    bonuses[skill.key] = skill.bonus + penalty;
+    passives[skill.key] = 10 + skill.bonus;
+  }
+  return { bonuses, passives };
+}
+
+/** The best passive score for each skill across a group's members. */
+export function bestPassives(members: readonly Record<string, number>[]): Record<string, number> {
+  const best: Record<string, number> = {};
+  for (const m of members)
+    for (const [skill, score] of Object.entries(m)) best[skill] = Math.max(best[skill] ?? 0, score);
+  return best;
+}
+
+/** What the server knows about a character: its checked sheet, effects, items, state and the clock. */
+async function characterContext(character: CharacterRecord, deps: RollDeps) {
+  const [effectRows, itemRows, gameSeconds] = await Promise.all([
+    deps.loadEffects(character.id),
+    deps.loadItems(character.id),
+    deps.gameSeconds(character.campaignId),
+  ]);
+  return {
+    sheet: sheetOf(character),
+    effects: effectRows.map(effectOf),
+    items: itemRows.map(itemOf),
+    gameSeconds,
+    state: { conditions: character.conditions as Condition[], exhaustion: character.exhaustion } as CharacterState,
+  };
+}
+
+/** P3-3, DM only: works out the members' passive scores, then moves the group with move_group. */
+async function moveGroup(input: MoveGroupInput, userId: string, deps: RollDeps): Promise<Response> {
+  const group = await deps.loadGroup(input.groupId);
+  if (!group || group.campaignId !== input.campaignId) throw new HttpError(404, 'That group is not in this campaign');
+  const passives: Record<string, number>[] = [];
+  for (const id of group.characterIds) {
+    const character = await deps.loadCharacter(id);
+    if (!character) continue;
+    const c = await characterContext(character, deps);
+    passives.push(skillScores(c.sheet, c.effects, c.gameSeconds, c.state, c.items).passives);
+  }
+  const { data, error } = await deps.rpc('move_group', {
+    p_actor: userId,
+    p_group: input.groupId,
+    p_map: input.mapId,
+    p_region: input.regionId,
+    p_passives: bestPassives(passives),
+  });
+  if (error) throw new HttpError(ROLL_ERRORS[error.code ?? ''] ?? 500, error.message);
+  return json(200, { revealed: data ?? [] });
+}
+
 /** The whole request: CORS, the token, the body, who may roll for whom, then preview or roll. */
 export async function handle(req: Request, deps: RollDeps): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -391,6 +509,10 @@ export async function handle(req: Request, deps: RollDeps): Promise<Response> {
     const input = parseInput(await req.json().catch(() => null));
     const role = await deps.roleIn(input.campaignId, userId);
     if (!role) throw new HttpError(403, 'Only members of this campaign can roll here');
+    if (input.action === 'move-group') {
+      if (role !== 'dm') throw new HttpError(403, 'Only the DM can move a group');
+      return await moveGroup(input, userId, deps);
+    }
     const character = await deps.loadCharacter(input.characterId);
     if (!character || character.campaignId !== input.campaignId) {
       throw new HttpError(404, 'That character is not in this campaign');
@@ -398,25 +520,44 @@ export async function handle(req: Request, deps: RollDeps): Promise<Response> {
     if (role !== 'dm' && character.ownerId !== userId) {
       throw new HttpError(403, 'You can only roll for your own character');
     }
+    const c = await characterContext(character, deps);
+    if (input.action === 'search') {
+      // P3-3: one d20 with the Perception bonus, logged; each entry compares it with the bonus in its own skill
+      const perception = computePreview(
+        c.sheet,
+        c.effects,
+        c.gameSeconds,
+        c.state,
+        {
+          kind: 'check',
+          key: 'perception',
+          target: 10,
+        },
+        undefined,
+        c.items,
+      );
+      if (perception.autoFail) throw new HttpError(409, `You cannot search: ${perception.autoFail}`);
+      const { data, error } = await deps.rpc('search_region', {
+        p_actor: userId,
+        p_character: character.id,
+        p_bonus: perception.bonus,
+        p_breakdown: perception.bonusBreakdown,
+        p_mode: perception.mode,
+        p_bonuses: skillScores(c.sheet, c.effects, c.gameSeconds, c.state, c.items).bonuses,
+      });
+      if (error) throw new HttpError(ROLL_ERRORS[error.code ?? ''] ?? 500, error.message);
+      return json(200, data);
+    }
     if (input.hidden && role !== 'dm') throw new HttpError(403, 'Only the DM can make a hidden roll');
 
-    const [effectRows, itemRows, gameSeconds] = await Promise.all([
-      deps.loadEffects(character.id),
-      deps.loadItems(character.id),
-      deps.gameSeconds(input.campaignId),
-    ]);
-    const state: CharacterState = {
-      conditions: character.conditions as Condition[],
-      exhaustion: character.exhaustion,
-    };
     const preview = computePreview(
-      sheetOf(character),
-      effectRows.map(effectOf),
-      gameSeconds,
-      state,
+      c.sheet,
+      c.effects,
+      c.gameSeconds,
+      c.state,
       input,
       role === 'dm' ? input.mode : undefined,
-      itemRows.map(itemOf),
+      c.items,
     );
     if (input.action === 'preview') return json(200, preview);
 

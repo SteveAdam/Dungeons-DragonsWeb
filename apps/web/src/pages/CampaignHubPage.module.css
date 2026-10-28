@@ -1,63 +1,51 @@
+/* The campaign hub on the layout kit's grid: the chronicle spread (8 columns) beside the DM desk (4), the red
+   band, then the ribbon tabs and their panel across the page. */
 .page {
-  display: grid;
-  gap: 1rem;
-  max-width: 62rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 2rem;
   color: var(--paper);
 }
 
 .back {
-  justify-self: start;
   color: var(--gold);
 }
 
-/* The scroll banner: parchment rolled between two wooden rods. */
-.scroll {
+/* The chronicle spread: the campaign's title page. The cell holds the corner die, and stays as tall as its
+   content rather than stretching to the DM desk beside it. */
+.spreadCell {
   position: relative;
-  justify-self: center;
-  width: min(36rem, calc(100% - 2.5rem));
-  padding: 1.25rem 2.5rem 1.1rem;
-  text-align: center;
+  align-self: start;
 }
 
-/* Both rods on one ::after (Paper paints the parchment on ::before): two 1rem bars at the outer edges. */
-.scroll::after {
-  position: absolute;
-  z-index: 1;
-  top: -0.6rem;
-  right: -0.75rem;
-  bottom: -0.6rem;
-  left: -0.75rem;
-  background:
-    linear-gradient(90deg, var(--gold-dark), var(--gold) 45%, var(--gold-dark)) left / 1rem 100% no-repeat,
-    linear-gradient(90deg, var(--gold-dark), var(--gold) 45%, var(--gold-dark)) right / 1rem 100% no-repeat;
-  content: '';
-  filter: drop-shadow(0 0.2rem 0.3rem var(--shadow));
-  pointer-events: none;
+.spread {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  padding: 2.25rem 2.75rem 2rem;
 }
 
 .kicker {
   margin: 0;
-  color: var(--ink-faded);
-  font-family: var(--font-ui);
+  color: var(--gold-dark);
+  font-family: var(--font-heading);
   font-size: 1rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .name {
-  margin: 0.15rem 0 0;
-  color: var(--ink);
-  font-size: clamp(1.6rem, 5vw, 2.4rem);
-  letter-spacing: 0.04em;
+  margin: 0;
+  color: var(--wax-red);
+  font-family: var(--font-title);
+  font-size: clamp(2.6rem, 6vw, 4.75rem);
+  line-height: 0.95;
 }
 
-/* A rule with a small mark in the middle. */
+/* A rule with a small mark, left-aligned under the title. */
 .ornament {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 0.35rem auto;
-  width: min(24rem, 90%);
+  width: min(22rem, 100%);
+  margin: 0.2rem 0;
   color: var(--gold-dark);
 }
 
@@ -68,21 +56,51 @@
   content: '';
 }
 
-.sub {
-  margin: 0;
-  color: var(--ink-faded);
-  font-family: var(--font-ui);
-}
-
-.dmRow {
+.chips {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem 1.5rem;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
 }
 
-.dmRow > section {
-  flex: 1 1 18rem;
+.chips li {
+  padding: 0.2rem 0.8rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 999px;
+}
+
+/* The DM desk: invitation and clock in the right third, two rows tall on wide screens, so the chronicle and the
+   table rules fill the left two thirds beside it. */
+.desk {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 1100px) {
+  .desk {
+    grid-row: span 2;
+  }
+}
+
+.rulesCell {
+  align-self: start;
+}
+
+/* The table rules: the switches side by side when there is room. */
+.rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  gap: 0.75rem 1.5rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  color: var(--ink);
 }
 
 .dmSwitch {
@@ -92,19 +110,19 @@
 
 .dmHint {
   margin: 0;
-  color: var(--paper-aged);
+  color: var(--ink-faded);
   font-size: 0.9rem;
   font-style: italic;
 }
 
 .panel {
   min-height: 8rem;
-  padding: 1.25rem;
+  padding: 1.25rem 1.5rem;
   border-top: 3px solid var(--gold-dark);
 }
 
 .motto {
-  margin: 0.5rem 0 0;
+  margin: 0;
   color: var(--gold);
   font-family: var(--font-ui);
   font-size: 1rem;
@@ -118,8 +136,8 @@
   text-align: center;
 }
 
-@media (max-width: 30rem) {
-  .scroll {
-    padding-inline: 1.5rem;
+@media (max-width: 699px) {
+  .spread {
+    padding: 1.5rem 1.25rem;
   }
 }

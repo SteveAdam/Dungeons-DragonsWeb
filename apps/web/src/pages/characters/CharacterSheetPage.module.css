@@ -6,6 +6,78 @@
   padding: 1rem;
 }
 
+/* The page on the layout kit's grid: the top bar, the DM's desk row, then the tabs and their panel. */
+.frame {
+  row-gap: 1.25rem;
+}
+
+/* The DM's desk row: the clock beside the long rest strip. */
+.dmDesk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 1rem;
+}
+
+.dmDesk > section {
+  flex: 1 1 24rem;
+}
+
+.body {
+  display: grid;
+  gap: 0.9rem;
+}
+
+/* The Sheet tab as a book: two pages side by side with a shaded spine, stacked below 1100px. */
+.spread {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  box-shadow: 0 1.2rem 2.5rem var(--shadow);
+}
+
+.spread::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1.5rem);
+  z-index: 1;
+  width: 3rem;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 30%, transparent) 50%, transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.leaf {
+  display: grid;
+  align-content: start;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+.leafLeft {
+  padding: 2.5rem 2.75rem 2.75rem 3rem;
+}
+
+.leafRight {
+  padding: 2.5rem 3rem 2.75rem 2.75rem;
+}
+
+@media (max-width: 1099px) {
+  .spread {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .spread::after {
+    display: none;
+  }
+
+  .leafLeft,
+  .leafRight {
+    padding: 1.5rem 1.4rem;
+  }
+}
+
 .topBar {
   display: flex;
   flex-wrap: wrap;
@@ -44,15 +116,26 @@
 
 .header {
   display: grid;
-  grid-template-columns: minmax(10rem, 1.4fr) repeat(3, minmax(0, 1fr));
-  gap: 0.7rem;
-  align-items: stretch;
+  gap: 0.8rem;
+}
+
+.title {
+  display: grid;
+  gap: 0.2rem;
 }
 
 .name {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: 2rem;
+  color: var(--wax-red);
+  font-family: var(--font-title);
+  font-size: clamp(2.6rem, 5vw, 4.25rem);
+  line-height: 0.95;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
 }
 
 .box {
@@ -108,22 +191,15 @@
   background: var(--verdigris);
 }
 
-.columns {
+.abilitySection {
   display: grid;
-  grid-template-columns: 9rem minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: 0.9rem;
-  align-items: start;
-}
-
-.column {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.7rem;
+  gap: 0.8rem;
 }
 
 .abilities {
   display: grid;
-  gap: 0.55rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 /* An ability box: the score large, the modifier below it. */
@@ -236,10 +312,39 @@
 .stat {
   display: grid;
   justify-items: center;
-  padding: 0.4rem 0.2rem;
-  border: 1px solid var(--gold-dark);
-  border-radius: 0.2rem;
+  padding: 0.5rem 0.2rem;
+  background: var(--ink);
+  color: var(--paper);
   text-align: center;
+}
+
+.stat .label {
+  color: var(--gold);
+  font-size: 0.8rem;
+}
+
+/* Skills and attacks: sections of their own on the right page. */
+.rollSection,
+.attacks {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.hint {
+  color: var(--ink-faded);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-style: italic;
+}
+
+.twoColumns {
+  display: block;
+  columns: 2;
+  column-gap: 2rem;
+}
+
+.twoColumns > li {
+  break-inside: avoid;
 }
 
 .big {
@@ -289,13 +394,12 @@
 
 /* Under 700 px: one column. */
 @media (max-width: 700px) {
-  .header,
-  .columns {
+  .facts {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .abilities {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .twoColumns {
+    columns: 1;
   }
 
   /* "Constitution" must fit a third of a phone */
@@ -339,4 +443,13 @@
 
 .targetInput {
   width: 5.5rem;
+}
+
+/* DM tools that sit on the desk, outside the sheet, get their own parchment strip */
+.dmTools {
+  flex: 0 1 auto;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  color: var(--ink);
 }

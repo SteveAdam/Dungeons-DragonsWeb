@@ -6,7 +6,7 @@ import { friendlyMessage } from '../data/errors';
 import { useAdvanceClock, useCampaign } from '../hooks/useCampaigns';
 import { dayClock } from '../lib/gameClock';
 import styles from './ClockWidget.module.css';
-import { Button, ICON_PROPS, Input } from './ui';
+import { Button, ICON_PROPS, Input, Paper } from './ui';
 
 const STEPS = [
   { label: '+10 minutes', seconds: 600, reason: '10 minutes pass' },
@@ -42,7 +42,8 @@ export function ClockWidget({ campaignId }: { campaignId: string }) {
   }
 
   return (
-    <section className={styles.clock} aria-labelledby={`${id}-title`}>
+    // its own parchment, so it reads the same on the brick desk (hub) as on a sheet
+    <Paper as="section" texture="flat" className={styles.clock} aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className={styles.title}>
         <Clock {...ICON_PROPS} /> Game clock
       </h2>
@@ -108,6 +109,6 @@ export function ClockWidget({ campaignId }: { campaignId: string }) {
           {friendlyMessage(advance.error)}
         </p>
       )}
-    </section>
+    </Paper>
   );
 }

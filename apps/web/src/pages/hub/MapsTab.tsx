@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorNotice } from '../../components/ErrorNotice';
-import { Button, ICON_PROPS, iconClasses, Tag } from '../../components/ui';
+import { Button, ICON_PROPS, iconClasses, SectionTitle, Tag } from '../../components/ui';
 import type { MapSummary } from '../../data/maps';
 import { useMapImageUrl } from '../../hooks/useMapView';
 import { useMaps } from '../../hooks/useMaps';
@@ -33,7 +33,10 @@ function MapCard({ campaignId, map }: { campaignId: string; map: MapSummary }) {
   );
 }
 
-/** "The cartographer's chest": one card per top-level map. Hidden maps get a dashed outline and a tag. */
+/**
+ * "The cartographer's chest": a gallery of top-level maps, each a slightly tilted picture that straightens on hover.
+ * Hidden maps get a dashed outline and a tag.
+ */
 export function MapsTab({ campaignId, includeHidden }: Props) {
   const maps = useMaps(campaignId, includeHidden);
   const navigate = useNavigate();
@@ -41,7 +44,7 @@ export function MapsTab({ campaignId, includeHidden }: Props) {
 
   const header = (
     <div className={styles.chestHeader}>
-      <h2 className={styles.chestTitle}>The cartographer&apos;s chest</h2>
+      <SectionTitle className={styles.chestTitle}>The cartographer&apos;s chest</SectionTitle>
       {includeHidden && !adding && (
         <Button variant="ghost" className={iconClasses.host} onClick={() => setAdding(true)}>
           <ImagePlus {...ICON_PROPS} className={iconClasses.icon} />

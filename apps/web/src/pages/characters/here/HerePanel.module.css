@@ -1,0 +1,153 @@
+/* The Here tab (P3-3): a ribbon on the right edge opens a side panel; on phones (under 600px) a bottom sheet. */
+
+.ribbon {
+  position: fixed;
+  top: 40%;
+  right: 0;
+  z-index: 40;
+  padding: 0.6rem 0.5rem;
+  border: 1px solid var(--gold-dark);
+  border-right: none;
+  border-radius: 0.35rem 0 0 0.35rem;
+  background: var(--wax-red);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  writing-mode: vertical-rl;
+  cursor: pointer;
+}
+
+.ribbon:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.panel {
+  position: fixed;
+  top: 6rem;
+  right: 2.75rem;
+  bottom: 1.5rem;
+  z-index: 41;
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  width: min(24rem, calc(100vw - 4rem));
+  overflow: auto;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--gold-dark);
+  box-shadow: 0 0.4rem 1.2rem var(--shadow);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  font-family: var(--font-heading);
+}
+
+.section {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+}
+
+.name {
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hint {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-style: italic;
+}
+
+.prose {
+  margin: 0;
+}
+
+.result {
+  margin: 0;
+  font-weight: 700;
+}
+
+.error {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+/* the discovery notice: a small card at the bottom of the screen while it has something to say */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  z-index: 50;
+  transform: translateX(-50%);
+}
+
+.toast:not(:empty) {
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.3rem;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 0.3rem 0.8rem var(--shadow);
+}
+
+@media (max-width: 599px) {
+  .ribbon {
+    top: auto;
+    right: 1rem;
+    bottom: 0;
+    border-right: 1px solid var(--gold-dark);
+    border-bottom: none;
+    border-radius: 0.35rem 0.35rem 0 0;
+    writing-mode: horizontal-tb;
+  }
+
+  .panel {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-height: 70vh;
+    border-radius: 0.6rem 0.6rem 0 0;
+  }
+
+  .toast {
+    bottom: 3.5rem;
+  }
+}

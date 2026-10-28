@@ -15,6 +15,16 @@ vi.mock('../../../data/characters', async importOriginal => ({
   ...(await importOriginal<typeof import('../../../data/characters')>()),
   listCharacters: vi.fn(),
 }));
+// P3-3: the DM's party groups panel
+vi.mock('../../../data/partyGroups', () => ({
+  listGroups: vi.fn(async () => []),
+  listDiscoveries: vi.fn(async () => []),
+  createGroup: vi.fn(),
+  deleteGroup: vi.fn(),
+  assignCharacter: vi.fn(),
+  moveGroup: vi.fn(),
+}));
+vi.mock('../../../data/maps', () => ({ listAllMaps: vi.fn(async () => []) }));
 vi.mock('../../../data/party', async importOriginal => ({
   ...(await importOriginal<typeof import('../../../data/party')>()),
   getParty: vi.fn(),

@@ -65,24 +65,23 @@
 .chestHeader {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: end;
   justify-content: space-between;
   gap: 0.5rem 1rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .chestTitle {
-  margin: 0;
-  color: var(--ink);
-  font-size: 1.15rem;
+  flex: 1 1 18rem;
 }
 
+/* The gallery: maps as pictures pinned to the page, each at a slight angle, straightening on hover or focus. */
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
-  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+  gap: 2rem 1.75rem;
   margin: 0;
-  padding: 0;
+  padding: 0.5rem 0.25rem 1rem;
   list-style: none;
 }
 
@@ -90,12 +89,27 @@
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 0.4rem;
-  padding: 0.6rem;
+  gap: 0.5rem;
+  padding: 0.6rem 0.6rem 0.9rem;
   border: 1px solid var(--gold-dark);
-  border-radius: 0.25rem;
-  background: var(--paper-aged);
+  background: var(--paper);
+  box-shadow: 0 0.5rem 1rem var(--shadow);
   color: var(--ink);
+  transform: rotate(-2deg);
+  transition: transform 0.2s;
+}
+
+.card:nth-child(3n + 2) {
+  transform: rotate(1.5deg);
+}
+
+.card:nth-child(3n) {
+  transform: rotate(-1deg);
+}
+
+.card:hover,
+.card:focus-within {
+  transform: rotate(0deg) scale(1.02);
 }
 
 /* Hidden from players: a dashed wax-red outline, plus the tag, so the state never depends on colour. */
@@ -105,7 +119,7 @@
 
 .cardLink {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.5rem;
   color: var(--ink);
 }
 
@@ -119,7 +133,7 @@
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border: 1px solid var(--gold-dark);
-  background: var(--paper);
+  background: var(--paper-aged);
   box-shadow: inset 0 0 1.25rem var(--ink-wash-strong);
 }
 
@@ -129,6 +143,8 @@
 
 .cardName {
   font-family: var(--font-heading);
+  font-size: 1.2rem;
+  text-align: center;
 }
 
 /* People */

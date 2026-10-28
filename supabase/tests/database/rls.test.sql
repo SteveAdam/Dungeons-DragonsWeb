@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T73) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T78) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(529);
+select plan(566);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1384,6 +1384,95 @@ select throws_ok($$ update region_content set spawn_rule = '{"mode":"always","ch
 select throws_ok($$ update region_content set details = '{"stock":[{"itemRef":"rope","priceCp":-1}]}' where id = tests.u('rc:orsa') $$, '23514', null, 'T73: a shop price cannot be negative');
 select throws_ok($$ update region_content set entity_id = tests.u('ent:lore') where id = tests.u('rc:orsa') $$, '22023', 'The linked entry must be an NPC or item of this campaign', 'T73: only an NPC or item can be linked');
 select throws_ok($$ update region_content set entity_id = tests.u('ent:foreign') where id = tests.u('rc:orsa') $$, '22023', 'The linked entry must be an NPC or item of this campaign', 'T73: and only from this campaign');
+reset role;
+
+-- P3-3 FIXTURE: the Thornwood region with Orsa (folk, noticed), a hinted mossy shrine (DC 14, "Something glints"),
+-- hidden old tracks (DC 12) and a hidden vault with a recognisable name (DC 30, DM notes). Group A (Brannoc and
+-- Ivo, the player's) and group B (Kael, the roller's) are made by the DM.
+insert into regions (id, map_id, name, cx, cy, radius, visible_to_players) values
+  (tests.u('region:here'), tests.u('map:visible'), 'Thornwood', 70, 70, 10, true);
+insert into region_content (id, region_id, kind, name, state, hint_text, discovery_dc, details, sort_order) values
+  (tests.u('rc:h-orsa'),   tests.u('region:here'), 'folk', 'Orsa the hedge witch', 'noticed', null, null, '{"description":"She hums"}', 1),
+  (tests.u('rc:h-shrine'), tests.u('region:here'), 'find', 'Mossy shrine', 'hinted', 'Something glints', 14, '{}', 2),
+  (tests.u('rc:h-tracks'), tests.u('region:here'), 'find', 'Old tracks', 'hidden', null, 12, '{}', 3),
+  (tests.u('rc:h-vault'),  tests.u('region:here'), 'find', 'SECRET-ZEPHYR-VAULT', 'hidden', 'never shown while hidden', 30, '{}', 4);
+insert into region_content_secrets (content_id, dm_notes) values (tests.u('rc:h-vault'), 'DM-ONLY-VAULT-NOTE');
+select tests.act_as('dm');
+select create_group(tests.u('campaign'), 'Group A') as ga \gset
+select create_group(tests.u('campaign'), 'Group B') as gb \gset
+select assign_character(tests.u('char:brannoc'), :'ga');
+select assign_character(tests.u('char:ivo'), :'ga');
+select assign_character(tests.u('char:kael'), :'gb');
+reset role;
+create temporary table here_groups (label text primary key, id uuid);
+insert into here_groups values ('a', :'ga'), ('b', :'gb');
+grant select on here_groups to authenticated, service_role;
+
+-- T74: groups are private to their members; discoveries and region content stay with the DM
+select tests.act_as('player');
+select is((select count(*)::int from party_groups where id = (select id from here_groups where label = 'a')), 1, 'T74: a player reads their own group');
+select is((select count(*)::int from party_groups where id = (select id from here_groups where label = 'b')), 0, 'T74: but not another group');
+select is((select count(*)::int from party_group_members where group_id = (select id from here_groups where label = 'b')), 0, 'T74: nor its members');
+select throws_ok($$ select create_group(tests.u('campaign'), 'Mine') $$, '42501', 'Only the DM can do that', 'T74: a player cannot create a group');
+select throws_ok($$ select assign_character(tests.u('char:brannoc'), (select id from here_groups where label = 'b')) $$, '42501', 'Only the DM can do that', 'T74: nor move a character between groups');
+select throws_ok($$ select move_group(tests.u('user:player'), (select id from here_groups where label = 'a'), tests.u('map:visible'), tests.u('region:here'), '{}') $$, '42501', null, 'T74: nor call move_group');
+select throws_ok($$ select search_region(tests.u('user:player'), tests.u('char:brannoc'), 0, null, 'normal', '{}') $$, '42501', null, 'T74: nor call search_region directly');
+reset role;
+select tests.act_as('roller');
+select is((select count(*)::int from party_groups where id = (select id from here_groups where label = 'a')), 0, 'T74: the other player cannot read group A');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ select assign_character(tests.u('char:kael'), (select id from here_groups where label = 'a')) $$, 'T74: the DM moves Kael to group A');
+select is((select string_agg(pg.name, ',') from party_group_members pm join party_groups pg on pg.id = pm.group_id where pm.character_id = tests.u('char:kael')), 'Group A', 'T74: a character is in one group at a time');
+select lives_ok($$ select assign_character(tests.u('char:kael'), (select id from here_groups where label = 'b')) $$, 'T74: and back to group B');
+reset role;
+
+-- T75: entering a region reveals noticed entries, and passives reveal what they beat (Perception +3: passive 13)
+select tests.act_as_service();
+select is((select move_group(tests.u('user:dm'), (select id from here_groups where label = 'a'), tests.u('map:visible'), tests.u('region:here'), '{"perception":13}')), '["Orsa the hedge witch", "Old tracks"]'::jsonb, 'T75: passive 13 reveals the DC 12 tracks and the noticed folk, not the DC 14 shrine or the DC 30 vault');
+select throws_ok($$ select move_group(tests.u('user:player'), (select id from here_groups where label = 'b'), tests.u('map:visible'), null, '{}') $$, '42501', 'Only the DM can do that', 'T75: move_group acts only for a DM');
+select is((select move_group(tests.u('user:dm'), (select id from here_groups where label = 'b'), tests.u('map:visible'), null, '{}')), '[]'::jsonb, 'T75: group B goes to the map, in no region');
+reset role;
+select is((select string_agg(rc.name || '=' || d.state, ', ' order by rc.sort_order) from content_discoveries d join region_content rc on rc.id = d.content_id where d.group_id = (select id from here_groups where label = 'a')), 'Orsa the hedge witch=noticed, Old tracks=noticed', 'T75: the discoveries are recorded for group A');
+
+-- T76: get_here is masked: discovered entries' public fields, hints as kind and hint, hidden entries never
+select tests.act_as('player');
+select is((select jsonb_path_query_array(get_here(tests.u('char:brannoc')), '$.entries[*].name')), '["Orsa the hedge witch", "Old tracks"]'::jsonb, 'T76: the player sees what group A has discovered');
+select is((select get_here(tests.u('char:brannoc')) -> 'hints'), jsonb_build_array(jsonb_build_object('id', tests.u('rc:h-shrine'), 'kind', 'find', 'hint', 'Something glints')), 'T76: and the hint "Something glints", as kind and hint only');
+select is((select get_here(tests.u('char:brannoc'))::text ~ 'SECRET-ZEPHYR-VAULT|DM-ONLY-VAULT-NOTE|never shown while hidden|discovery|spawn|dm_notes|Mossy shrine'), false, 'T76: no hidden name, hidden hint, DM note, DC or spawn rule anywhere in the answer');
+select is((select get_here(tests.u('char:brannoc')) -> 'entries' -> 0 -> 'actions'), '["talk"]'::jsonb, 'T76: folk can be talked to');
+select throws_ok($$ select get_here(tests.u('char:kael')) $$, '42501', 'We could not find that character', 'T76: a player cannot ask for someone else''s character');
+select is((select count(*)::int from region_content) + (select count(*)::int from region_content_secrets) + (select count(*)::int from content_discoveries), 0, 'T76: nor read the base tables or the secrets');
+reset role;
+select tests.act_as('roller');
+select is((select get_here(tests.u('char:kael')) -> 'entries'), '[]'::jsonb, 'T76: group B, elsewhere, sees nothing from the region');
+select is((select get_here(tests.u('char:kael')) -> 'region'), 'null'::jsonb, 'T76: and is in no region');
+reset role;
+
+-- T77: searching. One search per character per region per cooldown; only members of the campaign; only what is found
+select tests.act_as_service();
+select throws_ok($$ select search_region(tests.u('user:outsider'), tests.u('char:brannoc'), 0, null, 'normal', '{}') $$, '42501', 'You can only search with your own character', 'T77: a search by someone who is not in the campaign fails');
+select throws_ok($$ select search_region(tests.u('user:roller'), tests.u('char:kael'), 0, null, 'normal', '{}') $$, '22023', 'Your group is not in a region the DM has placed it in', 'T77: a group outside any region cannot search');
+select is((select search_region(tests.u('user:dm'), tests.u('char:ivo'), 0, null, 'normal', '{"perception":-50}') -> 'found'), '[]'::jsonb, 'T77: a hopeless roll finds nothing new');
+select is((select jsonb_path_query_array(search_region(tests.u('user:dm'), tests.u('char:brannoc'), 0, null, 'normal', '{"perception":50}'), '$.found[*].name')), '["Mossy shrine", "SECRET-ZEPHYR-VAULT"]'::jsonb, 'T77: a great roll finds the shrine and the vault, and only those');
+select throws_ok($$ select search_region(tests.u('user:dm'), tests.u('char:brannoc'), 0, null, 'normal', '{"perception":50}') $$, 'PT429', 'You searched here in the last 10 minutes. Give it a moment before you search again.', 'T77: a second search within the cooldown is refused');
+select is((select count(*)::int from rolls where label = 'Search (Perception)' and character_id in (tests.u('char:brannoc'), tests.u('char:ivo'))), 2, 'T77: each search is a logged roll');
+reset role;
+
+-- T78: what a search finds reaches the group, and only the group
+select tests.act_as('player');
+select is((select jsonb_path_query_array(get_here(tests.u('char:brannoc')), '$.entries[*].name')), '["Orsa the hedge witch", "Mossy shrine", "Old tracks", "SECRET-ZEPHYR-VAULT"]'::jsonb, 'T78: group A now sees the shrine and the vault');
+select is((select get_here(tests.u('char:brannoc')) -> 'hints'), '[]'::jsonb, 'T78: and the hint is gone');
+select is((select get_here(tests.u('char:brannoc'))::text ~ 'DM-ONLY-VAULT-NOTE'), false, 'T78: the DM notes still never come along');
+select ok((select count(*) from discovery_notices where text = 'You notice Mossy shrine') = 1, 'T78: the group gets a notice to show');
+reset role;
+select tests.act_as('roller');
+select is((select count(*)::int from discovery_notices), 0, 'T78: the other group gets none');
+select is((select get_here(tests.u('char:kael')) -> 'entries'), '[]'::jsonb, 'T78: and still sees nothing');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ select reveal_content(tests.u('rc:h-vault'), (select id from here_groups where label = 'a'), 'found') $$, 'T78: the DM marks the vault found for group A');
+select is((select state from content_discoveries where content_id = tests.u('rc:h-vault')), 'found', 'T78: and it is found');
 reset role;
 
 select * from finish();

@@ -111,14 +111,14 @@ describe('previewRoll and rollForCharacter (P2-2: through the roll Edge Function
     });
   });
 
-  it('turns the rate limit into a plain message', async () => {
+  it('turns the rate limit into a plain message, in the server’s words', async () => {
     vi.mocked(supabase.functions.invoke).mockResolvedValue({
       data: null,
       error: httpError(429, { error: 'Too many rolls in the last minute.' }),
     } as never);
     await expect(rollForCharacter(request)).rejects.toMatchObject({
       kind: 'rate-limited',
-      message: 'Too many rolls in the last minute. Wait a moment and roll again.',
+      message: 'Too many rolls in the last minute.',
     });
   });
 

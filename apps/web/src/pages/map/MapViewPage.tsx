@@ -14,7 +14,7 @@ import {
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../components/ErrorNotice';
-import { Button, ICON_PROPS, iconClasses, IconLink, Tag, Toggle } from '../../components/ui';
+import { Button, Cell, ICON_PROPS, iconClasses, IconLink, PageGrid, Tag, Toggle } from '../../components/ui';
 import { friendlyMessage } from '../../data/errors';
 import type { MapTrailStep } from '../../data/maps';
 import type { Pin } from '../../data/pins';
@@ -200,8 +200,9 @@ function MapView() {
     createSpawnPin.error ??
     updateSpawnPin.error;
   return (
-    <main className={styles.page}>
-      <div className={styles.topBar}>
+    <PageGrid className={styles.mapGrid}>
+      {/* the red band: where you are in the layers, and the way up */}
+      <Cell className={styles.topBar}>
         {breadcrumb}
         {up && (
           <IconLink
@@ -214,246 +215,252 @@ function MapView() {
           </IconLink>
         )}
         {isDm && <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />}
-      </div>
+      </Cell>
 
-      {dmMode && (
-        <div role="toolbar" aria-label="Map tools" className={styles.tools}>
+      {/* the tool rail: DM tools, then the view tools; a row of its own on narrower screens */}
+      <Cell span={2} spanMd={6} className={styles.rail}>
+        {dmMode && (
+          <div role="toolbar" aria-label="Map tools" className={styles.tools}>
+            <Button
+              variant={placing ? 'primary' : 'ghost'}
+              aria-pressed={placing}
+              className={iconClasses.host}
+              onClick={() => {
+                setLayers(l => ({ ...l, pins: true }));
+                toggleTool('pin');
+              }}
+            >
+              <MapPinPlus {...ICON_PROPS} className={iconClasses.icon} />
+              {placing ? 'Click the map to place it' : 'Add pin'}
+            </Button>
+            <Button
+              variant={drawing ? 'primary' : 'ghost'}
+              aria-pressed={drawing}
+              className={iconClasses.host}
+              onClick={() => {
+                setLayers(l => ({ ...l, regions: true }));
+                toggleTool('region');
+              }}
+            >
+              <CircleDashed {...ICON_PROPS} className={iconClasses.icon} />
+              {drawing ? 'Click the centre, then the edge' : 'Add region'}
+            </Button>
+            <Button
+              variant={spawning ? 'primary' : 'ghost'}
+              aria-pressed={spawning}
+              className={iconClasses.host}
+              onClick={() => toggleTool('spawn')}
+            >
+              <PawPrint {...ICON_PROPS} className={iconClasses.icon} />
+              {spawning ? 'Click the map to place it' : 'Add spawn pin'}
+            </Button>
+            <Button
+              variant={selection?.kind === 'settings' ? 'primary' : 'ghost'}
+              aria-pressed={selection?.kind === 'settings'}
+              className={iconClasses.host}
+              onClick={() => setSelection(s => (s?.kind === 'settings' ? null : { kind: 'settings' }))}
+            >
+              <Settings2 {...ICON_PROPS} className={iconClasses.icon} />
+              Map settings
+            </Button>
+            <Button
+              variant="ghost"
+              className={iconClasses.host}
+              disabled={setVisible.isPending}
+              onClick={() => setVisible.mutate({ mapId: current.id, visible: !current.visibleToPlayers })}
+            >
+              {current.visibleToPlayers ? (
+                <Eye {...ICON_PROPS} className={iconClasses.icon} />
+              ) : (
+                <EyeOff {...ICON_PROPS} className={iconClasses.icon} />
+              )}
+              {current.visibleToPlayers ? 'Map visible to players' : 'Map hidden from players'}
+            </Button>
+            {!current.visibleToPlayers && <Tag>Players cannot see this map</Tag>}
+          </div>
+        )}
+
+        <div role="toolbar" aria-label="View" className={toolStyles.viewBar}>
           <Button
-            variant={placing ? 'primary' : 'ghost'}
-            aria-pressed={placing}
+            variant={measuring ? 'primary' : 'ghost'}
+            aria-pressed={measuring}
             className={iconClasses.host}
             onClick={() => {
-              setLayers(l => ({ ...l, pins: true }));
-              toggleTool('pin');
+              if (measuring) setRoute([]);
+              toggleTool('measure');
             }}
           >
-            <MapPinPlus {...ICON_PROPS} className={iconClasses.icon} />
-            {placing ? 'Click the map to place it' : 'Add pin'}
+            <Ruler {...ICON_PROPS} className={iconClasses.icon} />
+            {measuring ? 'Stop measuring' : 'Measure'}
           </Button>
-          <Button
-            variant={drawing ? 'primary' : 'ghost'}
-            aria-pressed={drawing}
-            className={iconClasses.host}
-            onClick={() => {
-              setLayers(l => ({ ...l, regions: true }));
-              toggleTool('region');
+          <LayersMenu
+            layers={layers}
+            onChange={next => {
+              setLayers(next);
+              if (!next.regions && tool === 'region') setTool(null);
+              if (!next.pins && tool === 'pin') setTool(null);
             }}
-          >
-            <CircleDashed {...ICON_PROPS} className={iconClasses.icon} />
-            {drawing ? 'Click the centre, then the edge' : 'Add region'}
-          </Button>
-          <Button
-            variant={spawning ? 'primary' : 'ghost'}
-            aria-pressed={spawning}
-            className={iconClasses.host}
-            onClick={() => toggleTool('spawn')}
-          >
-            <PawPrint {...ICON_PROPS} className={iconClasses.icon} />
-            {spawning ? 'Click the map to place it' : 'Add spawn pin'}
-          </Button>
-          <Button
-            variant={selection?.kind === 'settings' ? 'primary' : 'ghost'}
-            aria-pressed={selection?.kind === 'settings'}
-            className={iconClasses.host}
-            onClick={() => setSelection(s => (s?.kind === 'settings' ? null : { kind: 'settings' }))}
-          >
-            <Settings2 {...ICON_PROPS} className={iconClasses.icon} />
-            Map settings
-          </Button>
-          <Button
-            variant="ghost"
-            className={iconClasses.host}
-            disabled={setVisible.isPending}
-            onClick={() => setVisible.mutate({ mapId: current.id, visible: !current.visibleToPlayers })}
-          >
-            {current.visibleToPlayers ? (
-              <Eye {...ICON_PROPS} className={iconClasses.icon} />
-            ) : (
-              <EyeOff {...ICON_PROPS} className={iconClasses.icon} />
-            )}
-            {current.visibleToPlayers ? 'Map visible to players' : 'Map hidden from players'}
-          </Button>
-          {!current.visibleToPlayers && <Tag>Players cannot see this map</Tag>}
-        </div>
-      )}
-
-      <div role="toolbar" aria-label="View" className={toolStyles.viewBar}>
-        <Button
-          variant={measuring ? 'primary' : 'ghost'}
-          aria-pressed={measuring}
-          className={iconClasses.host}
-          onClick={() => {
-            if (measuring) setRoute([]);
-            toggleTool('measure');
-          }}
-        >
-          <Ruler {...ICON_PROPS} className={iconClasses.icon} />
-          {measuring ? 'Stop measuring' : 'Measure'}
-        </Button>
-        <LayersMenu
-          layers={layers}
-          onChange={next => {
-            setLayers(next);
-            if (!next.regions && tool === 'region') setTool(null);
-            if (!next.pins && tool === 'pin') setTool(null);
-          }}
-          gridAvailable={cell !== null}
-          regions={regions.data ?? NO_REGIONS}
-        />
-        {layers.pins && (pins.data?.length ?? 0) > 0 && (
-          <PinSearch
-            pins={pins.data ?? NO_PINS}
-            onPick={pin => {
-              selectPin(pin.id);
-              setFocus({ x: pin.x, y: pin.y, key: Date.now() });
-            }}
-          />
-        )}
-      </div>
-      {measuring && (
-        <MeasureBar
-          points={route}
-          size={size}
-          tools={current.tools}
-          regions={regions.data ?? NO_REGIONS}
-          isDm={dmMode}
-          onUndo={() => setRoute(r => r.slice(0, -1))}
-          onClear={() => setRoute([])}
-        />
-      )}
-
-      {actionError && (
-        <p role="alert" className={styles.alertOnDesk}>
-          {friendlyMessage(actionError)}
-        </p>
-      )}
-
-      <div className={styles.layout}>
-        <section
-          aria-label="Map"
-          className={styles.frame}
-          // the frame takes the image's own shape, so it hugs the map
-          style={{ '--map-ratio': current.width / current.height } as CSSProperties}
-        >
-          {image.data ? (
-            <MapCanvas
-              imageUrl={image.data}
-              size={size}
-              pins={layers.pins ? (pins.data ?? NO_PINS) : NO_PINS}
-              selectedPinId={selected?.id ?? null}
-              onSelectPin={selectPin}
-              addMode={placing}
-              label={current.name}
-              subMapPinIds={subMapPinIds}
-              onEnterSubMap={pinId => {
-                const sub = subMaps.data?.byPin.get(pinId);
-                if (sub) navigate(`/campaigns/${campaignId}/maps/${sub.id}`);
-              }}
-              subMapRegionIds={subMapRegionIds}
-              onEnterRegionMap={regionId => {
-                const sub = subMaps.data?.byRegion.get(regionId);
-                if (sub) navigate(`/campaigns/${campaignId}/maps/${sub.id}`);
-              }}
-              regions={layers.regions ? (regions.data ?? NO_REGIONS) : NO_REGIONS}
-              selectedRegionId={selectedRegion?.id ?? null}
-              onSelectRegion={id => setSelection({ kind: 'region', id })}
-              drawMode={drawing}
-              onDrawRegion={circle =>
-                createRegion.mutate(
-                  { circle },
-                  {
-                    onSuccess: region => {
-                      setSelection({ kind: 'region', id: region.id });
-                      setTool(null);
-                    },
-                  },
-                )
-              }
-              canEditRegions={dmMode}
-              onChangeRegion={(regionId, changes) => updateRegion.mutate({ regionId, changes })}
-              canMovePins={dmMode}
-              onMovePin={(pinId, point) => updatePin.mutate({ pinId, changes: point })}
-              onPlace={point =>
-                createPin.mutate(
-                  { at: point },
-                  {
-                    onSuccess: pin => {
-                      selectPin(pin.id);
-                      setTool(null);
-                    },
-                  },
-                )
-              }
-              measuring={measuring}
-              measurePoints={route}
-              onMeasurePoint={point => setRoute(r => [...r, point])}
-              gridCellPx={layers.grid ? cell : null}
-              focus={focus}
-              spawnPins={dmMode ? (spawnPins.data ?? NO_SPAWN_PINS) : NO_SPAWN_PINS}
-              selectedSpawnPinId={selectedSpawn?.id ?? null}
-              onSelectSpawnPin={id => setSelection({ kind: 'spawn', id })}
-              onMoveSpawnPin={(id, point) => updateSpawnPin.mutate({ id, changes: point })}
-              spawnMode={spawning}
-              onPlaceSpawnPin={point =>
-                createSpawnPin.mutate(
-                  { at: point, kind: 'creature' },
-                  {
-                    onSuccess: sp => {
-                      setSelection({ kind: 'spawn', id: sp.id });
-                      setTool(null);
-                    },
-                  },
-                )
-              }
-            />
-          ) : image.isError ? (
-            <ErrorNotice error={image.error} onRetry={() => image.refetch()} />
-          ) : (
-            <p role="status" className={styles.status}>
-              Fetching the map image…
-            </p>
-          )}
-          {layers.compass && image.data && <Compass northDegrees={current.tools.northDegrees} />}
-        </section>
-
-        {selected && (
-          <PinPanel
-            pin={selected}
-            mapId={current.id}
-            campaignId={campaignId}
-            mapSize={size}
-            subMap={subMaps.data?.byPin.get(selected.id)}
-            canEdit={dmMode}
-            excludeMapIds={excludeMapIds}
-            onClose={() => setSelection(null)}
-          />
-        )}
-        {selectedRegion && (
-          <RegionPanel
-            region={selectedRegion}
-            mapId={current.id}
-            campaignId={campaignId}
-            mapSize={size}
-            subMap={subMaps.data?.byRegion.get(selectedRegion.id)}
-            canEdit={dmMode}
-            excludeMapIds={excludeMapIds}
-            onClose={() => setSelection(null)}
-          />
-        )}
-        {selectedSpawn && (
-          <SpawnPinPanel
-            key={selectedSpawn.id}
-            pin={selectedSpawn}
-            mapId={current.id}
-            content={content.data ?? NO_CONTENT}
+            gridAvailable={cell !== null}
             regions={regions.data ?? NO_REGIONS}
-            onClose={() => setSelection(null)}
+          />
+          {layers.pins && (pins.data?.length ?? 0) > 0 && (
+            <PinSearch
+              pins={pins.data ?? NO_PINS}
+              onPick={pin => {
+                selectPin(pin.id);
+                setFocus({ x: pin.x, y: pin.y, key: Date.now() });
+              }}
+            />
+          )}
+        </div>
+      </Cell>
+
+      <Cell span={10} spanMd={6} className={styles.body}>
+        {measuring && (
+          <MeasureBar
+            points={route}
+            size={size}
+            tools={current.tools}
+            regions={regions.data ?? NO_REGIONS}
+            isDm={dmMode}
+            onUndo={() => setRoute(r => r.slice(0, -1))}
+            onClear={() => setRoute([])}
           />
         )}
-        {selection?.kind === 'settings' && dmMode && (
-          <MapSettingsPanel map={current} onClose={() => setSelection(null)} />
+
+        {actionError && (
+          <p role="alert" className={styles.alertOnDesk}>
+            {friendlyMessage(actionError)}
+          </p>
         )}
-      </div>
-    </main>
+
+        <div className={styles.layout}>
+          <section
+            aria-label="Map"
+            className={styles.frame}
+            // the frame takes the image's own shape, so it hugs the map
+            style={{ '--map-ratio': current.width / current.height } as CSSProperties}
+          >
+            {image.data ? (
+              <MapCanvas
+                imageUrl={image.data}
+                size={size}
+                pins={layers.pins ? (pins.data ?? NO_PINS) : NO_PINS}
+                selectedPinId={selected?.id ?? null}
+                onSelectPin={selectPin}
+                addMode={placing}
+                label={current.name}
+                subMapPinIds={subMapPinIds}
+                onEnterSubMap={pinId => {
+                  const sub = subMaps.data?.byPin.get(pinId);
+                  if (sub) navigate(`/campaigns/${campaignId}/maps/${sub.id}`);
+                }}
+                subMapRegionIds={subMapRegionIds}
+                onEnterRegionMap={regionId => {
+                  const sub = subMaps.data?.byRegion.get(regionId);
+                  if (sub) navigate(`/campaigns/${campaignId}/maps/${sub.id}`);
+                }}
+                regions={layers.regions ? (regions.data ?? NO_REGIONS) : NO_REGIONS}
+                selectedRegionId={selectedRegion?.id ?? null}
+                onSelectRegion={id => setSelection({ kind: 'region', id })}
+                drawMode={drawing}
+                onDrawRegion={circle =>
+                  createRegion.mutate(
+                    { circle },
+                    {
+                      onSuccess: region => {
+                        setSelection({ kind: 'region', id: region.id });
+                        setTool(null);
+                      },
+                    },
+                  )
+                }
+                canEditRegions={dmMode}
+                onChangeRegion={(regionId, changes) => updateRegion.mutate({ regionId, changes })}
+                canMovePins={dmMode}
+                onMovePin={(pinId, point) => updatePin.mutate({ pinId, changes: point })}
+                onPlace={point =>
+                  createPin.mutate(
+                    { at: point },
+                    {
+                      onSuccess: pin => {
+                        selectPin(pin.id);
+                        setTool(null);
+                      },
+                    },
+                  )
+                }
+                measuring={measuring}
+                measurePoints={route}
+                onMeasurePoint={point => setRoute(r => [...r, point])}
+                gridCellPx={layers.grid ? cell : null}
+                focus={focus}
+                spawnPins={dmMode ? (spawnPins.data ?? NO_SPAWN_PINS) : NO_SPAWN_PINS}
+                selectedSpawnPinId={selectedSpawn?.id ?? null}
+                onSelectSpawnPin={id => setSelection({ kind: 'spawn', id })}
+                onMoveSpawnPin={(id, point) => updateSpawnPin.mutate({ id, changes: point })}
+                spawnMode={spawning}
+                onPlaceSpawnPin={point =>
+                  createSpawnPin.mutate(
+                    { at: point, kind: 'creature' },
+                    {
+                      onSuccess: sp => {
+                        setSelection({ kind: 'spawn', id: sp.id });
+                        setTool(null);
+                      },
+                    },
+                  )
+                }
+              />
+            ) : image.isError ? (
+              <ErrorNotice error={image.error} onRetry={() => image.refetch()} />
+            ) : (
+              <p role="status" className={styles.status}>
+                Fetching the map image…
+              </p>
+            )}
+            {layers.compass && image.data && <Compass northDegrees={current.tools.northDegrees} />}
+          </section>
+
+          {selected && (
+            <PinPanel
+              pin={selected}
+              mapId={current.id}
+              campaignId={campaignId}
+              mapSize={size}
+              subMap={subMaps.data?.byPin.get(selected.id)}
+              canEdit={dmMode}
+              excludeMapIds={excludeMapIds}
+              onClose={() => setSelection(null)}
+            />
+          )}
+          {selectedRegion && (
+            <RegionPanel
+              region={selectedRegion}
+              mapId={current.id}
+              campaignId={campaignId}
+              mapSize={size}
+              subMap={subMaps.data?.byRegion.get(selectedRegion.id)}
+              canEdit={dmMode}
+              excludeMapIds={excludeMapIds}
+              onClose={() => setSelection(null)}
+            />
+          )}
+          {selectedSpawn && (
+            <SpawnPinPanel
+              key={selectedSpawn.id}
+              pin={selectedSpawn}
+              mapId={current.id}
+              content={content.data ?? NO_CONTENT}
+              regions={regions.data ?? NO_REGIONS}
+              onClose={() => setSelection(null)}
+            />
+          )}
+          {selection?.kind === 'settings' && dmMode && (
+            <MapSettingsPanel map={current} onClose={() => setSelection(null)} />
+          )}
+        </div>
+      </Cell>
+    </PageGrid>
   );
 }

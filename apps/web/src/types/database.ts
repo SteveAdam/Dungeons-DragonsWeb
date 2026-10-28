@@ -163,6 +163,58 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"content_discoveries": {
+                  Row: {
+                    "content_id": string,"created_at": string,"group_id": string,"state": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "content_id": string,"created_at"?: string,"group_id": string,"state": string
+                  }
+                  Update: {
+                    "content_id"?: string,"created_at"?: string,"group_id"?: string,"state"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "content_discoveries_content_id_fkey"
+      columns: ["content_id"]
+isOneToOne: false
+      referencedRelation: "region_content"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "content_discoveries_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "party_groups"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"discovery_notices": {
+                  Row: {
+                    "campaign_id": string,"created_at": string,"group_id": string,"id": string,"text": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"created_at"?: string,"group_id": string,"id"?: string,"text": string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"created_at"?: string,"group_id"?: string,"id"?: string,"text"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "discovery_notices_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "discovery_notices_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "party_groups"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"effect_secrets": {
                   Row: {
                     "effect_id": string,"hidden_detail": string
@@ -607,6 +659,70 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"party_group_members": {
+                  Row: {
+                    "campaign_id": string,"character_id": string,"group_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"character_id": string,"group_id": string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"character_id"?: string,"group_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "party_group_members_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "party_group_members_character_id_fkey"
+      columns: ["character_id"]
+isOneToOne: false
+      referencedRelation: "characters"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "party_group_members_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "party_groups"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"party_groups": {
+                  Row: {
+                    "campaign_id": string,"color": string,"created_at": string,"id": string,"map_id": string | null,"name": string,"region_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string | null,"name": string,"region_id"?: string | null
+                  }
+                  Update: {
+                    "campaign_id"?: string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string | null,"name"?: string,"region_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "party_groups_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "party_groups_map_id_fkey"
+      columns: ["map_id"]
+isOneToOne: false
+      referencedRelation: "maps"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "party_groups_region_id_fkey"
+      columns: ["region_id"]
+isOneToOne: false
+      referencedRelation: "regions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"party_members": {
                   Row: {
                     "character_id": string,"joined_at": string,"party_id": string
@@ -736,6 +852,26 @@ isOneToOne: false
       columns: ["content_id"]
 isOneToOne: true
       referencedRelation: "region_content"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"region_searches": {
+                  Row: {
+                    "campaign_id": string,"character_id": string,"created_at": string,"found": number,"group_id": string,"id": string,"region_id": string,"roll_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"character_id": string,"created_at"?: string,"found": number,"group_id": string,"id"?: string,"region_id": string,"roll_id": string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"character_id"?: string,"created_at"?: string,"found"?: number,"group_id"?: string,"id"?: string,"region_id"?: string,"roll_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "region_searches_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
       referencedColumns: ["id"]
     }
                   ]
@@ -1022,6 +1158,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"assign_character":
+{ Args: { "p_character": string,"p_group": string }; Returns: undefined
+                           },
 "attune_item":
 { Args: { "p_item": string }; Returns: {
               "attuned": boolean,
@@ -1151,6 +1290,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"create_group":
+{ Args: { "p_campaign": string,"p_color"?: string,"p_name": string }; Returns: string
+                           },
 "create_item":
 { Args: { "p_bound"?: boolean,"p_campaign": string,"p_definition": Json,"p_kind": string,"p_name": string,"p_owner_id": string,"p_owner_type": string,"p_quantity"?: number,"p_rarity"?: string,"p_requires_attunement"?: boolean,"p_srd_ref"?: string,"p_value_cp"?: number,"p_weight"?: number }; Returns: {
               "attuned": boolean,
@@ -1246,6 +1388,15 @@ isOneToOne: false
 "free_entity_name":
 { Args: { "base": string,"c": string }; Returns: string
                            },
+"get_here":
+{ Args: { "p_character": string }; Returns: Json
+                           },
+"group_campaign":
+{ Args: { "g": string }; Returns: string
+                           },
+"in_group":
+{ Args: { "g": string }; Returns: boolean
+                           },
 "is_daytime":
 { Args: { "day_end": number,"day_start": number,"hour": number }; Returns: boolean
                            },
@@ -1326,6 +1477,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"move_group":
+{ Args: { "p_actor": string,"p_group": string,"p_map": string,"p_passives": Json,"p_region": string }; Returns: Json
+                           },
 "move_item":
 { Args: { "p_item": string,"p_quantity": number,"p_to_id": string,"p_to_type": string }; Returns: string
                            },
@@ -1383,6 +1537,9 @@ isOneToOne: false
 "pin_is_revealed":
 { Args: { "p": string }; Returns: boolean
                            },
+"record_discovery":
+{ Args: { "p_content": string,"p_group": string,"p_state": string }; Returns: boolean
+                           },
 "region_campaign":
 { Args: { "r": string }; Returns: string
                            },
@@ -1427,6 +1584,9 @@ isOneToOne: false
                            },
 "require_owner_or_dm":
 { Args: { "p_character": string }; Returns: undefined
+                           },
+"reveal_content":
+{ Args: { "p_content": string,"p_group": string,"p_state": string }; Returns: undefined
                            },
 "reveal_link":
 { Args: { "p_hidden"?: boolean,"p_link": string }; Returns: {
@@ -1537,6 +1697,9 @@ isOneToOne: false
                            },
 "roll_random_encounter":
 { Args: { "p_region": string }; Returns: Json
+                           },
+"search_region":
+{ Args: { "p_actor": string,"p_bonus": number,"p_bonuses": Json,"p_breakdown": Json,"p_character": string,"p_mode": string }; Returns: Json
                            },
 "set_daylight_hours":
 { Args: { "p_campaign": string,"p_end": number,"p_start": number }; Returns: undefined

@@ -91,6 +91,27 @@ describe('the odds (acceptance 1)', () => {
   });
 });
 
+describe('hidden odds (P3-3)', () => {
+  it('shows the bonus and the reasons, but no target, percentage or bar', () => {
+    render(
+      <OddsPopup
+        open
+        hideOdds
+        check={{ ...perception, advantage: ['you watch from high ground'] }}
+        onRoll={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const dialog = screen.getByRole('dialog', { name: perception.label });
+    expect(within(dialog).getByText('Perception check, your bonus +3')).toBeInTheDocument();
+    expect(within(dialog).getByText('The DM has not shown the difficulty.')).toBeInTheDocument();
+    expect(within(dialog).getByText('Advantage: you watch from high ground')).toBeInTheDocument();
+    expect(within(dialog).queryByText(/%/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/DC 14/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('chance to succeed')).not.toBeInTheDocument();
+  });
+});
+
 describe('rolling', () => {
   it('rolls with the resolved mode and shows the dice, the total and the result, announced politely', async () => {
     const onRoll = vi.fn(async () => rollRow({ mode: 'advantage', dice: [6, 17], kept: 17, total: 20 }));

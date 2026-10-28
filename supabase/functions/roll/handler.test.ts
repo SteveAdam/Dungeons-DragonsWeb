@@ -14,6 +14,7 @@ import {
 const CAMPAIGN = '00000000-0000-4000-8000-000000000001';
 const BRANNOC_ID = '00000000-0000-4000-8000-0000000000b1';
 const SERA_ID = '00000000-0000-4000-8000-0000000000b2';
+const GROUP_ID = '00000000-0000-4000-8000-0000000000a1';
 const USERS = { 'token-dm': 'dm', 'token-player': 'player', 'token-sera': 'sera', 'token-outsider': 'outsider' };
 
 const { name: _name, xp: _xp, ...brannocSheet } = BRANNOC;
@@ -36,9 +37,12 @@ function world(
     effects?: EffectRow[];
     items?: ItemRow[];
     rollError?: { code: string; message: string };
+    /** P3-3: what search_region or move_group answers. */
+    rpcResult?: { data: unknown; error: { code?: string; message: string } | null };
   } = {},
 ) {
   const calls: RollD20Args[] = [];
+  const rpcCalls: { name: string; args: Record<string, unknown> }[] = [];
   const characters: Record<string, CharacterRecord> = {
     [BRANNOC_ID]: {
       id: BRANNOC_ID,
@@ -61,6 +65,14 @@ function world(
     loadEffects: () => Promise.resolve(over.effects ?? []),
     loadItems: () => Promise.resolve(over.items ?? GEAR),
     gameSeconds: () => Promise.resolve(0),
+    loadGroup: id =>
+      Promise.resolve(id === GROUP_ID ? { campaignId: CAMPAIGN, characterIds: [BRANNOC_ID, SERA_ID] } : null),
+    rpc: (name, args) => {
+      rpcCalls.push({ name, args });
+      return Promise.resolve(
+        over.rpcResult ?? { data: name === 'move_group' ? ['Mossy shrine'] : { roll: {}, found: [] }, error: null },
+      );
+    },
     rollD20: args => {
       calls.push(args);
       if (over.rollError) return Promise.resolve({ data: null, error: over.rollError });
@@ -78,7 +90,7 @@ function world(
       });
     },
   };
-  return { deps, calls };
+  return { deps, calls, rpcCalls };
 }
 
 // Brannoc's gear as items (P2-7), all equipped, as the database stores them
@@ -320,4 +332,73 @@ Deno.test('spell attacks (P2-11): the spell attack bonus, for a cantrip or prepa
   assert.equal(unknown.status, 404);
   const fighter = await call(world().deps, 'token-player', { action: 'preview', ...bolt });
   assert.equal(fighter.status, 404);
+});
+
+// P3-3: searching a region and moving a group -----------------------------------------------------------------
+
+const search = { action: 'search', campaignId: CAMPAIGN, characterId: BRANNOC_ID };
+const perceptionBonus = async (deps: RollDeps) =>
+  (await call(deps, 'token-player', { action: 'preview', ...athletics, key: 'perception' })).body.bonus as number;
+
+Deno.test(
+  'search: the server rolls with its own Perception bonus and every skill bonus, whatever the body says',
+  async () => {
+    const found = { roll: { kept: 18, total: 21 }, found: [{ name: 'Mossy shrine', kind: 'find' }] };
+    const { deps, rpcCalls } = world({ rpcResult: { data: found, error: null } });
+    const bonus = await perceptionBonus(deps);
+    const { status, body } = await call(deps, 'token-player', { ...search, bonus: 30, p_bonuses: { perception: 30 } });
+    assert.equal(status, 200);
+    assert.deepEqual(body, found);
+    assert.equal(rpcCalls.length, 1);
+    assert.equal(rpcCalls[0].name, 'search_region');
+    assert.equal(rpcCalls[0].args.p_actor, 'player');
+    assert.equal(rpcCalls[0].args.p_bonus, bonus);
+    assert.equal((rpcCalls[0].args.p_bonuses as Record<string, number>).perception, bonus);
+    assert.equal(Object.keys(rpcCalls[0].args.p_bonuses as object).length, 18);
+  },
+);
+
+Deno.test('search: nothing new comes back as an empty list', async () => {
+  const { deps } = world({ rpcResult: { data: { roll: { kept: 2 }, found: [] }, error: null } });
+  const { status, body } = await call(deps, 'token-player', search);
+  assert.equal(status, 200);
+  assert.deepEqual(body.found, []);
+});
+
+Deno.test('search: a second search within the cooldown is refused with 429', async () => {
+  const { deps } = world({
+    rpcResult: { data: null, error: { code: 'PT429', message: 'You searched here in the last 10 minutes.' } },
+  });
+  const { status, body } = await call(deps, 'token-player', search);
+  assert.equal(status, 429);
+  assert.match(body.error, /searched here/);
+});
+
+Deno.test('search: only with your own character', async () => {
+  const { deps, rpcCalls } = world();
+  const { status } = await call(deps, 'token-sera', search);
+  assert.equal(status, 403);
+  assert.equal(rpcCalls.length, 0);
+});
+
+Deno.test('move-group: DM only; the best passive score of the members goes to move_group', async () => {
+  const { deps, rpcCalls } = world({ brannoc: { exhaustion: 2 } });
+  const move = { action: 'move-group', campaignId: CAMPAIGN, groupId: GROUP_ID, mapId: null, regionId: null };
+  assert.equal((await call(deps, 'token-player', move)).status, 403);
+  assert.equal(rpcCalls.length, 0);
+
+  const { status, body } = await call(deps, 'token-dm', move);
+  assert.equal(status, 200);
+  assert.deepEqual(body.revealed, ['Mossy shrine']);
+  const passives = rpcCalls[0].args.p_passives as Record<string, number>;
+  // Exhaustion lowers d20 tests, not passive scores: 10 + the Perception bonus without it
+  const { deps: rested } = world();
+  assert.equal(passives.perception, 10 + (await perceptionBonus(rested)));
+  assert.equal(rpcCalls[0].args.p_actor, 'dm');
+});
+
+Deno.test('move-group: a group from another campaign is not found', async () => {
+  const { deps } = world();
+  const move = { action: 'move-group', campaignId: CAMPAIGN, groupId: SERA_ID, mapId: null, regionId: null };
+  assert.equal((await call(deps, 'token-dm', move)).status, 404);
 });

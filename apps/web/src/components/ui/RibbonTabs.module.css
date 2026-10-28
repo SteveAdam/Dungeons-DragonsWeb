@@ -55,6 +55,16 @@
     padding-inline: 0.25rem;
     font-size: 1rem;
   }
+
+  /* Five or more ribbons do not fit one phone row (the hub has seven): they wrap, three to a row. */
+  .tabs:has(> .tab:nth-child(5)) {
+    flex-wrap: wrap;
+    row-gap: 0.4rem;
+  }
+
+  .tabs:has(> .tab:nth-child(5)) .tab {
+    flex: 1 1 30%;
+  }
 }
 
 /* Not available yet: faded, and no hover lift. */

@@ -9,6 +9,11 @@
   border-radius: 0.25rem;
 }
 
+/* rows size to their content, but never past the tool (long effect names in a select on a phone) */
+.tool > * {
+  max-width: 100%;
+}
+
 .title {
   margin: 0;
   font-family: var(--font-heading);
@@ -25,6 +30,7 @@
 
 .field {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.2rem;
   min-width: 0;
 }
@@ -43,6 +49,7 @@
 }
 
 .select {
+  max-width: 100%;
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--gold-dark);
   border-radius: 0.2rem;

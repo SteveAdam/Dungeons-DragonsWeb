@@ -19,6 +19,12 @@ vi.mock('../../data/characters');
 vi.mock('../../data/campaigns');
 vi.mock('../../data/members');
 vi.mock('../../data/rolls');
+// P3-3: the Here tab asks get_here; a character in no group has nothing here
+vi.mock('../../data/here', () => ({
+  getHere: vi.fn(async () => ({ group: null, region: null, entries: [], hints: [] })),
+  searchHere: vi.fn(),
+  subscribeToNotices: vi.fn(() => () => {}),
+}));
 vi.mock('../../data/items', async importOriginal => ({
   ...(await importOriginal<typeof import('../../data/items')>()),
   listCharacterItems: vi.fn(),

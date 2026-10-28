@@ -87,3 +87,44 @@ export function IconLink({
 }
 export const iconClasses = { host: 'icon-host', icon: 'icon' };
 export const ICON_PROPS = { size: '1em', strokeWidth: 2, 'aria-hidden': true } as const;
+
+// The layout kit (grid, section title, band, dice): plain elements with the same roles.
+export function PageGrid({
+  as: As = 'main',
+  children,
+  ...rest
+}: { as?: ElementType; children?: ReactNode } & HTMLAttributes<HTMLElement>) {
+  return <As {...rest}>{children}</As>;
+}
+export function Cell({
+  as: As = 'div',
+  span: _span,
+  spanMd: _spanMd,
+  children,
+  ...rest
+}: { as?: ElementType; span?: number; spanMd?: number; children?: ReactNode } & HTMLAttributes<HTMLElement>) {
+  void _span; // not DOM attributes
+  void _spanMd;
+  return <As {...rest}>{children}</As>;
+}
+export function SectionTitle({
+  onDesk: _onDesk,
+  children,
+  ...rest
+}: { onDesk?: boolean; children?: ReactNode } & HTMLAttributes<HTMLHeadingElement>) {
+  void _onDesk; // not a DOM attribute
+  return <h2 {...rest}>{children}</h2>;
+}
+export function Band({ items }: { items: ReactNode[] }) {
+  const shown = items.filter(Boolean);
+  return shown.length > 0 ? (
+    <p>
+      {shown.map((item, i) => (
+        <span key={i}>{item}</span>
+      ))}
+    </p>
+  ) : null;
+}
+export function Dice() {
+  return null;
+}

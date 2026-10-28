@@ -10,6 +10,7 @@ import { useLedger, useParty, useSplitPartyGold, useWallets } from '../../../hoo
 import hub from '../hub.module.css';
 import { PartyLongRestButton } from '../../characters/spells/LongRestButton';
 import { LedgerList } from './LedgerList';
+import { PartyGroupsPanel } from './PartyGroupsPanel';
 import styles from './party.module.css';
 import { AwardCoinsForm, AwardXpForm, DepositForm } from './PartyForms';
 
@@ -115,6 +116,8 @@ export function PartyTab({ campaignId, dmMode }: Props) {
           </section>
         )
       )}
+
+      {dmMode && <PartyGroupsPanel campaignId={campaignId} characters={characters.data} />}
 
       <section aria-labelledby="party-ledger" className={`${styles.section} ${styles.wide}`}>
         <h2 id="party-ledger" className={styles.heading}>

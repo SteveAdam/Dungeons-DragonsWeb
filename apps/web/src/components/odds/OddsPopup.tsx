@@ -57,6 +57,11 @@ export interface OddsPopupProps {
   waiting?: string;
   /** Why this roll cannot be made (shown as an alert; the Roll button is disabled). */
   problem?: string;
+  /**
+   * P3-3: the DM has not shown the difficulty. The bonus and any advantage or disadvantage reasons still show, but
+   * no target, no percentage and no bar.
+   */
+  hideOdds?: boolean;
 }
 
 const KIND_WORD = { check: 'check', save: 'saving throw', attack: 'attack' } as const;
@@ -83,7 +88,7 @@ export function OddsPopup(props: OddsPopupProps) {
   return props.open ? <OddsDialog {...props} /> : null;
 }
 
-function OddsDialog({ onClose, check, onRoll, anchor, waiting, problem }: OddsPopupProps) {
+function OddsDialog({ onClose, check, onRoll, anchor, waiting, problem, hideOdds = false }: OddsPopupProps) {
   const id = useId();
   const dialog = useRef<HTMLElement>(null);
   const rollButton = useRef<HTMLButtonElement>(null);
@@ -112,9 +117,11 @@ function OddsDialog({ onClose, check, onRoll, anchor, waiting, problem }: OddsPo
   const targetLabel = check.targetLabel ?? (check.kind === 'attack' ? 'AC' : 'DC');
   const subtitle = [
     `${check.skill ? `${check.skill} ` : ''}${KIND_WORD[check.kind]}`,
-    `${targetLabel} ${check.target}`,
+    hideOdds ? null : `${targetLabel} ${check.target}`,
     `your bonus ${signed(check.bonus)}`,
-  ].join(', ');
+  ]
+    .filter(Boolean)
+    .join(', ');
   const diceCount = mode === 'normal' ? 1 : 2;
 
   async function doRoll() {
@@ -210,21 +217,30 @@ function OddsDialog({ onClose, check, onRoll, anchor, waiting, problem }: OddsPo
           </p>
         )}
 
-        <div className={styles.chanceRow}>
-          <p className={styles.chance}>
-            <span className={styles.percent}>{waiting ? '…' : formatPercent(chance)}</span>
-            <span className={styles.chanceLabel}>chance to succeed</span>
-          </p>
+        {hideOdds ? (
           <div className={styles.why}>
-            {mode !== 'normal' && (
-              <p className={styles.line}>{`${formatPercent(withoutMode.final)} without ${mode}`}</p>
-            )}
+            <p className={styles.line}>The DM has not shown the difficulty.</p>
             <p className={styles.line}>{MODE_HELP[mode]}</p>
           </div>
-        </div>
-        <div className={styles.bar} aria-hidden="true">
-          <div className={styles.fill} style={{ width: `${waiting ? 0 : chance * 100}%` }} />
-        </div>
+        ) : (
+          <>
+            <div className={styles.chanceRow}>
+              <p className={styles.chance}>
+                <span className={styles.percent}>{waiting ? '…' : formatPercent(chance)}</span>
+                <span className={styles.chanceLabel}>chance to succeed</span>
+              </p>
+              <div className={styles.why}>
+                {mode !== 'normal' && (
+                  <p className={styles.line}>{`${formatPercent(withoutMode.final)} without ${mode}`}</p>
+                )}
+                <p className={styles.line}>{MODE_HELP[mode]}</p>
+              </div>
+            </div>
+            <div className={styles.bar} aria-hidden="true">
+              <div className={styles.fill} style={{ width: `${waiting ? 0 : chance * 100}%` }} />
+            </div>
+          </>
+        )}
 
         {reasons.length > 0 && (
           <ul className={styles.reasons} aria-label="Advantage and disadvantage">
@@ -258,7 +274,7 @@ function OddsDialog({ onClose, check, onRoll, anchor, waiting, problem }: OddsPo
           </ul>
         )}
 
-        {check.kind === 'attack' && (
+        {check.kind === 'attack' && !hideOdds && (
           <p
             className={styles.line}
           >{`Critical hit chance: ${formatPercent(check.server?.critChance ?? critChance(mode))}`}</p>

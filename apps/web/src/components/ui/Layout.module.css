@@ -1,0 +1,133 @@
+/* The layout kit: a 12-column page grid and the parts laid on it (see the "Layout kit" design board).
+   12 columns from 1100px, 6 from 700px, 1 below; a cell's span shrinks with the columns. */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--page-gutter);
+  row-gap: 1.75rem;
+  width: 100%;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 2rem var(--page-margin) 3rem;
+  box-sizing: border-box;
+}
+
+.cell {
+  min-width: 0;
+  grid-column: span var(--span, 12);
+}
+
+@media (max-width: 1099px) {
+  .grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .cell {
+    grid-column: span var(--span-md, 6);
+  }
+}
+
+@media (max-width: 699px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    padding-inline: 1rem;
+  }
+
+  .cell {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Section title: blackletter in wax red over a double rule. On the desk it turns gold with an ink shadow. */
+.sectionTitle {
+  margin: 0;
+  padding-bottom: 0.2rem;
+  border-bottom: 3px double var(--wax-red);
+  color: var(--wax-red);
+  font-family: var(--font-title);
+  font-size: clamp(2rem, 3.5vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.onDesk {
+  border-bottom-color: var(--gold-dark);
+  color: var(--gold);
+  text-shadow: 0 3px 0 var(--iron);
+}
+
+/* Red band: one line of news across the grid, paper-coloured italic on wax red. */
+.band {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1.5rem;
+  margin: 0;
+  padding: 0.7rem 1.5rem;
+  background: var(--wax-red);
+  box-shadow: 0 0.4rem 1rem var(--shadow);
+  color: var(--paper);
+  font-size: 1.15rem;
+  font-style: italic;
+  text-align: center;
+}
+
+.bandMark {
+  color: var(--gold);
+  font-style: normal;
+}
+
+/* Numbered step card: a dashed inner rule, icon on top, a numbered coin hanging off the bottom edge. */
+.step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 1.6rem 1.25rem 2.1rem;
+  color: var(--ink);
+  outline: 2px dashed var(--gold-dark);
+  outline-offset: -0.6rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.step:hover .stepTitle,
+.step:focus-visible .stepTitle {
+  color: var(--wax-red);
+}
+
+.stepIcon {
+  color: var(--wax-red);
+}
+
+.stepTitle {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.stepText {
+  color: var(--ink-faded);
+  font-size: 1rem;
+}
+
+.stepNumber {
+  position: absolute;
+  bottom: -1rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  font-family: var(--font-heading);
+}
+
+/* A d20 at a spread's corner: decoration only. */
+.dice {
+  position: absolute;
+  pointer-events: none;
+  filter: drop-shadow(0 0.3rem 0.35rem var(--shadow));
+}

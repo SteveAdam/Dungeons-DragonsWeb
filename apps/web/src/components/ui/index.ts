@@ -5,6 +5,7 @@ export { DmBanner } from './DmBanner';
 export { IconLink } from './IconLink';
 export { ICON_PROPS, iconClasses } from './icons';
 export { Input } from './Input';
+export { Band, Cell, Dice, PageGrid, SectionTitle, StepCard } from './Layout';
 export { Paper } from './Paper';
 export { RibbonTabs } from './RibbonTabs';
 export { Tag } from './Tag';
