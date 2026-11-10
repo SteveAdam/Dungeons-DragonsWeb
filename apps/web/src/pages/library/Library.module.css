@@ -333,6 +333,168 @@
   gap: 0.25rem;
 }
 
+/* P3-6: the clone editor: the form (7 columns) beside the comparison and balance guide (5) */
+.editor {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 1rem var(--page-gutter);
+  align-items: start;
+}
+
+.editorForm,
+.editorSide {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  color: var(--ink);
+}
+
+.editorSide {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  border-block: 3px solid var(--wax-red);
+}
+
+.formSection h3,
+.panel h3 {
+  margin: 0 0 0.4rem;
+  border-bottom: 1px solid var(--wax-red);
+  color: var(--wax-red);
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+}
+
+.formFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+  gap: 0.6rem 1rem;
+  align-items: start;
+}
+
+.formWide,
+.rowList,
+.multi {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.rowList,
+.multi {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rowList legend,
+.multi legend {
+  padding: 0;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.multi {
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+  gap: 0.4rem;
+  align-items: center;
+  padding-block: 0.4rem;
+  border-bottom: 1px solid var(--rule-faint);
+}
+
+.rowWide {
+  grid-column: 1 / -1;
+}
+
+.textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.hint {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.problems {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.panel {
+  min-width: 0;
+}
+
+.panel p {
+  margin: 0 0 0.4rem;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.compare th,
+.compare td {
+  padding: 0.25rem 0.4rem;
+  border-bottom: 1px solid var(--rule-faint);
+  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare thead th,
+.compare tbody th {
+  font-family: var(--font-heading);
+}
+
+/* a changed row: a red bar and bold values, so it never depends on colour alone */
+.changed th {
+  box-shadow: inset 3px 0 0 var(--wax-red);
+}
+
+.changed td,
+.changed th {
+  background: var(--ink-wash-strong);
+  font-weight: 700;
+}
+
+.warnings,
+.notes {
+  margin: 0 0 0.4rem;
+  padding-inline-start: 1.1rem;
+}
+
+.warnings {
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
 @media (max-width: 1099px) {
   .shelves {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -346,6 +508,15 @@
   .list,
   .detail {
     grid-column: span 3;
+  }
+
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editorSide {
+    position: static;
+    max-height: none;
   }
 }
 

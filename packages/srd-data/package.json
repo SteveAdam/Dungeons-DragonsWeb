@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./attribution": "./src/attribution.ts",
+    "./benchmarks": "./src/benchmarks.ts",
     "./equipment": "./src/equipment.ts",
     "./schemas": "./src/schemas.ts"
   },

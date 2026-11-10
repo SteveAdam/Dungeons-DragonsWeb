@@ -10,6 +10,7 @@ export * from './conditions';
 export * from './core';
 export * from './creation';
 export * from './currency';
+export * from './customContent';
 export * from './dice';
 export * from './effects';
 export * from './encounters';

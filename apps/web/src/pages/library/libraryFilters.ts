@@ -1,6 +1,6 @@
 // P3-5: the library's filters, on their own so the rules can be tested without the screen.
 import { spellTier, type TierClass, type TierOfPlay } from '@dnd-manager/rules-engine';
-import type { SrdArmor, SrdMonster, SrdSpell, SrdWeapon } from '@dnd-manager/srd-data/schemas';
+import type { SrdMonster, SrdSpell } from '@dnd-manager/srd-data/schemas';
 
 export type LibrarySource = 'srd' | 'campaign';
 
@@ -32,12 +32,17 @@ export const NO_FILTERS: LibraryFilters = {
 /** Whether a name holds the search text, whatever its case. */
 export const matchesSearch = (name: string, search: string) => name.toLowerCase().includes(search.trim().toLowerCase());
 
-const showsSrd = (f: LibraryFilters) => f.sources.includes('srd');
+/** Whether the entry's shelf is showing: the DM's own entries are marked `custom`. */
+const showsSource = (entry: { custom?: unknown }, f: LibraryFilters) =>
+  f.sources.includes(entry.custom ? 'campaign' : 'srd');
 
-export function filterSpells(spells: SrdSpell[], classes: readonly TierClass[], f: LibraryFilters): SrdSpell[] {
-  if (!showsSrd(f)) return [];
+export function filterSpells<T extends SrdSpell & { custom?: unknown }>(
+  spells: T[],
+  classes: readonly TierClass[],
+  f: LibraryFilters,
+): T[] {
   return spells.filter(s => {
-    if (!matchesSearch(s.name, f.search)) return false;
+    if (!showsSource(s, f) || !matchesSearch(s.name, f.search)) return false;
     if (f.className && !s.classes.includes(f.className)) return false;
     if (f.tiers.length === 0) return true;
     const tier = spellTier(s, classes);
@@ -45,19 +50,23 @@ export function filterSpells(spells: SrdSpell[], classes: readonly TierClass[], 
   });
 }
 
-export function filterMonsters(monsters: SrdMonster[], f: LibraryFilters): SrdMonster[] {
-  if (!showsSrd(f)) return [];
+export function filterMonsters<T extends SrdMonster & { custom?: unknown }>(monsters: T[], f: LibraryFilters): T[] {
   return monsters.filter(
     m =>
+      showsSource(m, f) &&
       matchesSearch(m.name, f.search) &&
       (f.crMin === null || m.challengeValue >= f.crMin) &&
       (f.crMax === null || m.challengeValue <= f.crMax),
   );
 }
 
-export function filterEquipment<T extends SrdWeapon | SrdArmor>(items: T[], f: LibraryFilters): T[] {
-  if (!showsSrd(f)) return [];
-  return items.filter(i => matchesSearch(i.name, f.search) && (!f.category || i.category === f.category));
+export function filterEquipment<T extends { name: string; category?: string; custom?: unknown }>(
+  items: T[],
+  f: LibraryFilters,
+): T[] {
+  return items.filter(
+    i => showsSource(i, f) && matchesSearch(i.name, f.search) && (!f.category || i.category === f.category),
+  );
 }
 
 /** The challenge ratings on the shelves, lowest first, for the range pickers. */

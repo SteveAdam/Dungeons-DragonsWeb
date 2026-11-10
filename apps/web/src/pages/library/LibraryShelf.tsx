@@ -26,18 +26,20 @@ interface Props<T> {
   onFilters: (filters: LibraryFilters) => void;
   /** The filters only this shelf has. */
   extraFilters?: ReactNode;
+  /** "New from template" buttons. */
+  templates?: ReactNode;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   detail: (entry: T) => ReactNode;
 }
 
 function emptyMessage(what: string, total: number, filters: LibraryFilters) {
-  if (!filters.sources.includes('srd')) return `No campaign ${what} yet. They arrive with custom content.`;
+  if (!filters.sources.includes('srd')) return `No campaign ${what} yet. Clone an SRD entry or start from a template.`;
   if (total === 0) return `The ${what} shelf is empty: the SRD has not been imported yet.`;
   return 'Nothing on this shelf matches these filters.';
 }
 
-export function LibraryShelf<T extends { id: string; name: string }>({
+export function LibraryShelf<T extends { id: string; name: string; custom?: unknown }>({
   what,
   pending,
   error,
@@ -48,6 +50,7 @@ export function LibraryShelf<T extends { id: string; name: string }>({
   filters,
   onFilters,
   extraFilters,
+  templates,
   selectedId,
   onSelect,
   detail,
@@ -118,6 +121,7 @@ export function LibraryShelf<T extends { id: string; name: string }>({
           <SlidersHorizontal {...ICON_PROPS} className={iconClasses.icon} />
           Filters
         </Button>
+        {templates && <div className={styles.actions}>{templates}</div>}
         {error ? (
           <ErrorNotice error={error} onRetry={onRetry} />
         ) : pending ? (
@@ -136,7 +140,7 @@ export function LibraryShelf<T extends { id: string; name: string }>({
                 >
                   <span className={styles.entryName}>{entry.name}</span>
                   <span className={styles.entryMeta}>{meta(entry)}</span>
-                  <Tag>SRD</Tag>
+                  {entry.custom ? <Tag tone="wax">CAMPAIGN</Tag> : <Tag>SRD</Tag>}
                 </button>
               </li>
             ))}

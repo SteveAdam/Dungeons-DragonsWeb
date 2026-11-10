@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T79) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T80) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -766,6 +766,29 @@ create rule never_store as on insert to region_searches do instead nothing;`,
     sql: `grant insert, update, delete on srd_monsters to authenticated;
 create policy "anyone writes srd monsters" on srd_monsters for all to authenticated using (true) with check (true);`,
     fails: ['T79'],
+  },
+  {
+    name: 'custom content readable by every member (P3-6)',
+    why: "players could read the DM's unrevealed monsters and items",
+    sql: `create policy "members read custom content" on custom_content for select to authenticated using (true);`,
+    fails: ['T80'],
+  },
+  {
+    name: 'custom content writable by every member (P3-6)',
+    why: 'a player could add to or rewrite the DM library',
+    sql: `create policy "members add custom content" on custom_content for insert to authenticated with check (true);`,
+    fails: ['T80'],
+  },
+  {
+    name: 'custom content deletable while in use (P3-6)',
+    why: 'a monster in a region or an item would point at nothing',
+    sql: `create or replace function public.delete_custom_content(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $fn$
+begin
+  perform require_dm((select campaign_id from custom_content where id = p_id));
+  delete from custom_content where id = p_id;
+end $fn$;`,
+    fails: ['T80'],
   },
   {
     name: 'discovery notices readable by every member (P3-3)',

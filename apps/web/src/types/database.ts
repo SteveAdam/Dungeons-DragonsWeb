@@ -189,6 +189,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"custom_content": {
+                  Row: {
+                    "campaign_id": string,"created_at": string,"created_by": string | null,"definition": NonNullable<Json>,"id": string,"kind": string,"name": string,"parent_ref": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"created_at"?: string,"created_by"?: string | null,"definition"?: NonNullable<Json>,"id"?: string,"kind": string,"name": string,"parent_ref"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"created_at"?: string,"created_by"?: string | null,"definition"?: NonNullable<Json>,"id"?: string,"kind"?: string,"name"?: string,"parent_ref"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "custom_content_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"discovery_notices": {
                   Row: {
                     "campaign_id": string,"created_at": string,"group_id": string,"id": string,"text": string
@@ -1340,6 +1360,9 @@ isOneToOne: false
                            },
 "decline_transfer":
 { Args: { "p_transfer": string }; Returns: undefined
+                           },
+"delete_custom_content":
+{ Args: { "p_id": string }; Returns: undefined
                            },
 "delete_entity":
 { Args: { "p_entity": string }; Returns: undefined

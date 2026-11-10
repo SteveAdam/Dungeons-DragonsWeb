@@ -1,0 +1,801 @@
+// P3-6: a DM's own spells, monsters, weapons, armour and items: what they may contain, what changed from the SRD entry
+// they came from, how they compare with the SRD, and how a weapon or armour becomes an item. A definition keeps the
+// shape of the SRD record, without its id, name and source (the custom_content row has those).
+import { ABILITY_KEYS, type Ability } from './core';
+import { CONDITIONS } from './conditions';
+import { priceInCopper } from './currency';
+import type { ItemDefinition, ItemEffect, ItemKind } from './items';
+import { averageDamage, challengeValue, damagePerRound, parseDice, xpForChallengeRating } from './monsters';
+import type { Requirement } from './requirements';
+
+export const CUSTOM_KINDS = ['spell', 'monster', 'weapon', 'armor', 'item'] as const;
+export type CustomKind = (typeof CUSTOM_KINDS)[number];
+export type Definition = Record<string, unknown>;
+
+export const DAMAGE_TYPES = [
+  'acid',
+  'bludgeoning',
+  'cold',
+  'fire',
+  'force',
+  'lightning',
+  'necrotic',
+  'piercing',
+  'poison',
+  'psychic',
+  'radiant',
+  'slashing',
+  'thunder',
+] as const;
+export const SPELL_SCHOOLS = [
+  'abjuration',
+  'conjuration',
+  'divination',
+  'enchantment',
+  'evocation',
+  'illusion',
+  'necromancy',
+  'transmutation',
+] as const;
+export const WEAPON_PROPERTIES = [
+  'ammunition',
+  'finesse',
+  'heavy',
+  'light',
+  'loading',
+  'reach',
+  'thrown',
+  'two-handed',
+  'versatile',
+] as const;
+export const WEAPON_MASTERIES = ['cleave', 'graze', 'nick', 'push', 'sap', 'slow', 'topple', 'vex'] as const;
+export const CUSTOM_ITEM_KINDS = ['gear', 'magic', 'consumable', 'quest'] as const;
+export const ITEM_RARITIES = ['common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact'] as const;
+const COINS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const;
+
+// THE EFFECT VOCABULARY -----------------------------------------------------------------
+
+/** The building blocks custom content can use; anything else is kept as text and labelled "text only". */
+export type EffectBlock =
+  | { type: 'damage'; dice: string; damageType: string }
+  | { type: 'heal'; dice: string }
+  | { type: 'ability'; ability: Ability; mode: 'add' | 'set'; value: number }
+  | { type: 'advantage'; mode: 'advantage' | 'disadvantage'; roll: 'attack' | 'save' | 'check' }
+  | { type: 'condition'; action: 'apply' | 'remove'; condition: string }
+  | { type: 'resistance'; damageType: string }
+  | { type: 'stat'; stat: 'speed' | 'ac'; mode: 'add' | 'set'; value: number }
+  | { type: 'resource'; action: 'spend' | 'restore'; resource: string; amount: number }
+  | { type: 'restore_body_part' }
+  | { type: 'check'; roll: 'check' | 'save'; ability: Ability; dc: number };
+
+export const EFFECT_TYPES = [
+  'damage',
+  'heal',
+  'ability',
+  'advantage',
+  'condition',
+  'resistance',
+  'stat',
+  'resource',
+  'restore_body_part',
+  'check',
+] as const;
+
+const isObject = (v: unknown): v is Definition => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isText = (v: unknown): v is string => typeof v === 'string';
+const isFilled = (v: unknown) => isText(v) && v.trim().length > 0;
+const isWhole = (v: unknown, min: number, max: number) =>
+  typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+const isOneOf = (list: readonly string[]) => (v: unknown) => isText(v) && list.includes(v);
+const isAbility = isOneOf(ABILITY_KEYS);
+const isDamageType = isOneOf(DAMAGE_TYPES);
+const isDice = (v: unknown) => isText(v) && parseDice(v) !== null;
+const isFlag = (v: unknown) => typeof v === 'boolean';
+const isTextList = (v: unknown) => Array.isArray(v) && v.every(isText);
+
+/** Why an effect is outside the vocabulary, or null when it is a supported one. */
+function effectProblem(e: unknown): string | null {
+  if (!isObject(e) || !isText(e.type)) return 'An effect with no type';
+  const incomplete = `A ${e.type} effect is missing something or uses a value the rules do not have`;
+  const fine = (...checks: boolean[]) => (checks.every(Boolean) ? null : incomplete);
+  switch (e.type) {
+    case 'damage':
+      return fine(isDice(e.dice), isDamageType(e.damageType));
+    case 'heal':
+      return fine(isDice(e.dice));
+    case 'ability':
+      return fine(isAbility(e.ability), e.mode === 'add' || e.mode === 'set', isWhole(e.value, -30, 30));
+    case 'advantage':
+      return fine(e.mode === 'advantage' || e.mode === 'disadvantage', isOneOf(['attack', 'save', 'check'])(e.roll));
+    case 'condition':
+      return fine(e.action === 'apply' || e.action === 'remove', isOneOf(CONDITIONS)(e.condition));
+    case 'resistance':
+      return fine(isDamageType(e.damageType));
+    case 'stat':
+      return fine(
+        e.stat === 'speed' || e.stat === 'ac',
+        e.mode === 'add' || e.mode === 'set',
+        isWhole(e.value, -120, 120),
+      );
+    case 'resource':
+      return fine(e.action === 'spend' || e.action === 'restore', isFilled(e.resource), isWhole(e.amount, 1, 1000));
+    case 'restore_body_part':
+      return null;
+    case 'check':
+      return fine(e.roll === 'check' || e.roll === 'save', isAbility(e.ability), isWhole(e.dc, 1, 40));
+    case 'text':
+      return isFilled(e.text) ? String(e.text) : 'An empty text effect';
+    default:
+      return `"${e.type}" is not a supported mechanic`;
+  }
+}
+
+// VALIDATION ------------------------------------------------------------------------------
+
+export interface CustomValidation {
+  /** These stop the save: the entry would not have a valid shape. */
+  errors: string[];
+  /** Mechanics the engine cannot calculate. The entry saves, labelled text only. */
+  unsupported: string[];
+  textOnly: boolean;
+}
+
+type Rule = { check: (v: unknown) => boolean; message: string; optional?: boolean };
+const rule = (check: Rule['check'], message: string, optional = false): Rule => ({ check, message, optional });
+const optional = (check: Rule['check'], message: string) => rule(check, message, true);
+
+const listOf = (check: (v: unknown) => boolean) => (v: unknown) => Array.isArray(v) && v.every(check);
+const isScores = (min: number, max: number) => (v: unknown) =>
+  isObject(v) && ABILITY_KEYS.every(a => isWhole(v[a], min, max));
+const isEntry = (v: unknown) =>
+  isObject(v) && isFilled(v.name) && isText(v.description) && (v.usage === undefined || isText(v.usage));
+const isAttack = (v: unknown) =>
+  isObject(v) &&
+  isFilled(v.name) &&
+  listOf(d => isObject(d) && isDice(d.dice) && isText(d.type))(v.damage) &&
+  (v.attackBonus === undefined || isWhole(v.attackBonus, -10, 40)) &&
+  (v.saveDc === undefined || isWhole(v.saveDc, 1, 40));
+const isRequirement = (v: unknown) =>
+  isObject(v) && isAbility(v.stat) && isWhole(v.min, 1, 30) && (v.onUnmet === 'lock' || v.onUnmet === 'speed_penalty');
+const isItemEffect = (v: unknown) =>
+  isObject(v) &&
+  isOneOf([...ABILITY_KEYS, 'speed', 'ac'])(v.stat) &&
+  isOneOf(['add', 'set', 'set_at_least'])(v.mode) &&
+  isWhole(v.value, -100, 100);
+const isItemRules = (v: unknown) =>
+  isObject(v) &&
+  listOf(isRequirement)(v.requirements) &&
+  listOf(isItemEffect)(v.effects) &&
+  isText(v.grantedText) &&
+  isFlag(v.canBeGiven) &&
+  isFlag(v.bound) &&
+  (v.magicBonus === undefined || v.magicBonus === null || isWhole(v.magicBonus, -5, 5));
+const isCost = (v: unknown) => isObject(v) && typeof v.amount === 'number' && v.amount >= 0 && isOneOf(COINS)(v.coin);
+const isWeight = (v: unknown) => v === null || (typeof v === 'number' && v >= 0);
+const isChallenge = (v: unknown) => isText(v) && xpForChallengeRating(v) !== null;
+
+const EFFECTS = optional(v => Array.isArray(v), 'Effects must be a list');
+const WEIGHT = rule(isWeight, 'Weight must be zero or more, or left empty');
+const COST = rule(isCost, 'Cost needs an amount of zero or more and a coin');
+const ITEM_RULES = rule(isItemRules, 'The item rules are incomplete');
+
+const SHAPES: Record<CustomKind, Record<string, Rule>> = {
+  spell: {
+    level: rule(v => isWhole(v, 0, 9), 'A spell level is 0 (a cantrip) to 9'),
+    school: rule(isOneOf(SPELL_SCHOOLS), 'Choose a school of magic'),
+    castingTime: rule(isFilled, 'Say how long it takes to cast'),
+    range: rule(isFilled, 'Say what its range is'),
+    components: rule(v => isObject(v) && isFlag(v.v) && isFlag(v.s) && isFlag(v.m), 'Say which components it needs'),
+    duration: rule(isFilled, 'Say how long it lasts'),
+    concentration: rule(isFlag, 'Say whether it needs concentration'),
+    ritual: rule(isFlag, 'Say whether it is a ritual'),
+    classes: rule(v => isTextList(v) && (v as string[]).length > 0, 'Name at least one class'),
+    text: rule(isFilled, 'Describe what the spell does'),
+    higherLevels: optional(isText, 'Higher levels must be text'),
+    statBlocks: optional(v => Array.isArray(v), 'Stat blocks must be a list'),
+    effects: EFFECTS,
+  },
+  monster: {
+    category: rule(isOneOf(['monster', 'animal']), 'Choose monster or animal'),
+    size: rule(v => isTextList(v) && (v as string[]).length > 0, 'Give it a size'),
+    creatureType: rule(isFilled, 'Give it a creature type'),
+    creatureTags: optional(isText, 'Tags must be text'),
+    alignment: rule(isFilled, 'Give it an alignment'),
+    armourClass: rule(v => isWhole(v, 1, 40), 'Armour class is 1 to 40'),
+    armourNote: optional(isText, 'The armour note must be text'),
+    initiative: rule(
+      v => isObject(v) && isWhole(v.bonus, -10, 30) && isWhole(v.score, -10, 50),
+      'Check its initiative',
+    ),
+    hitPoints: rule(v => isWhole(v, 1, 5000), 'Hit points are 1 to 5000'),
+    hitDice: rule(isDice, 'Hit dice look like 2d8 + 2'),
+    speeds: rule(isObject, 'Check its speeds'),
+    speedText: rule(isFilled, 'Say how fast it moves'),
+    abilityScores: rule(isScores(1, 30), 'Ability scores are 1 to 30'),
+    saves: rule(isScores(-10, 30), 'Check its saving throws'),
+    skills: rule(
+      listOf(v => isObject(v) && isFilled(v.name) && isWhole(v.bonus, -10, 30)),
+      'Check its skills',
+    ),
+    damageVulnerabilities: rule(isTextList, 'Vulnerabilities must be a list'),
+    damageResistances: rule(isTextList, 'Resistances must be a list'),
+    damageImmunities: rule(isTextList, 'Immunities must be a list'),
+    conditionImmunities: rule(isTextList, 'Condition immunities must be a list'),
+    gear: rule(isTextList, 'Gear must be a list'),
+    senses: rule(isTextList, 'Senses must be a list'),
+    passivePerception: rule(v => isWhole(v, 0, 50), 'Passive Perception is 0 to 50'),
+    languages: rule(isFilled, 'Say what languages it knows, or None'),
+    challengeRating: rule(isChallenge, 'Choose a challenge rating the rules have'),
+    challengeValue: rule(v => typeof v === 'number', 'Choose a challenge rating'),
+    xp: rule(v => isWhole(v, 0, 1000000), 'XP is zero or more'),
+    xpInLair: optional(v => isWhole(v, 0, 1000000), 'Lair XP is zero or more'),
+    proficiencyBonus: rule(v => isWhole(v, 0, 12), 'Check its proficiency bonus'),
+    traits: rule(listOf(isEntry), 'Each trait needs a name'),
+    actions: rule(listOf(isEntry), 'Each action needs a name'),
+    bonusActions: rule(listOf(isEntry), 'Each bonus action needs a name'),
+    reactions: rule(listOf(isEntry), 'Each reaction needs a name'),
+    legendaryIntro: optional(isText, 'The legendary note must be text'),
+    legendaryActions: rule(listOf(isEntry), 'Each legendary action needs a name'),
+    attacks: rule(listOf(isAttack), 'Each attack needs a name, and damage dice like 1d6 + 2'),
+    effects: EFFECTS,
+  },
+  weapon: {
+    // what the categories mean to proficiency is a core rule: a custom weapon can only be in one of them
+    category: rule(isOneOf(['simple', 'martial']), 'A weapon is simple or martial: those categories are core rules'),
+    kind: rule(isOneOf(['melee', 'ranged']), 'A weapon is melee or ranged'),
+    damage: rule(v => isObject(v) && isDice(v.dice) && isDamageType(v.type), 'Damage needs dice and a standard type'),
+    properties: rule(listOf(isOneOf(WEAPON_PROPERTIES)), 'Only the standard weapon properties can be used'),
+    versatileDice: optional(isDice, 'Versatile damage looks like 1d10'),
+    range: optional(
+      v => isObject(v) && isWhole(v.normal, 1, 5000) && isWhole(v.long, 1, 5000) && Number(v.normal) <= Number(v.long),
+      'Range needs a normal and a longer long distance',
+    ),
+    ammunition: optional(isOneOf(['arrow', 'bolt', 'bullet', 'needle']), 'Ammunition is arrow, bolt, bullet or needle'),
+    mastery: rule(isOneOf(WEAPON_MASTERIES), 'Choose a standard mastery property'),
+    weightLb: WEIGHT,
+    cost: COST,
+    propertiesText: rule(isText, 'The properties text is missing'),
+    notes: optional(isTextList, 'Notes must be a list'),
+    itemRules: ITEM_RULES,
+    effects: EFFECTS,
+  },
+  armor: {
+    category: rule(isOneOf(['light', 'medium', 'heavy', 'shield']), 'Armour is light, medium, heavy or a shield'),
+    baseAc: rule(v => isWhole(v, 1, 30), 'Base armour class is 1 to 30'),
+    acText: rule(isFilled, 'Say how its armour class is worked out'),
+    strength: rule(v => v === null || isWhole(v, 1, 30), 'Strength needed is 1 to 30, or left empty'),
+    stealthDisadvantage: rule(isFlag, 'Say whether it hinders Stealth'),
+    donDoff: rule(isFilled, 'Say how long it takes to put on'),
+    weightLb: WEIGHT,
+    cost: COST,
+    itemRules: ITEM_RULES,
+    effects: EFFECTS,
+  },
+  item: {
+    itemKind: rule(isOneOf(CUSTOM_ITEM_KINDS), 'Choose a kind of item'),
+    rarity: rule(v => v === null || isOneOf(ITEM_RARITIES)(v), 'Choose a standard rarity, or none'),
+    requiresAttunement: rule(isFlag, 'Say whether it needs attunement'),
+    description: rule(isText, 'The description must be text'),
+    weightLb: WEIGHT,
+    cost: COST,
+    itemRules: ITEM_RULES,
+    effects: EFFECTS,
+  },
+};
+
+/**
+ * Checks a definition. Wrong or unknown fields are errors, so core rules cannot be rewritten; mechanics outside the
+ * vocabulary are not errors, but mark the entry text only.
+ */
+export function validateCustomDefinition(kind: CustomKind, definition: unknown): CustomValidation {
+  if (!isObject(definition)) return { errors: ['The entry has no fields'], unsupported: [], textOnly: false };
+  const shape = SHAPES[kind];
+  const errors: string[] = [];
+  for (const [key, r] of Object.entries(shape)) {
+    const value = definition[key];
+    if (value === undefined ? !r.optional : !r.check(value)) errors.push(r.message);
+  }
+  for (const key of Object.keys(definition)) {
+    if (!(key in shape)) errors.push(`"${key}" is not something a custom ${kind} can set`);
+  }
+  if (kind === 'weapon' && Array.isArray(definition.properties)) {
+    if (definition.properties.includes('versatile') !== (definition.versatileDice !== undefined)) {
+      errors.push('A versatile weapon, and only a versatile weapon, has versatile damage');
+    }
+  }
+  const effects = Array.isArray(definition.effects) ? definition.effects : [];
+  const unsupported = effects.flatMap(e => effectProblem(e) ?? []);
+  return { errors, unsupported, textOnly: unsupported.length > 0 };
+}
+
+// STARTING POINTS -----------------------------------------------------------------------
+
+const blankItemRules = () => ({ requirements: [], effects: [], grantedText: '', canBeGiven: true, bound: false });
+
+function proficiencyForChallenge(value: number) {
+  return value < 5 ? 2 : Math.ceil(value / 4) + 1;
+}
+
+/** Keeps the fields worked out from others in step with what the DM changed. */
+export function normaliseDefinition(kind: CustomKind, definition: Definition): Definition {
+  const d = { ...definition };
+  if (kind === 'monster' && isText(d.challengeRating) && xpForChallengeRating(d.challengeRating) !== null) {
+    const value = challengeValue(d.challengeRating);
+    // only when the rating moved, so a printed exception (Archmage's XP) survives a clone
+    if (d.challengeValue !== value) {
+      d.challengeValue = value;
+      d.xp = xpForChallengeRating(d.challengeRating);
+      d.proficiencyBonus = proficiencyForChallenge(value);
+      delete d.xpInLair;
+    }
+  }
+  if (kind === 'weapon' && Array.isArray(d.properties) && isText(d.propertiesText)) {
+    const printed = d.propertiesText.toLowerCase();
+    const named = WEAPON_PROPERTIES.filter(p => printed.includes(p));
+    const properties = d.properties as string[];
+    if (named.length !== properties.length || named.some(p => !properties.includes(p))) {
+      d.propertiesText = properties
+        .map(p => {
+          const label = p.charAt(0).toUpperCase() + p.slice(1);
+          return p === 'versatile' && isText(d.versatileDice) ? `${label} (${d.versatileDice})` : label;
+        })
+        .join(', ');
+    }
+  }
+  return d;
+}
+
+/** A new entry of this kind, with valid defaults. */
+export function customTemplate(kind: CustomKind): Definition {
+  const scores = (value: number) => Object.fromEntries(ABILITY_KEYS.map(a => [a, value]));
+  switch (kind) {
+    case 'spell':
+      return {
+        level: 1,
+        school: 'evocation',
+        castingTime: 'Action',
+        range: '30 feet',
+        components: { v: true, s: true, m: false },
+        duration: 'Instantaneous',
+        concentration: false,
+        ritual: false,
+        classes: ['Wizard'],
+        text: 'Describe what the spell does.',
+        effects: [],
+      };
+    case 'monster':
+      return {
+        category: 'monster',
+        size: ['Medium'],
+        creatureType: 'Beast',
+        alignment: 'Unaligned',
+        armourClass: 10,
+        initiative: { bonus: 0, score: 10 },
+        hitPoints: 4,
+        hitDice: '1d8',
+        speeds: { walk: 30 },
+        speedText: '30 ft.',
+        abilityScores: scores(10),
+        saves: scores(0),
+        skills: [],
+        damageVulnerabilities: [],
+        damageResistances: [],
+        damageImmunities: [],
+        conditionImmunities: [],
+        gear: [],
+        senses: [],
+        passivePerception: 10,
+        languages: 'None',
+        challengeRating: '0',
+        challengeValue: 0,
+        xp: 0,
+        proficiencyBonus: 2,
+        traits: [],
+        actions: [],
+        bonusActions: [],
+        reactions: [],
+        legendaryActions: [],
+        attacks: [],
+      };
+    case 'weapon':
+      return {
+        category: 'simple',
+        kind: 'melee',
+        damage: { dice: '1d6', type: 'bludgeoning' },
+        properties: [],
+        mastery: 'sap',
+        weightLb: 1,
+        cost: { amount: 1, coin: 'gp' },
+        propertiesText: '',
+        itemRules: blankItemRules(),
+      };
+    case 'armor':
+      return {
+        category: 'light',
+        baseAc: 11,
+        acText: '11 + Dex modifier',
+        strength: null,
+        stealthDisadvantage: false,
+        donDoff: '1 Minute to Don or Doff',
+        weightLb: 10,
+        cost: { amount: 1, coin: 'gp' },
+        itemRules: blankItemRules(),
+      };
+    case 'item':
+      return {
+        itemKind: 'gear',
+        rarity: null,
+        requiresAttunement: false,
+        description: '',
+        weightLb: null,
+        cost: { amount: 1, coin: 'gp' },
+        itemRules: blankItemRules(),
+        effects: [],
+      };
+  }
+}
+
+/** The definition a clone of an SRD record starts from, and the baseline it is compared with. */
+export function cloneDefinition(kind: CustomKind, record: Definition): Definition {
+  const rest = Object.fromEntries(Object.entries(record).filter(([key]) => !['id', 'name', 'source'].includes(key)));
+  if (kind === 'spell') {
+    const { mechanics, ...spell } = rest;
+    const m = (isObject(mechanics) ? mechanics : {}) as {
+      damage?: { dice: string; type: string };
+      healing?: { dice: string };
+    };
+    return {
+      ...spell,
+      effects: [
+        ...(m.damage ? [{ type: 'damage', dice: m.damage.dice, damageType: m.damage.type }] : []),
+        ...(m.healing ? [{ type: 'heal', dice: m.healing.dice }] : []),
+      ],
+    };
+  }
+  if (kind === 'weapon' || kind === 'armor') return { ...rest, itemRules: blankItemRules() };
+  return rest;
+}
+
+// WHAT CHANGED ----------------------------------------------------------------------------
+
+export interface DefinitionChange {
+  /** Nested fields joined by dots; a named list entry goes by its name, e.g. "traits.Thorn Hide". */
+  path: string;
+  before: unknown;
+  after: unknown;
+}
+
+const isBlank = (v: unknown) => v === undefined || v === null || (Array.isArray(v) && v.length === 0);
+const isNamedList = (v: unknown): v is { name: string }[] =>
+  Array.isArray(v) && v.every(e => isObject(e) && isText(e.name));
+
+function sameValue(a: unknown, b: unknown): boolean {
+  if (isBlank(a) && isBlank(b)) return true;
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((v, i) => sameValue(v, b[i]));
+  if (isObject(a) && isObject(b))
+    return [...new Set([...Object.keys(a), ...Object.keys(b)])].every(k => sameValue(a[k], b[k]));
+  return a === b;
+}
+
+function collectChanges(path: string, before: unknown, after: unknown, out: DefinitionChange[]) {
+  if (sameValue(before, after)) return;
+  const inside = (key: string) => (path ? `${path}.${key}` : key);
+  if (isObject(before) && isObject(after)) {
+    for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+      collectChanges(inside(key), before[key], after[key], out);
+    }
+  } else if (isNamedList(before) && isNamedList(after)) {
+    for (const name of new Set([...before, ...after].map(e => e.name))) {
+      collectChanges(
+        inside(name),
+        before.find(e => e.name === name),
+        after.find(e => e.name === name),
+        out,
+      );
+    }
+  } else {
+    out.push({ path, before, after });
+  }
+}
+
+/** What differs between a parent's definition and its variant's, one line per changed field. */
+export function diffDefinitions(parent: Definition, variant: Definition): DefinitionChange[] {
+  const changes: DefinitionChange[] = [];
+  collectChanges('', parent, variant, changes);
+  return changes;
+}
+
+// THE BALANCE GUIDE -----------------------------------------------------------------------
+
+export interface BenchmarkRange {
+  p10: number;
+  median: number;
+  p90: number;
+}
+
+export interface CrBenchmarkLike {
+  challengeRating: string;
+  challengeValue: number;
+  count: number;
+  armourClass: BenchmarkRange;
+  hitPoints: BenchmarkRange;
+  bestAttackBonus: BenchmarkRange | null;
+  damagePerRound: BenchmarkRange;
+}
+
+export interface BalanceSpell {
+  level: number;
+  text: string;
+  mechanics?: { damage?: { dice: string }; healing?: { dice: string } };
+}
+
+export interface BalanceWeapon {
+  category: string;
+  kind: string;
+  damage: { dice: string };
+}
+
+export interface BalanceBenchmarks {
+  monsters?: readonly CrBenchmarkLike[];
+  spells?: readonly BalanceSpell[];
+  weapons?: readonly BalanceWeapon[];
+}
+
+export interface BalanceReport {
+  /** Always says that this is a rule of thumb. */
+  heuristic: string;
+  comparedWith: string;
+  /** Large gaps. They never stop a save. */
+  warnings: string[];
+  /** Smaller observations. */
+  notes: string[];
+  /** Monsters only: the band of challenge ratings its numbers look like. */
+  suggestedCr?: { low: string; high: string };
+}
+
+const HEURISTIC =
+  'A rule of thumb from the SRD entries in this app, not a verdict. Traits and spells can matter more than numbers.';
+const BODY_PART = /severed body part/i;
+
+function percentile(values: readonly number[], fraction: number) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const at = (sorted.length - 1) * fraction;
+  const low = Math.floor(at);
+  return sorted[low] + (sorted[Math.ceil(at)] - sorted[low]) * (at - low);
+}
+
+const oneDecimal = (n: number) => Math.round(n * 10) / 10;
+
+function effectDice(definition: Definition, type: 'damage' | 'heal') {
+  const effects = Array.isArray(definition.effects) ? (definition.effects as Definition[]) : [];
+  const dice = effects.filter(e => e.type === type && isDice(e.dice)).map(e => e.dice as string);
+  return dice.length ? dice.reduce((sum, d) => sum + averageDamage(d), 0) : null;
+}
+
+/** How far a value sits outside a benchmark's range, relative to its size, with a small pull towards the median. */
+function mismatch(value: number, range: BenchmarkRange) {
+  const size = (n: number) => Math.max(Math.abs(n), 1);
+  const outside =
+    value < range.p10
+      ? (range.p10 - value) / size(range.p10)
+      : value > range.p90
+        ? (value - range.p90) / size(range.p90)
+        : 0;
+  return outside + (0.05 * Math.abs(value - range.median)) / size(range.median);
+}
+
+function monsterStats(d: Definition) {
+  const attacks = Array.isArray(d.attacks) ? (d.attacks as { attackBonus?: number }[]) : [];
+  const bonuses = attacks.flatMap(a => (a.attackBonus === undefined ? [] : [a.attackBonus]));
+  return {
+    armourClass: d.armourClass as number,
+    hitPoints: d.hitPoints as number,
+    bestAttackBonus: bonuses.length ? Math.max(...bonuses) : null,
+    damagePerRound: damagePerRound(d as unknown as Parameters<typeof damagePerRound>[0]),
+  };
+}
+
+function monsterReport(d: Definition, benchmarks: readonly CrBenchmarkLike[]): BalanceReport {
+  const stats = monsterStats(d);
+  const costOf = (b: CrBenchmarkLike) =>
+    mismatch(stats.armourClass, b.armourClass) +
+    mismatch(stats.hitPoints, b.hitPoints) +
+    mismatch(stats.damagePerRound, b.damagePerRound) +
+    (stats.bestAttackBonus !== null && b.bestAttackBonus ? mismatch(stats.bestAttackBonus, b.bestAttackBonus) : 0);
+  const costs = benchmarks.map(costOf);
+  const best = costs.indexOf(Math.min(...costs));
+  let low = best;
+  let high = best;
+  while (low > 0 && costs[low - 1] <= costs[best] + 0.15) low--;
+  while (high < costs.length - 1 && costs[high + 1] <= costs[best] + 0.15) high++;
+  const suggestedCr = { low: benchmarks[low].challengeRating, high: benchmarks[high].challengeRating };
+
+  const stated = benchmarks.findIndex(b => b.challengeRating === d.challengeRating);
+  const warnings: string[] = [];
+  const notes: string[] = [];
+  const band = suggestedCr.low === suggestedCr.high ? suggestedCr.low : `${suggestedCr.low} to ${suggestedCr.high}`;
+  if (stated >= 0 && (stated < low - 2 || stated > high + 2)) {
+    warnings.push(
+      `Its armour class, hit points and attacks look like challenge ${band}, but it is rated ${d.challengeRating}.`,
+    );
+  }
+  const here = benchmarks[stated];
+  if (here) {
+    const compare = (label: string, value: number, range: BenchmarkRange | null) => {
+      if (!range || (value >= range.p10 && value <= range.p90)) return;
+      const way = value > range.p90 ? 'above' : 'below';
+      notes.push(
+        `${label} of ${oneDecimal(value)} is ${way} most challenge ${here.challengeRating} monsters (${range.p10} to ${range.p90}).`,
+      );
+    };
+    compare('Armour class', stats.armourClass, here.armourClass);
+    compare('Hit points', stats.hitPoints, here.hitPoints);
+    compare('Damage per round', stats.damagePerRound, here.damagePerRound);
+    if (stats.bestAttackBonus !== null) compare('Attack bonus', stats.bestAttackBonus, here.bestAttackBonus);
+  }
+  return {
+    heuristic: HEURISTIC,
+    comparedWith: here
+      ? `The ${here.count} SRD monsters of challenge ${here.challengeRating}. Its numbers suggest challenge ${band}.`
+      : `SRD monsters by challenge rating. Its numbers suggest challenge ${band}.`,
+    warnings,
+    notes,
+    suggestedCr,
+  };
+}
+
+function spellReport(d: Definition, spells: readonly BalanceSpell[]): BalanceReport {
+  const level = d.level as number;
+  const peers = spells.filter(s => s.level === level);
+  const levelName = level === 0 ? 'cantrips' : `level ${level} spells`;
+  const warnings: string[] = [];
+  const notes: string[] = [];
+  const compare = (what: string, type: 'damage' | 'heal', pick: (s: BalanceSpell) => string | undefined) => {
+    const amount = effectDice(d, type);
+    if (amount === null) return;
+    const values = peers.flatMap(s => {
+      const dice = pick(s);
+      return dice && parseDice(dice) ? [averageDamage(dice)] : [];
+    });
+    if (values.length === 0) {
+      notes.push(`No SRD ${levelName} have ${what} to compare with.`);
+      return;
+    }
+    const line = percentile(values, 0.9);
+    if (amount > line) {
+      warnings.push(
+        `Its average ${what} of ${oneDecimal(amount)} is above nine in ten SRD ${levelName} (${oneDecimal(line)}).`,
+      );
+    }
+  };
+  compare('damage', 'damage', s => s.mechanics?.damage?.dice);
+  compare('healing', 'heal', s => s.mechanics?.healing?.dice);
+
+  const effects = Array.isArray(d.effects) ? (d.effects as Definition[]) : [];
+  if (effects.some(e => e.type === 'restore_body_part')) {
+    const levels = spells.filter(s => BODY_PART.test(s.text)).map(s => s.level);
+    if (levels.length && level < Math.min(...levels)) {
+      warnings.push(
+        `It restores a lost body part at level ${level}; the SRD's lowest such spell is level ${Math.min(...levels)}.`,
+      );
+    }
+  }
+  return { heuristic: HEURISTIC, comparedWith: `The ${peers.length} SRD ${levelName}.`, warnings, notes };
+}
+
+function weaponReport(d: Definition, weapons: readonly BalanceWeapon[]): BalanceReport {
+  const peers = weapons.filter(w => w.category === d.category && w.kind === d.kind);
+  const group = `${d.category} ${d.kind} weapons`;
+  const amount = averageDamage((d.damage as { dice: string }).dice);
+  const values = peers.map(w => averageDamage(w.damage.dice));
+  const warnings: string[] = [];
+  const notes: string[] = [];
+  if (values.length) {
+    const highest = Math.max(...values);
+    const median = percentile(values, 0.5);
+    if (amount > highest) {
+      warnings.push(
+        `Its average damage of ${oneDecimal(amount)} is above every SRD ${group} (highest ${oneDecimal(highest)}).`,
+      );
+    } else if (amount > median) {
+      notes.push(
+        `Its average damage of ${oneDecimal(amount)} is above the middle of SRD ${group} (${oneDecimal(median)}).`,
+      );
+    }
+  }
+  return { heuristic: HEURISTIC, comparedWith: `The ${peers.length} SRD ${group}.`, warnings, notes };
+}
+
+/** How an entry compares with the SRD. Only ever warnings: it never decides whether something can be saved. */
+export function balanceReport(kind: CustomKind, definition: Definition, benchmarks: BalanceBenchmarks): BalanceReport {
+  if (kind === 'monster' && benchmarks.monsters?.length) return monsterReport(definition, benchmarks.monsters);
+  if (kind === 'spell' && benchmarks.spells) return spellReport(definition, benchmarks.spells);
+  if (kind === 'weapon' && benchmarks.weapons) return weaponReport(definition, benchmarks.weapons);
+  return {
+    heuristic: HEURISTIC,
+    comparedWith: 'Nothing in the SRD to compare this with yet.',
+    warnings: [],
+    notes: [],
+  };
+}
+
+// TURNING AN ENTRY INTO AN ITEM -----------------------------------------------------------
+
+export interface CustomItemRules {
+  requirements: Requirement[];
+  effects: ItemEffect[];
+  grantedText: string;
+  canBeGiven: boolean;
+  bound: boolean;
+  magicBonus?: number | null;
+}
+
+export interface CustomItem {
+  kind: ItemKind;
+  definition: ItemDefinition;
+  weight: number | null;
+  valueCp: number;
+  rarity: string | null;
+  requiresAttunement: boolean;
+  bound: boolean;
+}
+
+/** What goes on an item made from a custom weapon, armour or item. */
+export function customToItem(kind: 'weapon' | 'armor' | 'item', d: Definition): CustomItem {
+  const rules = d.itemRules as CustomItemRules;
+  const vocabulary = (Array.isArray(d.effects) ? (d.effects as EffectBlock[]) : []).flatMap((e): ItemEffect[] => {
+    if (e.type === 'ability') return [{ stat: e.ability, mode: e.mode, value: e.value }];
+    if (e.type === 'stat') return [{ stat: e.stat, mode: e.mode, value: e.value }];
+    return [];
+  });
+  const effects = [...rules.effects, ...vocabulary];
+  const description = [kind === 'item' ? (d.description as string) : '', rules.grantedText]
+    .filter(Boolean)
+    .join('\n\n');
+  const shared: ItemDefinition = {
+    ...(rules.magicBonus ? { magicBonus: rules.magicBonus } : {}),
+    ...(rules.requirements.length ? { requirements: rules.requirements } : {}),
+    ...(effects.length ? { effects } : {}),
+    ...(description ? { description } : {}),
+  };
+  const common = {
+    weight: d.weightLb as number | null,
+    valueCp: priceInCopper(d.cost as Parameters<typeof priceInCopper>[0]),
+    bound: rules.bound || !rules.canBeGiven,
+  };
+  if (kind === 'weapon') {
+    const weapon = {
+      category: d.category,
+      kind: d.kind,
+      damage: d.damage,
+      properties: d.properties,
+      ...(d.versatileDice ? { versatileDice: d.versatileDice } : {}),
+      ...(d.range ? { range: d.range } : {}),
+      ...(d.ammunition ? { ammunition: d.ammunition } : {}),
+      mastery: d.mastery,
+    } as ItemDefinition['weapon'];
+    return { ...common, kind: 'weapon', definition: { weapon, ...shared }, rarity: null, requiresAttunement: false };
+  }
+  if (kind === 'armor') {
+    const armor = {
+      category: d.category,
+      baseAc: d.baseAc,
+      strength: d.strength,
+      stealthDisadvantage: d.stealthDisadvantage,
+    } as ItemDefinition['armor'];
+    return {
+      ...common,
+      kind: d.category === 'shield' ? 'shield' : 'armor',
+      definition: { armor, ...shared },
+      rarity: null,
+      requiresAttunement: false,
+    };
+  }
+  return {
+    ...common,
+    kind: d.itemKind as ItemKind,
+    definition: shared,
+    rarity: d.rarity as string | null,
+    requiresAttunement: d.requiresAttunement as boolean,
+  };
+}

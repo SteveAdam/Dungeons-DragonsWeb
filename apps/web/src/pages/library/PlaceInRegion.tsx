@@ -3,6 +3,7 @@
 import type { SrdMonster } from '@dnd-manager/srd-data/schemas';
 import { useId, useState } from 'react';
 import { ErrorNotice } from '../../components/ErrorNotice';
+import { customRef, type CustomEntry } from '../../data/customContent';
 import type { CampaignRegion } from '../../data/regions';
 import { useCampaignRegions } from '../../hooks/useRegions';
 import { ContentForm } from '../map/content/ContentForm';
@@ -12,6 +13,8 @@ import styles from './Library.module.css';
 interface Props {
   campaignId: string;
   monster: SrdMonster;
+  /** Set when this is the DM's own monster, not an SRD one. */
+  custom?: CustomEntry;
   onClose: () => void;
   onPlaced: (message: string) => void;
 }
@@ -22,7 +25,7 @@ function byMap(regions: CampaignRegion[]) {
   return [...maps];
 }
 
-export function PlaceInRegion({ campaignId, monster, onClose, onPlaced }: Props) {
+export function PlaceInRegion({ campaignId, monster, custom, onClose, onPlaced }: Props) {
   const id = useId();
   const regions = useCampaignRegions(campaignId);
   const [picked, setPicked] = useState('');
@@ -68,7 +71,7 @@ export function PlaceInRegion({ campaignId, monster, onClose, onPlaced }: Props)
         campaignId={campaignId}
         kind="creature"
         kinds={['creature']}
-        initial={{ name: monster.name, monsterRef: `srd:${monster.id}` }}
+        initial={{ name: monster.name, monsterRef: custom ? customRef(custom.id) : `srd:${monster.id}` }}
         onDone={() => onPlaced(`${monster.name} now lives in ${region.name}.`)}
         onCancel={onClose}
       />

@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T79) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T80) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(573);
+select plan(595);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1491,6 +1491,46 @@ select tests.act_as_anon();
 select is((select count(*)::int from srd_monsters), 0, 'T79: a signed-out visitor reads nothing');
 reset role;
 select throws_ok($$ insert into srd_monsters (id, name, source, challenge_value, creature_type, data) values ('bad', 'Bad', 'homebrew', 1, 'Beast', '{"id":"bad"}') $$, '23514', null, 'T79: only SRD content can be stored here');
+
+-- T80: custom content is the DM's alone (P3-6), and an entry in use cannot be deleted
+select tests.act_as('dm');
+select lives_ok($$ insert into custom_content (id, campaign_id, kind, name, parent_ref, definition) values (tests.u('cc:thornwolf'), tests.u('campaign'), 'monster', 'Thornwolf', 'wolf', '{"hitPoints":22}') $$, 'T80: a DM adds a custom monster');
+select lives_ok($$ insert into custom_content (id, campaign_id, kind, name, definition) values (tests.u('cc:blade'), tests.u('campaign'), 'weapon', 'Drowned Blade', '{}') $$, 'T80: and a custom weapon');
+select lives_ok($$ insert into custom_content (id, campaign_id, kind, name, definition) values (tests.u('cc:spare'), tests.u('campaign'), 'item', 'Spare Trinket', '{}') $$, 'T80: and an item');
+select is((select count(*)::int from custom_content where campaign_id = tests.u('campaign')), 3, 'T80: the DM reads them');
+select is((select parent_ref from custom_content where id = tests.u('cc:thornwolf')), 'wolf', 'T80: a clone remembers its parent');
+select lives_ok($$ update custom_content set definition = '{"hitPoints":30}' where id = tests.u('cc:thornwolf') $$, 'T80: the DM changes one');
+select is((select definition ->> 'hitPoints' from custom_content where id = tests.u('cc:thornwolf')), '30', 'T80: and the change holds');
+select throws_ok($$ insert into custom_content (campaign_id, kind, name) values (tests.u('campaign'), 'monster', 'Thornwolf') $$, '23505', null, 'T80: names are unique per campaign and kind');
+select lives_ok($$ insert into custom_content (id, campaign_id, kind, name) values (tests.u('cc:same'), tests.u('campaign'), 'spell', 'Thornwolf') $$, 'T80: another kind may share the name');
+select throws_ok($$ insert into custom_content (campaign_id, kind, name) values (tests.u('campaign'), 'feat', 'Nope') $$, '23514', null, 'T80: only the known kinds');
+select throws_ok($$ delete from custom_content where id = tests.u('cc:spare') $$, '42501', null, 'T80: deleting goes through the function');
+reset role;
+
+select tests.act_as('player');
+select is((select count(*)::int from custom_content), 0, 'T80: a player reads none');
+select throws_ok($$ insert into custom_content (campaign_id, kind, name) values (tests.u('campaign'), 'item', 'Mine') $$, '42501', null, 'T80: nor adds one');
+select is_empty($$ update custom_content set name = 'Mine' where id = tests.u('cc:thornwolf') returning id $$, 'T80: nor changes one');
+select throws_ok($$ select delete_custom_content(tests.u('cc:spare')) $$, '42501', null, 'T80: nor deletes one');
+reset role;
+
+select tests.act_as_anon();
+select throws_ok($$ select * from custom_content $$, '42501', null, 'T80: a signed-out visitor reads nothing');
+reset role;
+
+insert into region_content (id, region_id, kind, name, monster_ref) values
+  (tests.u('rc:thornwolf'), tests.u('region:here'), 'creature', 'Thornwolf', 'custom:' || tests.u('cc:thornwolf'));
+select tests.act_as('dm');
+select throws_ok($$ select delete_custom_content(tests.u('cc:thornwolf')) $$, '23503', 'This entry is placed in a region. Remove it from the region first.', 'T80: not while placed in a region');
+select lives_ok($$ select create_item(tests.u('campaign'), 'Drowned Blade', 'weapon', '{}', 'world', null, 1, null, 0, null, false, false, 'custom:' || tests.u('cc:blade')) $$, 'T80: an item is made from the weapon');
+select throws_ok($$ select delete_custom_content(tests.u('cc:blade')) $$, '23503', 'An item was made from this entry. Remove the item first.', 'T80: not while an item came from it');
+select lives_ok($$ select delete_custom_content(tests.u('cc:spare')) $$, 'T80: an unused entry can go');
+select is((select count(*)::int from custom_content where id = tests.u('cc:spare')), 0, 'T80: and is gone');
+reset role;
+delete from region_content where id = tests.u('rc:thornwolf');
+select tests.act_as('dm');
+select lives_ok($$ select delete_custom_content(tests.u('cc:thornwolf')) $$, 'T80: once out of the region it can go too');
+reset role;
 
 select * from finish();
 rollback;

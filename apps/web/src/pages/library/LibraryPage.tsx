@@ -1,15 +1,47 @@
-// P3-5: /campaigns/:campaignId/library, the DM's shelves of SRD spells, monsters, weapons and armour.
-import { spellTier, spellTierGap, TIERS_OF_PLAY, type TierClass, type TierOfPlay } from '@dnd-manager/rules-engine';
-import type { SrdSpell } from '@dnd-manager/srd-data/schemas';
-import { ArrowLeft, Shield, Skull, Sparkles, Swords } from 'lucide-react';
-import { useEffect, useId, useMemo, useState } from 'react';
+// P3-5, P3-6: /campaigns/:campaignId/library, the DM's shelves of SRD and campaign spells, monsters, weapons and items.
+import {
+  cloneDefinition,
+  customTemplate,
+  spellTier,
+  spellTierGap,
+  TIERS_OF_PLAY,
+  type CustomKind,
+  type Definition,
+  type TierClass,
+  type TierOfPlay,
+} from '@dnd-manager/rules-engine';
+import type { SrdArmor, SrdMonster, SrdSpell, SrdWeapon } from '@dnd-manager/srd-data/schemas';
+import { ArrowLeft, Plus, Shield, Skull, Sparkles, Swords } from 'lucide-react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { Band, Cell, IconLink, PageGrid, RibbonTabs, SectionTitle } from '../../components/ui';
+import {
+  Band,
+  Button,
+  Cell,
+  ICON_PROPS,
+  iconClasses,
+  IconLink,
+  PageGrid,
+  RibbonTabs,
+  SectionTitle,
+} from '../../components/ui';
+import type { CustomEntry } from '../../data/customContent';
 import { useCampaign } from '../../hooks/useCampaigns';
+import { useCustomContent } from '../../hooks/useCustomContent';
 import { useDmMode } from '../../hooks/useDmMode';
 import { useSrdArmor, useSrdClasses, useSrdMonsters, useSrdSpells, useSrdWeapons } from '../../hooks/useLibrary';
 import { useShowDmIndicator } from '../../state/dmIndicator';
-import { ArmorDetail, MonsterDetail, SpellDetail, WeaponDetail } from './EntryDetails';
+import { BalancePanel, ComparePanel } from './editor/ComparePanels';
+import { CustomEditor, type EditorRequest } from './editor/CustomEditor';
+import { KIND_LABELS } from './editor/customForms';
+import {
+  ArmorDetail,
+  CustomItemDetail,
+  MonsterDetail,
+  SpellDetail,
+  WeaponDetail,
+  type EntryControls,
+} from './EntryDetails';
 import styles from './Library.module.css';
 import {
   challengeRatings,
@@ -29,13 +61,134 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
+const TAB_OF_KIND: Record<CustomKind, TabId> = {
+  spell: 'spells',
+  monster: 'monsters',
+  weapon: 'weapons',
+  armor: 'items',
+  item: 'items',
+};
+
 const NO_CLASSES: readonly TierClass[] = [];
 
+type WithCustom<T> = T & { custom?: CustomEntry };
+type Srd = { id: string; name: string };
+
 interface ShelfProps {
+  campaignId: string;
+  customs: CustomEntry[];
+  customsPending: boolean;
+  customsError: unknown;
+  onRetryCustoms: () => void;
   filters: LibraryFilters;
   onFilters: (filters: LibraryFilters) => void;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  onEditor: (request: EditorRequest) => void;
+}
+
+/** A custom entry in the shape of the SRD record its kind shows as. Its `custom` marks it, whatever else it says. */
+const asRecord = <T,>(entry: CustomEntry) =>
+  ({
+    ...entry.definition,
+    id: entry.id,
+    name: entry.name,
+    source: 'srd-5.2',
+    custom: entry,
+  }) as unknown as WithCustom<T>;
+
+function mergeShelf<T extends { name: string }>(srd: T[] | undefined, customs: CustomEntry[], kinds: CustomKind[]) {
+  const own = customs.filter(c => kinds.includes(c.kind)).map(c => asRecord<T>(c));
+  return [...(srd ?? []), ...own].sort((a, b) => a.name.localeCompare(b.name)) as WithCustom<T>[];
+}
+
+function parentOf(kind: CustomKind, custom: CustomEntry, srd: readonly Srd[]) {
+  const record = srd.find(s => s.id === custom.parentRef);
+  return record
+    ? { id: record.id, name: record.name, definition: cloneDefinition(kind, record as unknown as Definition) }
+    : null;
+}
+
+const fromText = (custom: CustomEntry | undefined, srd: readonly Srd[]) => {
+  const parent = srd.find(s => s.id === custom?.parentRef);
+  return parent ? ` · from ${parent.name}` : '';
+};
+
+function controlsFor<T extends Srd>(
+  kind: CustomKind,
+  record: WithCustom<T>,
+  srd: readonly Srd[],
+  shelf: ShelfProps,
+): EntryControls {
+  return {
+    custom: record.custom,
+    onClone: () => {
+      const definition = cloneDefinition(kind, record as unknown as Definition);
+      shelf.onEditor({
+        kind,
+        name: `${record.name} (copy)`,
+        definition,
+        parent: { id: record.id, name: record.name, definition },
+      });
+    },
+    onEdit: () => {
+      const { custom } = record;
+      if (custom) {
+        shelf.onEditor({
+          kind,
+          name: custom.name,
+          definition: custom.definition,
+          parent: parentOf(kind, custom, srd),
+          entry: custom,
+        });
+      }
+    },
+    onDeleted: () => shelf.onSelect(null),
+  };
+}
+
+function TemplateButton({ kind, onEditor }: { kind: CustomKind; onEditor: ShelfProps['onEditor'] }) {
+  return (
+    <Button
+      variant="ghost"
+      className={iconClasses.host}
+      onClick={() => onEditor({ kind, name: '', definition: customTemplate(kind), parent: null })}
+    >
+      <Plus {...ICON_PROPS} className={iconClasses.icon} />
+      {`New ${KIND_LABELS[kind]} from template`}
+    </Button>
+  );
+}
+
+/** Under a custom entry: how it differs from its parent, and how it compares with the SRD. */
+function WithPanels({
+  kind,
+  custom,
+  srd,
+  children,
+}: {
+  kind: CustomKind;
+  custom?: CustomEntry;
+  srd: readonly Srd[];
+  children: ReactNode;
+}) {
+  if (!custom) return <>{children}</>;
+  const parent = parentOf(kind, custom, srd);
+  return (
+    <>
+      {children}
+      {parent && (
+        <ComparePanel
+          kind={kind}
+          parentName={parent.name}
+          parent={parent.definition}
+          variantName={custom.name}
+          variant={custom.definition}
+        />
+      )}
+      <BalancePanel kind={kind} definition={custom.definition} />
+    </>
+  );
 }
 
 function spellMeta(s: SrdSpell, classes: readonly TierClass[]) {
@@ -43,39 +196,55 @@ function spellMeta(s: SrdSpell, classes: readonly TierClass[]) {
   return `${s.level === 0 ? 'Cantrip' : `L${s.level}`} · ${tier === 'unknown' ? 'tier unknown' : `tier ${tier}`}`;
 }
 
-function SpellShelf({ filters, onFilters, ...selection }: ShelfProps) {
+/** What every shelf hands to LibraryShelf unchanged. */
+const shared = ({ filters, onFilters, selectedId, onSelect }: ShelfProps) => ({
+  filters,
+  onFilters,
+  selectedId,
+  onSelect,
+});
+
+function SpellShelf(shelf: ShelfProps) {
+  const { filters, onFilters, customs } = shelf;
   const id = useId();
   const spells = useSrdSpells();
   const classes = useSrdClasses();
-  const allSpells = spells.data;
+  const srd = spells.data;
   const allClasses = classes.data ?? NO_CLASSES;
-  const entries = useMemo(() => filterSpells(allSpells ?? [], allClasses, filters), [allSpells, allClasses, filters]);
-  const classNames = useMemo(() => [...new Set(allSpells?.flatMap(s => s.classes))].sort(), [allSpells]);
+  const all = useMemo(() => mergeShelf(srd, customs, ['spell']), [srd, customs]);
+  const entries = useMemo(() => filterSpells(all, allClasses, filters), [all, allClasses, filters]);
+  const classNames = useMemo(() => [...new Set(srd?.flatMap(s => s.classes))].sort(), [srd]);
 
   useEffect(() => {
-    if (!allSpells || !classes.data) return;
-    const gaps = allSpells.flatMap(s => spellTierGap(s, classes.data) ?? []);
+    if (!srd || !classes.data) return;
+    const gaps = srd.flatMap(s => spellTierGap(s, classes.data) ?? []);
     if (gaps.length > 0) console.warn(`Tier of play unknown for ${gaps.length} spells: ${gaps.join('; ')}`);
-  }, [allSpells, classes.data]);
+  }, [srd, classes.data]);
 
   const toggleTier = (tier: TierOfPlay, on: boolean) =>
     onFilters({ ...filters, tiers: on ? [...filters.tiers, tier] : filters.tiers.filter(t => t !== tier) });
+  const list = srd ?? [];
 
   return (
     <LibraryShelf
+      {...shared(shelf)}
       what="spells"
-      pending={spells.isPending || classes.isPending}
-      error={spells.error ?? classes.error}
+      pending={spells.isPending || classes.isPending || shelf.customsPending}
+      error={spells.error ?? classes.error ?? shelf.customsError}
       onRetry={() => {
         void spells.refetch();
         void classes.refetch();
+        shelf.onRetryCustoms();
       }}
-      total={allSpells?.length ?? 0}
+      total={all.length}
       entries={entries}
-      meta={s => spellMeta(s, allClasses)}
-      filters={filters}
-      onFilters={onFilters}
-      detail={s => <SpellDetail spell={s} classes={allClasses} />}
+      meta={s => `${spellMeta(s, allClasses)}${fromText(s.custom, list)}`}
+      templates={<TemplateButton kind="spell" onEditor={shelf.onEditor} />}
+      detail={s => (
+        <WithPanels kind="spell" custom={s.custom} srd={list}>
+          <SpellDetail spell={s} classes={allClasses} controls={controlsFor('spell', s, list, shelf)} />
+        </WithPanels>
+      )}
       extraFilters={
         <>
           <fieldset className={styles.filterGroup}>
@@ -109,17 +278,19 @@ function SpellShelf({ filters, onFilters, ...selection }: ShelfProps) {
           </div>
         </>
       }
-      {...selection}
     />
   );
 }
 
-function MonsterShelf({ campaignId, filters, onFilters, ...selection }: ShelfProps & { campaignId: string }) {
+function MonsterShelf(shelf: ShelfProps) {
+  const { campaignId, filters, onFilters, customs } = shelf;
   const id = useId();
   const monsters = useSrdMonsters();
-  const all = monsters.data;
-  const entries = useMemo(() => filterMonsters(all ?? [], filters), [all, filters]);
-  const ratings = useMemo(() => challengeRatings(all ?? []), [all]);
+  const srd = monsters.data;
+  const list: SrdMonster[] = srd ?? [];
+  const all = useMemo(() => mergeShelf(srd, customs, ['monster']), [srd, customs]);
+  const entries = useMemo(() => filterMonsters(all, filters), [all, filters]);
+  const ratings = useMemo(() => challengeRatings(all), [all]);
   const crPicker = (key: 'crMin' | 'crMax', label: string, anyLabel: string) => (
     <div className={styles.filterField}>
       <label htmlFor={`${id}-${key}`}>{label}</label>
@@ -140,23 +311,29 @@ function MonsterShelf({ campaignId, filters, onFilters, ...selection }: ShelfPro
   );
   return (
     <LibraryShelf
+      {...shared(shelf)}
       what="monsters"
-      pending={monsters.isPending}
-      error={monsters.error}
-      onRetry={() => void monsters.refetch()}
-      total={all?.length ?? 0}
+      pending={monsters.isPending || shelf.customsPending}
+      error={monsters.error ?? shelf.customsError}
+      onRetry={() => {
+        void monsters.refetch();
+        shelf.onRetryCustoms();
+      }}
+      total={all.length}
       entries={entries}
-      meta={m => `CR ${m.challengeRating}`}
-      filters={filters}
-      onFilters={onFilters}
-      detail={m => <MonsterDetail campaignId={campaignId} monster={m} />}
+      meta={m => `CR ${m.challengeRating}${fromText(m.custom, list)}`}
+      templates={<TemplateButton kind="monster" onEditor={shelf.onEditor} />}
+      detail={m => (
+        <WithPanels kind="monster" custom={m.custom} srd={list}>
+          <MonsterDetail campaignId={campaignId} monster={m} controls={controlsFor('monster', m, list, shelf)} />
+        </WithPanels>
+      )}
       extraFilters={
         <div className={styles.crRange}>
           {crPicker('crMin', 'Lowest challenge', 'Any')}
           {crPicker('crMax', 'Highest challenge', 'Any')}
         </div>
       }
-      {...selection}
     />
   );
 }
@@ -187,21 +364,31 @@ function CategoryFilter({
   );
 }
 
-function WeaponShelf({ filters, onFilters, ...selection }: ShelfProps) {
+function WeaponShelf(shelf: ShelfProps) {
+  const { filters, onFilters, customs } = shelf;
   const weapons = useSrdWeapons();
-  const entries = useMemo(() => filterEquipment(weapons.data ?? [], filters), [weapons.data, filters]);
+  const list: SrdWeapon[] = weapons.data ?? [];
+  const all = useMemo(() => mergeShelf(weapons.data, customs, ['weapon']), [weapons.data, customs]);
+  const entries = useMemo(() => filterEquipment(all, filters), [all, filters]);
   return (
     <LibraryShelf
+      {...shared(shelf)}
       what="weapons"
-      pending={weapons.isPending}
-      error={weapons.error}
-      onRetry={() => void weapons.refetch()}
-      total={weapons.data?.length ?? 0}
+      pending={weapons.isPending || shelf.customsPending}
+      error={weapons.error ?? shelf.customsError}
+      onRetry={() => {
+        void weapons.refetch();
+        shelf.onRetryCustoms();
+      }}
+      total={all.length}
       entries={entries}
-      meta={w => `${w.category} ${w.kind}`}
-      filters={filters}
-      onFilters={onFilters}
-      detail={w => <WeaponDetail weapon={w} />}
+      meta={w => `${w.category} ${w.kind}${fromText(w.custom, list)}`}
+      templates={<TemplateButton kind="weapon" onEditor={shelf.onEditor} />}
+      detail={w => (
+        <WithPanels kind="weapon" custom={w.custom} srd={list}>
+          <WeaponDetail weapon={w} controls={controlsFor('weapon', w, list, shelf)} />
+        </WithPanels>
+      )}
       extraFilters={
         <CategoryFilter
           filters={filters}
@@ -212,27 +399,51 @@ function WeaponShelf({ filters, onFilters, ...selection }: ShelfProps) {
           ]}
         />
       }
-      {...selection}
     />
   );
 }
 
-/** Items hold armour and shields for now; the SRD's other gear and magic items come later. */
-function ItemShelf({ filters, onFilters, ...selection }: ShelfProps) {
+/** Items hold armour and shields, and the DM's own items; the SRD's other gear and magic items come later. */
+function ItemShelf(shelf: ShelfProps) {
+  const { filters, onFilters, customs } = shelf;
   const armor = useSrdArmor();
-  const entries = useMemo(() => filterEquipment(armor.data ?? [], filters), [armor.data, filters]);
+  const list: SrdArmor[] = armor.data ?? [];
+  const all = useMemo(() => mergeShelf(armor.data, customs, ['armor', 'item']), [armor.data, customs]);
+  const entries = useMemo(() => filterEquipment(all, filters), [all, filters]);
+  const metaOf = (a: WithCustom<SrdArmor>) => {
+    if (a.custom?.kind === 'item') return String(a.custom.definition.itemKind);
+    return `${a.category === 'shield' ? 'shield' : `${a.category} armour`}${fromText(a.custom, list)}`;
+  };
   return (
     <LibraryShelf
+      {...shared(shelf)}
       what="items"
-      pending={armor.isPending}
-      error={armor.error}
-      onRetry={() => void armor.refetch()}
-      total={armor.data?.length ?? 0}
+      pending={armor.isPending || shelf.customsPending}
+      error={armor.error ?? shelf.customsError}
+      onRetry={() => {
+        void armor.refetch();
+        shelf.onRetryCustoms();
+      }}
+      total={all.length}
       entries={entries}
-      meta={a => (a.category === 'shield' ? 'shield' : `${a.category} armour`)}
-      filters={filters}
-      onFilters={onFilters}
-      detail={a => <ArmorDetail armor={a} />}
+      meta={metaOf}
+      templates={
+        <>
+          <TemplateButton kind="armor" onEditor={shelf.onEditor} />
+          <TemplateButton kind="item" onEditor={shelf.onEditor} />
+        </>
+      }
+      detail={a =>
+        a.custom?.kind === 'item' ? (
+          <WithPanels kind="item" custom={a.custom} srd={list}>
+            <CustomItemDetail custom={a.custom} controls={controlsFor('item', a, list, shelf)} />
+          </WithPanels>
+        ) : (
+          <WithPanels kind="armor" custom={a.custom} srd={list}>
+            <ArmorDetail armor={a} controls={controlsFor('armor', a, list, shelf)} />
+          </WithPanels>
+        )
+      }
       extraFilters={
         <CategoryFilter
           filters={filters}
@@ -245,12 +456,35 @@ function ItemShelf({ filters, onFilters, ...selection }: ShelfProps) {
           ]}
         />
       }
-      {...selection}
     />
   );
 }
 
 const startingFilters = () => Object.fromEntries(TABS.map(t => [t.id, NO_FILTERS])) as Record<TabId, LibraryFilters>;
+
+function Shelves({
+  campaignId,
+  tab,
+  shelf,
+}: {
+  campaignId: string;
+  tab: TabId;
+  shelf: Omit<ShelfProps, 'campaignId' | 'customs' | 'customsPending' | 'customsError' | 'onRetryCustoms'>;
+}) {
+  const customs = useCustomContent(campaignId);
+  const props: ShelfProps = {
+    ...shelf,
+    campaignId,
+    customs: customs.data ?? [],
+    customsPending: customs.isPending,
+    customsError: customs.error,
+    onRetryCustoms: () => void customs.refetch(),
+  };
+  if (tab === 'spells') return <SpellShelf {...props} />;
+  if (tab === 'monsters') return <MonsterShelf {...props} />;
+  if (tab === 'weapons') return <WeaponShelf {...props} />;
+  return <ItemShelf {...props} />;
+}
 
 export default function LibraryPage() {
   const { campaignId } = useParams();
@@ -260,6 +494,7 @@ export default function LibraryPage() {
   const [tab, setTab] = useState<TabId>('spells');
   const [filters, setFilters] = useState(startingFilters);
   const [selected, setSelected] = useState<Partial<Record<TabId, string>>>({});
+  const [editing, setEditing] = useState<EditorRequest | null>(null);
 
   if (!campaignId) return <Navigate to="/campaigns" replace />;
   if (roleLoading) {
@@ -272,14 +507,8 @@ export default function LibraryPage() {
   // players never see the library, and a DM previewing the player view sees what a player sees
   if (!dmMode) return <Navigate to={`/campaigns/${campaignId}`} replace />;
 
-  const reading = !!selected[tab];
+  const reading = !!selected[tab] && !editing;
   const headerClass = reading ? styles.phoneHidden : undefined;
-  const shelf: ShelfProps = {
-    filters: filters[tab],
-    onFilters: next => setFilters(all => ({ ...all, [tab]: next })),
-    selectedId: selected[tab] ?? null,
-    onSelect: id => setSelected(all => ({ ...all, [tab]: id ?? undefined })),
-  };
   const tabLabel = TABS.find(t => t.id === tab)?.label ?? '';
 
   return (
@@ -298,13 +527,42 @@ export default function LibraryPage() {
         <Band items={[campaign.data?.name, 'SRD 5.2.1', 'DM mode']} />
       </Cell>
       <Cell className={headerClass}>
-        <RibbonTabs aria-label="Library shelves" tabs={[...TABS]} value={tab} onChange={id => setTab(id as TabId)} />
+        <RibbonTabs
+          aria-label="Library shelves"
+          tabs={[...TABS]}
+          value={tab}
+          onChange={id => {
+            setEditing(null);
+            setTab(id as TabId);
+          }}
+        />
       </Cell>
       <Cell role="tabpanel" aria-label={tabLabel} className={styles.shelves}>
-        {tab === 'spells' && <SpellShelf {...shelf} />}
-        {tab === 'monsters' && <MonsterShelf campaignId={campaignId} {...shelf} />}
-        {tab === 'weapons' && <WeaponShelf {...shelf} />}
-        {tab === 'items' && <ItemShelf {...shelf} />}
+        {editing ? (
+          <CustomEditor
+            key={editing.entry?.id ?? editing.parent?.id ?? editing.kind}
+            campaignId={campaignId}
+            request={editing}
+            onClose={() => setEditing(null)}
+            onSaved={entry => {
+              setSelected(all => ({ ...all, [TAB_OF_KIND[entry.kind]]: entry.id }));
+              setEditing(null);
+            }}
+          />
+        ) : (
+          <Shelves
+            key={tab}
+            campaignId={campaignId}
+            tab={tab}
+            shelf={{
+              filters: filters[tab],
+              onFilters: next => setFilters(all => ({ ...all, [tab]: next })),
+              selectedId: selected[tab] ?? null,
+              onSelect: id => setSelected(all => ({ ...all, [tab]: id ?? undefined })),
+              onEditor: setEditing,
+            }}
+          />
+        )}
       </Cell>
     </PageGrid>
   );

@@ -561,6 +561,19 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
 - Place in a region opens the region entry form with the monster filled in, as `srd:<id>` in its monster reference.
 - `0022_move_group_order.sql` makes a group's move list its finds in the DM's order; it was unordered before.
 
+## Custom content (P3-6)
+
+- `0023_custom_content.sql` adds `custom_content`, DMs only. Deleting goes through `delete_custom_content`, which refuses
+  an entry still used by a region (`region_content.monster_ref`) or an item (`items.srd_ref`), both as `custom:<id>`.
+- The rules are in the engine (`customContent.ts`): the effect vocabulary, `validateCustomDefinition`,
+  `diffDefinitions`, `balanceReport`, `customToItem`. An effect outside the vocabulary saves, labelled text only. A wrong
+  or unknown field is an error, so core rules such as what a weapon category means cannot be changed.
+- The balance guide only ever warns. It compares with SRD data in the app: `generated/crBenchmarks.json` for monsters,
+  the SRD spells of the same level, and the SRD weapons of the same category.
+- In the library, Clone and modify opens the form for that kind, described as data in
+  `pages/library/editor/customForms.ts`. Monster attack numbers feed the balance guide, but do not rewrite the action
+  text.
+
 ## End-to-end test (P2-12)
 
 `e2e/` is a Playwright test of the whole of Phase 2 with three browser contexts, a DM and two players, against

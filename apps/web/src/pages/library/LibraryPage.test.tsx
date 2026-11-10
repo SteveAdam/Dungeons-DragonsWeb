@@ -4,15 +4,41 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as custom from '../../data/customContent';
+import type { CustomEntry } from '../../data/customContent';
 import * as srd from '../../data/srd';
 import { useDmMode } from '../../hooks/useDmMode';
 import { axeViolations } from '../../test/axe';
 import LibraryPage from './LibraryPage';
 
 vi.mock('../../data/srd');
+vi.mock('../../data/customContent', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/customContent')>()),
+  listCustomContent: vi.fn(),
+  saveCustomContent: vi.fn(),
+  deleteCustomContent: vi.fn(),
+}));
+vi.mock('../../hooks/useCharacters', () => ({
+  useCharacters: () => ({ isPending: false, data: [{ id: 'ch1', name: 'Brannoc' }] }),
+}));
+vi.mock('../../hooks/useParty', () => ({ useParty: () => ({ isPending: false, data: { id: 'p1' } }) }));
+const createItem = vi.fn();
+vi.mock('../../hooks/useItems', () => ({
+  useCreateItem: () => ({ mutate: createItem, isPending: false, isError: false }),
+  usePartyRoster: () => ({
+    data: [
+      {
+        id: 'ch1',
+        name: 'Brannoc',
+        baseScores: { str: 16, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+        effects: [],
+      },
+    ],
+  }),
+}));
 vi.mock('../../hooks/useDmMode');
 vi.mock('../../hooks/useCampaigns', () => ({
-  useCampaign: () => ({ data: { name: 'The Sunken Crown', daylight: null } }),
+  useCampaign: () => ({ data: { name: 'The Sunken Crown', daylight: null, gameSeconds: 0 } }),
 }));
 vi.mock('../../hooks/useRegions', () => ({
   useCampaignRegions: () => ({
@@ -61,6 +87,8 @@ const entryList = { traits: [], actions: [], bonusActions: [], reactions: [], le
 const wolf = {
   ...entryList,
   id: 'wolf',
+  category: 'animal',
+  speeds: { walk: 40 },
   name: 'Wolf',
   size: ['Medium'],
   creatureType: 'Beast',
@@ -87,6 +115,7 @@ const wolf = {
   proficiencyBonus: 2,
   traits: [{ name: 'Pack Tactics', description: 'The wolf has Advantage.' }],
   actions: [{ name: 'Bite', description: 'Melee Attack Roll: +4.' }],
+  attacks: [{ name: 'Bite', attackBonus: 4, damage: [{ average: 5, dice: '1d6 + 2', type: 'piercing' }] }],
 } as unknown as SrdMonster;
 const ogre = { ...wolf, id: 'ogre', name: 'Ogre', challengeRating: '2', challengeValue: 2 } as SrdMonster;
 const longsword = {
@@ -143,6 +172,7 @@ beforeEach(() => {
   vi.mocked(srd.listSrdMonsters).mockResolvedValue([wolf, ogre]);
   vi.mocked(srd.listSrdWeapons).mockResolvedValue([longsword]);
   vi.mocked(srd.listSrdArmor).mockResolvedValue([shield]);
+  vi.mocked(custom.listCustomContent).mockResolvedValue([]);
 });
 
 describe('who may enter', () => {
@@ -230,7 +260,8 @@ describe('the spells shelf', () => {
     const user = userEvent.setup();
     renderPage();
     await user.click(await within(list('spells')).findByRole('button', { name: /Bless/ }));
-    for (const name of ['Clone and modify', 'Add to a character', 'Use as a path goal']) {
+    expect(screen.getByRole('button', { name: 'Clone and modify' })).toBeEnabled();
+    for (const name of ['Add to a character', 'Use as a path goal']) {
       expect(screen.getByRole('button', { name })).toBeDisabled();
     }
   });
@@ -302,5 +333,205 @@ describe('reading an entry', () => {
     await user.click(screen.getByRole('button', { name: 'Back to the list' }));
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
     expect(screen.getByText('Choose an entry to read it here.')).toBeInTheDocument();
+  });
+});
+
+const WOLF_DEFINITION = (() => {
+  const { id: _id, name: _name, ...rest } = wolf as unknown as Record<string, unknown>;
+  void _id;
+  void _name;
+  return rest;
+})();
+const thornwolf: CustomEntry = {
+  id: 'c-thorn',
+  campaignId: 'c1',
+  kind: 'monster',
+  name: 'Thornwolf',
+  parentRef: 'wolf',
+  definition: { ...WOLF_DEFINITION, hitPoints: 22 },
+  textOnly: false,
+};
+const drowned: CustomEntry = {
+  id: 'c-drowned',
+  campaignId: 'c1',
+  kind: 'weapon',
+  name: 'Greatsword of the Drowned',
+  parentRef: null,
+  definition: {
+    category: 'martial',
+    kind: 'melee',
+    damage: { dice: '2d6', type: 'slashing' },
+    properties: [],
+    mastery: 'graze',
+    weightLb: 6,
+    cost: { amount: 50, coin: 'gp' },
+    propertiesText: '',
+    itemRules: {
+      requirements: [{ stat: 'str', min: 17, onUnmet: 'lock' }],
+      effects: [],
+      grantedText: '',
+      canBeGiven: true,
+      bound: false,
+    },
+  },
+  textOnly: false,
+};
+
+describe('clone and modify', () => {
+  it('clones the Wolf, highlights the changes, and saves with its parent', async () => {
+    const user = userEvent.setup();
+    vi.mocked(custom.saveCustomContent).mockResolvedValue(thornwolf);
+    const { container } = renderPage();
+    await openTab('Monsters');
+    await user.click(await within(list('monsters')).findByRole('button', { name: /Wolf/ }));
+    await user.click(screen.getByRole('button', { name: 'Clone and modify' }));
+
+    const form = screen.getByRole('form', { name: 'Clone Wolf' });
+    await user.clear(within(form).getByLabelText('Name'));
+    await user.type(within(form).getByLabelText('Name'), 'Thornwolf');
+    await user.clear(within(form).getByLabelText('Hit points'));
+    await user.type(within(form).getByLabelText('Hit points'), '22');
+    await user.click(within(form).getByRole('button', { name: 'Add trait' }));
+    await user.type(within(form).getByLabelText('Traits 2: Name'), 'Thorn Hide');
+    await user.type(within(form).getByLabelText('Traits 2: Text'), 'Hurts to touch.');
+
+    const compare = screen.getByRole('region', { name: 'Compare with the baseline' });
+    const hp = within(compare)
+      .getByRole('rowheader', { name: /Hit points/ })
+      .closest('tr') as HTMLElement;
+    expect(hp).toHaveAttribute('data-changed');
+    expect(within(hp).getByText('11')).toBeInTheDocument();
+    expect(within(hp).getByText('22')).toBeInTheDocument();
+    const trait = within(compare)
+      .getByRole('rowheader', { name: /Traits: Thorn Hide/ })
+      .closest('tr');
+    expect(trait).toHaveAttribute('data-changed');
+    const ac = within(compare).getByRole('rowheader', { name: 'Armour class' }).closest('tr');
+    expect(ac).not.toHaveAttribute('data-changed');
+    expect(screen.getByRole('region', { name: 'Balance guide' })).toHaveTextContent('rule of thumb');
+    expect(await axeViolations(container)).toEqual([]);
+
+    await user.click(within(form).getByRole('button', { name: 'Save monster' }));
+    expect(custom.saveCustomContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        campaignId: 'c1',
+        kind: 'monster',
+        name: 'Thornwolf',
+        parentRef: 'wolf',
+        definition: expect.objectContaining({ hitPoints: 22 }),
+      }),
+    );
+  });
+
+  it('starts a new entry from a template, with nothing to compare', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await within(list('spells')).findByText('Bless');
+    await user.click(screen.getByRole('button', { name: 'New spell from template' }));
+    expect(screen.getByRole('form', { name: 'New spell from template' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Compare with the baseline' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Balance guide' })).toBeInTheDocument();
+  });
+
+  it('labels an unsupported effect text only, and still saves', async () => {
+    const user = userEvent.setup();
+    vi.mocked(custom.saveCustomContent).mockResolvedValue(thornwolf);
+    renderPage();
+    await within(list('spells')).findByText('Bless');
+    await user.click(screen.getByRole('button', { name: 'New spell from template' }));
+    const form = screen.getByRole('form', { name: 'New spell from template' });
+    await user.type(within(form).getByLabelText('Name'), 'Odd Magic');
+    await user.click(within(form).getByRole('button', { name: 'Add effect' }));
+    await user.selectOptions(within(form).getByLabelText('Effect 1'), 'text');
+    await user.type(within(form).getByLabelText('Effect 1: What it does'), 'Bends time');
+    expect(within(form).getByText('TEXT ONLY')).toBeInTheDocument();
+    await user.click(within(form).getByRole('button', { name: 'Save spell' }));
+    expect(custom.saveCustomContent).toHaveBeenCalled();
+  });
+
+  it('stops a save only for a wrong shape, and says why', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await within(list('spells')).findByText('Bless');
+    await user.click(screen.getByRole('button', { name: 'New spell from template' }));
+    const form = screen.getByRole('form', { name: 'New spell from template' });
+    await user.clear(within(form).getByLabelText('Level (0 is a cantrip)'));
+    await user.click(within(form).getByRole('button', { name: 'Save spell' }));
+    expect(within(form).getByRole('alert')).toHaveTextContent('A spell level is 0');
+    expect(custom.saveCustomContent).not.toHaveBeenCalled();
+  });
+});
+
+describe('campaign entries on the shelves', () => {
+  it('shows a campaign tag and its parent, and compares it with the baseline', async () => {
+    const user = userEvent.setup();
+    vi.mocked(custom.listCustomContent).mockResolvedValue([thornwolf]);
+    renderPage();
+    await openTab('Monsters');
+    const row = await within(list('monsters')).findByRole('button', { name: /Thornwolf/ });
+    expect(row).toHaveTextContent('CAMPAIGN');
+    expect(row).toHaveTextContent('from Wolf');
+    await user.click(row);
+    expect(screen.getByRole('article', { name: 'Thornwolf stat block' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Compare with the baseline' })).toHaveTextContent('Hit points');
+  });
+
+  it('finds them through the Campaign source alone', async () => {
+    const user = userEvent.setup();
+    vi.mocked(custom.listCustomContent).mockResolvedValue([thornwolf]);
+    renderPage();
+    await openTab('Monsters');
+    await within(list('monsters')).findByText('Thornwolf');
+    await user.click(screen.getByRole('checkbox', { name: 'SRD' }));
+    expect(within(list('monsters')).queryByText('Ogre')).not.toBeInTheDocument();
+    expect(within(list('monsters')).getByText('Thornwolf')).toBeInTheDocument();
+  });
+
+  it('places a custom monster by its custom reference', async () => {
+    const user = userEvent.setup();
+    vi.mocked(custom.listCustomContent).mockResolvedValue([thornwolf]);
+    renderPage();
+    await openTab('Monsters');
+    await user.click(await within(list('monsters')).findByRole('button', { name: /Thornwolf/ }));
+    await user.click(screen.getByRole('button', { name: 'Place in a region' }));
+    expect(screen.getByText('Entry form: creature Thornwolf custom:c-thorn in r1')).toBeInTheDocument();
+  });
+
+  it('reports why an entry in use cannot be deleted, after asking', async () => {
+    const user = userEvent.setup();
+    const { DataError } = await import('../../data/errors');
+    vi.mocked(custom.listCustomContent).mockResolvedValue([thornwolf]);
+    vi.mocked(custom.deleteCustomContent).mockRejectedValue(
+      new DataError('validation', 'This entry is placed in a region. Remove it from the region first.'),
+    );
+    renderPage();
+    await openTab('Monsters');
+    await user.click(await within(list('monsters')).findByRole('button', { name: /Thornwolf/ }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(custom.deleteCustomContent).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Yes, delete it' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('placed in a region');
+  });
+
+  it('makes a custom weapon into an item carrying its requirement, and shows who can use it', async () => {
+    const user = userEvent.setup();
+    vi.mocked(custom.listCustomContent).mockResolvedValue([drowned]);
+    renderPage();
+    await openTab('Weapons');
+    await user.click(await within(list('weapons')).findByRole('button', { name: /Drowned/ }));
+    expect(screen.getByRole('region', { name: 'Who can use it' })).toHaveTextContent('Brannoc (Strength 16): Locked');
+    await user.click(screen.getByRole('button', { name: 'Make into an item' }));
+    await user.click(screen.getByRole('button', { name: 'Make the item' }));
+    expect(createItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Greatsword of the Drowned',
+        kind: 'weapon',
+        ownerType: 'character',
+        ownerId: 'ch1',
+        srdRef: 'custom:c-drowned',
+        definition: expect.objectContaining({ requirements: [{ stat: 'str', min: 17, onUnmet: 'lock' }] }),
+      }),
+      expect.anything(),
+    );
   });
 });
