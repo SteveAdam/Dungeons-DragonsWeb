@@ -574,6 +574,17 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
   `pages/library/editor/customForms.ts`. Monster attack numbers feed the balance guide, but do not rewrite the action
   text.
 
+## Calendar (P3-7)
+
+- Everything dated stores an absolute day: `floor(game_seconds / 86400) + 1`. A calendar only says how a day is written
+  (`calendar.ts` in the rules engine). Without one, days show as "Day N".
+- `0024_calendar.sql` adds `calendars` (members read, DMs write), `world_events` (hidden ones are DM only),
+  `pages.ingame_day`, and `set_game_date`. The old `pages.ingame_date` text is read-only.
+- `set_game_date` has no 365-day limit, unlike `advance_clock`. Moving the clock back needs `p_confirm_rewind`, and is
+  written to `game_clock_events` as a rewind.
+- The hub's Calendar tab holds the month, the timeline, and for DMs the date controls, world events and calendar
+  settings. The Notes tab is a plain list of notes and session logs, enough to date them.
+
 ## End-to-end test (P2-12)
 
 `e2e/` is a Playwright test of the whole of Phase 2 with three browser contexts, a DM and two players, against

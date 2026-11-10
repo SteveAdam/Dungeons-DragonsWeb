@@ -6,6 +6,7 @@ export function rulesEngineInfo(): { name: string; editions: readonly ['2014', '
   return { name: '@dnd-manager/rules-engine', editions: ['2014', '2024'] };
 }
 
+export * from './calendar';
 export * from './conditions';
 export * from './core';
 export * from './creation';

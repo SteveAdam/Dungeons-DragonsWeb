@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T80) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T81) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(595);
+select plan(627);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1530,6 +1530,51 @@ reset role;
 delete from region_content where id = tests.u('rc:thornwolf');
 select tests.act_as('dm');
 select lives_ok($$ select delete_custom_content(tests.u('cc:thornwolf')) $$, 'T80: once out of the region it can go too');
+reset role;
+
+-- T81: the calendar, world events and setting the date (P3-7)
+select tests.act_as('dm');
+select lives_ok($$ insert into calendars (campaign_id, definition) values (tests.u('campaign'), '{"name":"Harptos"}') $$, 'T81: a DM saves a calendar');
+select lives_ok($$ insert into world_events (id, campaign_id, day, title, visible_to_players) values (tests.u('we:open'), tests.u('campaign'), 5, 'The Festival', true) $$, 'T81: a DM adds a visible event');
+select lives_ok($$ insert into world_events (id, campaign_id, day, title) values (tests.u('we:secret'), tests.u('campaign'), 6, 'SECRET-COUP') $$, 'T81: and a hidden one');
+select is((select count(*)::int from world_events where campaign_id = tests.u('campaign')), 2, 'T81: the DM reads both');
+select throws_ok($$ insert into calendars (campaign_id, definition) values (tests.u('campaign'), '{}') $$, '23505', null, 'T81: one calendar per campaign');
+select throws_ok($$ update calendars set definition = '[]' where campaign_id = tests.u('campaign') $$, '23514', null, 'T81: a calendar is an object');
+select throws_ok($$ insert into world_events (campaign_id, day, title) values (tests.u('campaign'), 0, 'Too early') $$, '23514', null, 'T81: days start at 1');
+select lives_ok($$ update pages set ingame_day = 40 where id = tests.u('page:visible') $$, 'T81: a DM dates a page');
+select is((select ingame_day from pages where id = tests.u('page:visible')), 40, 'T81: and the day holds');
+select throws_ok($$ update pages set ingame_day = 0 where id = tests.u('page:visible') $$, '23514', null, 'T81: a page day starts at 1');
+select throws_ok($$ update pages set ingame_date = 'Tuesday' where id = tests.u('page:visible') $$, '22023', null, 'T81: the old date text is read-only');
+reset role;
+
+select tests.act_as('player');
+select is((select definition ->> 'name' from calendars where campaign_id = tests.u('campaign')), 'Harptos', 'T81: a player reads the calendar');
+select is((select string_agg(title, ',') from world_events where campaign_id = tests.u('campaign')), 'The Festival', 'T81: and only visible events');
+select is_empty($$ update calendars set definition = '{"name":"Mine"}' where campaign_id = tests.u('campaign') returning campaign_id $$, 'T81: a player cannot change the calendar');
+select is_empty($$ delete from calendars where campaign_id = tests.u('campaign') returning campaign_id $$, 'T81: nor remove it');
+select throws_ok($$ insert into world_events (campaign_id, day, title, visible_to_players) values (tests.u('campaign'), 1, 'Mine', true) $$, '42501', null, 'T81: nor add an event');
+select is_empty($$ update world_events set title = 'Mine' where id = tests.u('we:open') returning id $$, 'T81: nor change one');
+select is_empty($$ update pages set ingame_day = 2 where id = tests.u('page:visible') returning id $$, 'T81: nor date a page');
+select throws_ok($$ select set_game_date(tests.u('campaign'), 1000, 0, 'Mine') $$, '42501', null, 'T81: nor set the date');
+select is_empty($$ update campaigns set game_seconds = 0 where id = tests.u('campaign') returning id $$, 'T81: nor touch the clock directly');
+reset role;
+
+select tests.act_as_anon();
+select throws_ok($$ select * from world_events $$, '42501', null, 'T81: a signed-out visitor reads no events');
+select throws_ok($$ select * from calendars $$, '42501', null, 'T81: nor the calendar');
+reset role;
+
+select tests.act_as('dm');
+select is((select set_game_date(tests.u('campaign'), 1000, 3600, 'Far ahead')), 999*86400::bigint + 3600, 'T81: a DM sets the date ahead');
+select is((select game_seconds from campaigns where id = tests.u('campaign')), 999*86400::bigint + 3600, 'T81: the clock moved');
+select is((select reason from game_clock_events where campaign_id = tests.u('campaign') and to_seconds = 999*86400::bigint + 3600), 'Far ahead', 'T81: the move is logged');
+select throws_ok($$ select set_game_date(tests.u('campaign'), 10, 0, 'Back') $$, 'PT409', null, 'T81: going back needs confirming');
+select is((select game_seconds from campaigns where id = tests.u('campaign')), 999*86400::bigint + 3600, 'T81: and without it nothing moves');
+select is((select set_game_date(tests.u('campaign'), 10, 0, 'Oops', true)), 9*86400::bigint, 'T81: a confirmed rewind moves back');
+select is((select reason from game_clock_events where campaign_id = tests.u('campaign') and to_seconds = 9*86400::bigint and from_seconds > to_seconds), 'Rewind: Oops', 'T81: and is logged as a rewind');
+select throws_ok($$ select set_game_date(tests.u('campaign'), 0, 0, 'x') $$, '22023', null, 'T81: day 0 does not exist');
+select throws_ok($$ select set_game_date(tests.u('campaign'), 20, 86400, 'x') $$, '22023', null, 'T81: nor a time past the end of the day');
+select is((select set_game_date(tests.u('campaign'), 10, 0, 'Same')), 9*86400::bigint, 'T81: the same moment is no move');
 reset role;
 
 select * from finish();

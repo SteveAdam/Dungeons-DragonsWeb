@@ -31,6 +31,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"calendars": {
+                  Row: {
+                    "campaign_id": string,"definition": NonNullable<Json>,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"definition": NonNullable<Json>,"updated_at"?: string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"definition"?: NonNullable<Json>,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "calendars_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: true
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"campaign_secrets": {
                   Row: {
                     "campaign_id": string,"invite_code": string
@@ -623,14 +643,14 @@ isOneToOne: false
                   ]
                 },"pages": {
                   Row: {
-                    "body": string,"campaign_id": string,"created_at": string,"entity_id": string | null,"folder_id": string | null,"id": string,"ingame_date": string | null,"kind": string,"real_date": string | null,"session_no": number | null,"tags": (string)[],"title": string,"updated_at": string,"visible_to_players": boolean
+                    "body": string,"campaign_id": string,"created_at": string,"entity_id": string | null,"folder_id": string | null,"id": string,"ingame_date": string | null,"ingame_day": number | null,"kind": string,"real_date": string | null,"session_no": number | null,"tags": (string)[],"title": string,"updated_at": string,"visible_to_players": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "body"?: string,"campaign_id": string,"created_at"?: string,"entity_id"?: string | null,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title": string,"updated_at"?: string,"visible_to_players"?: boolean
+                    "body"?: string,"campaign_id": string,"created_at"?: string,"entity_id"?: string | null,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"ingame_day"?: number | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title": string,"updated_at"?: string,"visible_to_players"?: boolean
                   }
                   Update: {
-                    "body"?: string,"campaign_id"?: string,"created_at"?: string,"entity_id"?: string | null,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title"?: string,"updated_at"?: string,"visible_to_players"?: boolean
+                    "body"?: string,"campaign_id"?: string,"created_at"?: string,"entity_id"?: string | null,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"ingame_day"?: number | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title"?: string,"updated_at"?: string,"visible_to_players"?: boolean
                   }
                   Relationships: [
                     {
@@ -1122,6 +1142,32 @@ isOneToOne: false
       columns: ["campaign_id"]
 isOneToOne: false
       referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"world_events": {
+                  Row: {
+                    "campaign_id": string,"created_at": string,"day": number,"description": string,"entity_id": string | null,"id": string,"title": string,"visible_to_players": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"created_at"?: string,"day": number,"description"?: string,"entity_id"?: string | null,"id"?: string,"title": string,"visible_to_players"?: boolean
+                  }
+                  Update: {
+                    "campaign_id"?: string,"created_at"?: string,"day"?: number,"description"?: string,"entity_id"?: string | null,"id"?: string,"title"?: string,"visible_to_players"?: boolean
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "world_events_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "world_events_entity_id_fkey"
+      columns: ["entity_id"]
+isOneToOne: false
+      referencedRelation: "entities"
       referencedColumns: ["id"]
     }
                   ]
@@ -1759,6 +1805,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"set_game_date":
+{ Args: { "p_campaign": string,"p_confirm_rewind"?: boolean,"p_day": number,"p_reason"?: string,"p_seconds_into_day"?: number }; Returns: number
+                           },
 "set_item_worn":
 { Args: { "p_field": string,"p_item": string,"p_value": boolean }; Returns: {
               "attuned": boolean,

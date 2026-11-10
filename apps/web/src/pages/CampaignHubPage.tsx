@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   BookMarked,
+  CalendarDays,
   Feather,
   Library,
   Map as MapIcon,
@@ -23,9 +24,12 @@ import {
 } from '../hooks/useCampaigns';
 import { useDmMode } from '../hooks/useDmMode';
 import { useMembers } from '../hooks/useMembers';
-import { dayClock } from '../lib/gameClock';
+import { useCalendar } from '../hooks/useCalendar';
+import { calendarClock } from '../lib/gameClock';
 import { useShowDmIndicator } from '../state/dmIndicator';
 import styles from './CampaignHubPage.module.css';
+import { CalendarTab } from './hub/calendar/CalendarTab';
+import { NotesTab } from './hub/calendar/NotesTab';
 import { CharactersTab } from './hub/CharactersTab';
 import { CodexTab } from './hub/codex/CodexTab';
 import { ComingSoonTab } from './hub/ComingSoonTab';
@@ -40,6 +44,7 @@ const TABS = [
   { id: 'party', label: 'Party', icon: Tent },
   { id: 'entities', label: 'Codex', icon: BookMarked },
   { id: 'notes', label: 'Notes', icon: Feather },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'web', label: 'Web', icon: Waypoints },
   { id: 'people', label: 'People', icon: Users },
 ] as const;
@@ -52,6 +57,7 @@ export function CampaignHubPage() {
   const { campaignId, tab } = useParams();
   const navigate = useNavigate();
   const campaign = useCampaign(campaignId);
+  const calendar = useCalendar(campaignId);
   const members = useMembers(campaignId);
   const { isDm, dmMode, setDmMode } = useDmMode(campaignId);
   const invite = useInviteCode(campaignId, dmMode);
@@ -128,7 +134,7 @@ export function CampaignHubPage() {
             <ul className={styles.chips} aria-label="About this campaign">
               <li>{`D&D 5e · ${campaign.data.rulesEdition} rules`}</li>
               <li>{memberLabel}</li>
-              <li>{dayClock(campaign.data.gameSeconds)}</li>
+              <li>{calendarClock(campaign.data.gameSeconds, calendar.data)}</li>
             </ul>
           </Paper>
           <Dice style={{ left: '-0.5rem', bottom: '-1.2rem', transform: 'rotate(-14deg)' }} />
@@ -189,7 +195,7 @@ export function CampaignHubPage() {
           <Band
             items={[
               nextSession ? `Next session: ${nextSession}` : null,
-              `In the world it is ${dayClock(campaign.data.gameSeconds)}`,
+              `In the world it is ${calendarClock(campaign.data.gameSeconds, calendar.data)}`,
             ]}
           />
         </Cell>
@@ -207,7 +213,8 @@ export function CampaignHubPage() {
             {activeTab === 'party' && <PartyTab campaignId={campaignId} dmMode={dmMode} />}
             {activeTab === 'entities' && <CodexTab campaignId={campaignId} dmMode={dmMode} />}
             {activeTab === 'people' && <PeopleTab campaignId={campaignId} canManage={dmMode} />}
-            {activeTab === 'notes' && <ComingSoonTab name="Notes" />}
+            {activeTab === 'notes' && <NotesTab campaignId={campaignId} dmMode={dmMode} />}
+            {activeTab === 'calendar' && <CalendarTab campaignId={campaignId} dmMode={dmMode} />}
             {activeTab === 'web' && <ComingSoonTab name="Web" />}
           </Paper>
         </Cell>

@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T80) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T81) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -789,6 +789,80 @@ begin
   delete from custom_content where id = p_id;
 end $fn$;`,
     fails: ['T80'],
+  },
+  {
+    name: 'hidden world events readable by every member (P3-7)',
+    why: "players could read the DM's unannounced events",
+    sql: `create policy "members read every world event" on world_events for select to authenticated using (true);`,
+    fails: ['T81'],
+  },
+  {
+    name: 'calendar writable by every member (P3-7)',
+    why: 'a player could rewrite the calendar for the whole table',
+    sql: `create policy "members write the calendar" on calendars for update to authenticated using (true) with check (true);`,
+    fails: ['T81'],
+  },
+  {
+    name: 'clock rewinds without confirmation (P3-7)',
+    why: 'a mistyped date could silently undo time, and with it effect durations',
+    sql: `create or replace function public.set_game_date(
+  p_campaign uuid, p_day integer, p_seconds_into_day integer default 0, p_reason text default '',
+  p_confirm_rewind boolean default false
+) returns bigint
+language plpgsql security definer set search_path = public as $fn$
+declare
+  was bigint;
+  target bigint := (p_day::bigint - 1) * 86400 + p_seconds_into_day;
+begin
+  perform require_dm(p_campaign);
+  if p_day < 1 or p_seconds_into_day < 0 or p_seconds_into_day >= 86400 then
+    raise exception 'bad date' using errcode = '22023';
+  end if;
+  select game_seconds into was from campaigns where id = p_campaign for update;
+  if target = was then return was; end if;
+  perform set_config('app.clock_move', 'on', true);
+  update campaigns set game_seconds = target where id = p_campaign;
+  perform set_config('app.clock_move', '', true);
+  insert into game_clock_events (campaign_id, from_seconds, to_seconds, reason)
+  values (p_campaign, was, target, case when target < was then 'Rewind: ' || p_reason else p_reason end);
+  return target;
+end $fn$;`,
+    fails: ['T81'],
+  },
+  {
+    name: 'players can set the game date (P3-7)',
+    why: 'any player could move the clock and end effects',
+    sql: `create or replace function public.set_game_date(
+  p_campaign uuid, p_day integer, p_seconds_into_day integer default 0, p_reason text default '',
+  p_confirm_rewind boolean default false
+) returns bigint
+language plpgsql security definer set search_path = public as $fn$
+declare
+  was bigint;
+  target bigint := (p_day::bigint - 1) * 86400 + p_seconds_into_day;
+begin
+  if p_day < 1 or p_seconds_into_day < 0 or p_seconds_into_day >= 86400 then
+    raise exception 'bad date' using errcode = '22023';
+  end if;
+  select game_seconds into was from campaigns where id = p_campaign for update;
+  if target = was then return was; end if;
+  if target < was and not coalesce(p_confirm_rewind, false) then
+    raise exception 'past' using errcode = 'PT409';
+  end if;
+  perform set_config('app.clock_move', 'on', true);
+  update campaigns set game_seconds = target where id = p_campaign;
+  perform set_config('app.clock_move', '', true);
+  insert into game_clock_events (campaign_id, from_seconds, to_seconds, reason)
+  values (p_campaign, was, target, p_reason);
+  return target;
+end $fn$;`,
+    fails: ['T81'],
+  },
+  {
+    name: 'the old in-game date text can be rewritten (P3-7)',
+    why: 'the legacy text is meant to stay as it was until converted',
+    sql: `drop trigger pages_legacy_date_guard_trg on pages;`,
+    fails: ['T81'],
   },
   {
     name: 'discovery notices readable by every member (P3-3)',

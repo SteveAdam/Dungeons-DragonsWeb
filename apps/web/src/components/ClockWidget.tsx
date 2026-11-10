@@ -1,10 +1,12 @@
 // P2-8: the DM's game clock. Shows the time as "Day N, hh:mm" and moves it forward with advance_clock, which logs
 // each move. Every open screen hears the new time over realtime, so effect countdowns move together.
+import { absoluteDayFromSeconds, addMonths } from '@dnd-manager/rules-engine';
 import { Clock } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
 import { friendlyMessage } from '../data/errors';
 import { useAdvanceClock, useCampaign } from '../hooks/useCampaigns';
-import { dayClock } from '../lib/gameClock';
+import { useCalendar } from '../hooks/useCalendar';
+import { calendarClock, SECONDS_PER_DAY } from '../lib/gameClock';
 import styles from './ClockWidget.module.css';
 import { Button, ICON_PROPS, Input, Paper } from './ui';
 
@@ -14,8 +16,9 @@ const STEPS = [
   { label: '+8 hours', seconds: 8 * 3600, reason: '8 hours pass' },
   { label: '+1 day', seconds: 86400, reason: 'A day passes' },
 ] as const;
-const UNITS = { minutes: 60, hours: 3600, days: 86400 } as const;
-type Unit = keyof typeof UNITS;
+const UNITS = { minutes: 60, hours: 3600, days: 86400, weeks: 7 * 86400 } as const;
+type Unit = keyof typeof UNITS | 'months';
+const MAX_ADVANCE = 365 * SECONDS_PER_DAY;
 
 export function ClockWidget({ campaignId }: { campaignId: string }) {
   const id = useId();
@@ -25,13 +28,22 @@ export function ClockWidget({ campaignId }: { campaignId: string }) {
   const [unit, setUnit] = useState<Unit>('minutes');
   const [reason, setReason] = useState('');
   const seconds = campaign.data?.gameSeconds ?? 0;
+  const calendar = useCalendar(campaignId);
   const custom = Number(amount);
-  const customOk = Number.isFinite(custom) && custom > 0 && custom * UNITS[unit] <= 365 * 86400;
+  // a month is as long as the calendar says, so it counts from today; only whole months can be counted that way
+  const customSeconds = (() => {
+    if (unit !== 'months') return Math.round(custom * UNITS[unit]);
+    if (!calendar.data || !Number.isInteger(custom) || custom < 1 || custom > 1200) return 0;
+    const today = absoluteDayFromSeconds(seconds);
+    return (addMonths(calendar.data, today, custom) - today) * SECONDS_PER_DAY;
+  })();
+  const customOk = Number.isFinite(custom) && custom > 0 && customSeconds > 0 && customSeconds <= MAX_ADVANCE;
+  const units: Unit[] = [...(Object.keys(UNITS) as Unit[]), ...(calendar.data ? (['months'] as const) : [])];
 
   function submit(e: FormEvent) {
     e.preventDefault();
     advance.mutate(
-      { seconds: Math.round(custom * UNITS[unit]), reason: reason.trim() },
+      { seconds: customSeconds, reason: reason.trim() },
       {
         onSuccess: () => {
           setAmount('');
@@ -48,7 +60,7 @@ export function ClockWidget({ campaignId }: { campaignId: string }) {
         <Clock {...ICON_PROPS} /> Game clock
       </h2>
       <p className={styles.time} aria-live="polite">
-        <time>{campaign.data ? dayClock(seconds) : '…'}</time>
+        <time>{campaign.data ? calendarClock(seconds, calendar.data) : '…'}</time>
       </p>
       <div className={styles.steps} role="group" aria-label="Advance the clock">
         {STEPS.map(s => (
@@ -84,7 +96,7 @@ export function ClockWidget({ campaignId }: { campaignId: string }) {
           onChange={e => setUnit(e.target.value as Unit)}
           className={styles.select}
         >
-          {Object.keys(UNITS).map(u => (
+          {units.map(u => (
             <option key={u} value={u}>
               {u}
             </option>

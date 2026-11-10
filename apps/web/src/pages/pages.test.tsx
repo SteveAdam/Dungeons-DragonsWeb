@@ -305,13 +305,11 @@ describe('campaign hub as a DM', () => {
 });
 
 describe('hub navigation and errors', () => {
-  it('Notes and Web say they are coming soon', async () => {
+  it('Web says it is coming soon', async () => {
     signInAs('player');
     const user = userEvent.setup();
     renderAt('/campaigns/c1');
     await screen.findByRole('heading', { name: 'The Sunken Crown' });
-    await user.click(screen.getByRole('tab', { name: 'Notes' }));
-    expect(await screen.findByText('The Notes section is still being built.')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Web' }));
     expect(await screen.findByText('The Web section is still being built.')).toBeInTheDocument();
   });

@@ -33,6 +33,10 @@ export const queryKeys = {
   party: (campaignId: string) => ['campaigns', campaignId, 'party'] as const,
   wallets: (campaignId: string) => ['campaigns', campaignId, 'party', 'wallets'] as const,
   ledger: (campaignId: string) => ['campaigns', campaignId, 'party', 'ledger'] as const,
+  calendar: (campaignId: string) => ['campaigns', campaignId, 'calendar'] as const,
+  worldEvents: (campaignId: string, includeHidden: boolean) =>
+    ['campaigns', campaignId, 'world-events', { includeHidden }] as const,
+  notes: (campaignId: string, includeHidden: boolean) => ['campaigns', campaignId, 'notes', { includeHidden }] as const,
   customContent: (campaignId: string) => ['campaigns', campaignId, 'custom-content'] as const,
   items: (campaignId: string) => ['campaigns', campaignId, 'items'] as const,
   transfers: (campaignId: string) => ['campaigns', campaignId, 'items', 'transfers'] as const,

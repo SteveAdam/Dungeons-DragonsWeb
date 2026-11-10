@@ -1,0 +1,326 @@
+/* P3-7: the calendar tab: the month and timeline (8 of 12 columns) beside the DM's tools (4), settings underneath. */
+.tab {
+  display: grid;
+  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+  gap: 1rem var(--page-gutter);
+  align-items: start;
+}
+
+.main,
+.side {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.settings {
+  grid-column: 1 / -1;
+}
+
+.settings summary {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.panel {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.panel h4,
+.preview h4 {
+  margin: 0;
+  border-bottom: 1px solid var(--wax-red);
+  color: var(--wax-red);
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+}
+
+.panel p {
+  margin: 0;
+}
+
+.today_ {
+  margin: 0;
+  color: var(--wax-red);
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+}
+
+.hint {
+  font-style: italic;
+}
+
+.monthNav,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* the month */
+.gridScroll {
+  overflow-x: auto;
+}
+
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.grid caption {
+  padding-bottom: 0.3rem;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.grid th {
+  overflow: hidden;
+  padding: 0.15rem;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grid td {
+  height: 2.75rem;
+  padding: 0.15rem 0.25rem;
+  border: 1px solid var(--rule-faint);
+  vertical-align: top;
+}
+
+.grid .blank {
+  background: var(--ink-wash);
+}
+
+.grid .today {
+  background: var(--ink-wash-strong);
+  box-shadow: inset 0 0 0 2px var(--wax-red);
+}
+
+.dayNumber {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.marker {
+  display: inline-block;
+  min-width: 1.1em;
+  margin-inline-end: 0.1rem;
+  border-radius: 0.2rem;
+  background: var(--wax-red);
+  color: var(--paper);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* the timeline */
+.timelineHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.timelineHead h4 {
+  flex: 1 1 8rem;
+}
+
+.timeline {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+  padding-block: 0.3rem;
+  border-bottom: 1px solid var(--rule-faint);
+}
+
+.timelineDate {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.timelineTitle {
+  flex: 1 1 8rem;
+  overflow-wrap: anywhere;
+}
+
+.timelineText {
+  flex: 1 1 100%;
+  overflow-wrap: anywhere;
+}
+
+/* forms */
+.fieldRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 0.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.select,
+.textarea {
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.textarea {
+  width: 100%;
+  font: inherit;
+  resize: vertical;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.problems {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+/* the calendar settings: fields, with the preview beside them */
+.editor {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 1rem var(--page-gutter);
+  align-items: start;
+  margin-top: 0.75rem;
+}
+
+.editorFields,
+.rows {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rows legend {
+  padding: 0;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.rowLine {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr));
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.preview {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.preview p {
+  margin: 0;
+}
+
+.previewDate {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* notes */
+.notes {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  display: grid;
+  gap: 0.25rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.noteHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+}
+
+.noteHead h4 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+.note p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.noteForm {
+  display: grid;
+  gap: 0.6rem;
+}
+
+@media (max-width: 1099px) {
+  .tab,
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .preview {
+    position: static;
+  }
+}
+
+.field input,
+.field select,
+.rowLine input,
+.rowLine select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}

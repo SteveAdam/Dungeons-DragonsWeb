@@ -1,18 +1,38 @@
-import type { Effect, GameClock } from '@dnd-manager/rules-engine';
+import {
+  absoluteDayFromSeconds,
+  formatDate,
+  SECONDS_PER_DAY,
+  type CalendarDefinition,
+  type Effect,
+  type GameClock,
+} from '@dnd-manager/rules-engine';
 
 // The game clock is the campaign's game_seconds (P2-2), the same clock the roll function measures effects
 // against, so the sheet and the server always agree on which effects are active. The DM moves it (P2-8).
 
-export const SECONDS_PER_DAY = 86400;
+export { SECONDS_PER_DAY };
 
-/** "Day 1, 00:00" at game time 0: the day counts from 1, the time is hours and minutes (the calendar is Phase 3). */
-export function dayClock(gameSeconds: number): string {
-  const day = Math.floor(gameSeconds / SECONDS_PER_DAY) + 1;
+function timeOfDay(gameSeconds: number) {
   const inDay = gameSeconds % SECONDS_PER_DAY;
   const hh = String(Math.floor(inDay / 3600)).padStart(2, '0');
   const mm = String(Math.floor((inDay % 3600) / 60)).padStart(2, '0');
-  return `Day ${day}, ${hh}:${mm}`;
+  return `${hh}:${mm}`;
 }
+
+/** "Day 1, 00:00" at game time 0: the day counts from 1, the time is hours and minutes. */
+export function dayClock(gameSeconds: number): string {
+  return `Day ${absoluteDayFromSeconds(gameSeconds)}, ${timeOfDay(gameSeconds)}`;
+}
+
+/** "14 Mirtul 1492 DR, 18:00" when the campaign has a calendar (P3-7), and "Day N, 18:00" when it does not. */
+export function calendarClock(gameSeconds: number, calendar: CalendarDefinition | null | undefined): string {
+  if (!calendar) return dayClock(gameSeconds);
+  return `${formatDate(calendar, absoluteDayFromSeconds(gameSeconds))}, ${timeOfDay(gameSeconds)}`;
+}
+
+/** An absolute day as the campaign writes it: "14 Mirtul 1492 DR", or "Day 134" without a calendar. */
+export const dayLabel = (calendar: CalendarDefinition | null, day: number) =>
+  calendar ? formatDate(calendar, day) : `Day ${day}`;
 
 const plural = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}`;
 
