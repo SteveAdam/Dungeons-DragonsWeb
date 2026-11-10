@@ -585,7 +585,20 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
 - The hub's Calendar tab holds the month, the timeline, and for DMs the date controls, world events and calendar
   settings. The Notes tab is a plain list of notes and session logs, enough to date them.
 
-## End-to-end test (P2-12)
+## Weather (P3-8)
+
+- A zone's weather is worked out, not stored (`weather.ts` in the rules engine): the same zone on the same day always
+  gives the same result. Each zone has a moisture level that drifts between random values four days apart, and the day's
+  condition is where that level falls on a ladder from driest to wettest, so clouds build into rain over several days.
+  The climate tables (`weatherData.ts`, original to this app) stay the long-run odds.
+- `0025_weather.sql` adds `weather_zones` and `weather_days`. A row in `weather_days` is a DM's override or the history
+  of what players were shown, and wins over the generated weather. Players read only what is on maps they can see.
+- A map with no zones takes the weather of the place above it (`weatherForMap`).
+- The `roll` Edge Function's `weather-here` action finds where a group is, on the server, and writes the history. Deploy
+  it after changing this: `pnpm exec supabase functions deploy roll`.
+- This layer is separate from the manual weather on a region, which still shows on that region.
+
+## End-to-end tests (P2-12, P3-9)
 
 `e2e/` is a Playwright test of the whole of Phase 2 with three browser contexts, a DM and two players, against
 the local stack. It runs as one test with named steps:
@@ -621,7 +634,7 @@ The first run needs the browser: `pnpm -C e2e exec playwright install chromium`.
 and refuses to run against anything that is not local. It takes about three minutes. Weakening a policy fails
 step 8 (shown with item secrets made readable to members: "A reads item secrets"). `pnpm format` touches every
 file, and `functions:serve` restarts when files change, so wait for it to come back before running the test.
-CI runs it in the `e2e` job on a fresh stack and keeps the report and trace when it fails.
+`e2e/tests/phase3.spec.ts` (P3-9) adds layered maps, region content, the library, groups, discovery, the calendar and weather, and takes under two minutes. A policy weakened on a table it checks fails its step 8. Fixed content goes in through the API as the DM; the search outcome is made certain by a very high Wisdom effect, so the game has no test switch in it. CI runs both in the `e2e` job on a fresh stack and keeps the report and trace when it fails.
 
 ## Rules content licence
 

@@ -20,6 +20,7 @@ vi.mock('../components/ui', () => import('../test/uiStandIns'));
 vi.mock('../data/campaigns');
 vi.mock('../data/members');
 vi.mock('../data/maps');
+vi.mock('../auth/authContext', () => ({ useAuth: () => ({ session: null }) }));
 
 const campaign: Campaign = {
   id: 'c1',

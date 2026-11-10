@@ -2,6 +2,7 @@ import {
   ArrowUp,
   ChevronRight,
   CircleDashed,
+  CloudSun,
   Eye,
   EyeOff,
   Map as MapIcon,
@@ -10,6 +11,7 @@ import {
   Ruler,
   Settings2,
   Swords,
+  Thermometer,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -40,9 +42,13 @@ import { gridCellPx } from '../../lib/mapGeometry';
 import { useShowDmIndicator } from '../../state/dmIndicator';
 import { Compass } from './Compass';
 import { LayersMenu, type LayerState } from './LayersMenu';
-import { MapCanvas } from './MapCanvas';
+import { MapCanvas, type RegionCircle } from './MapCanvas';
 import { MapSettingsPanel } from './MapSettingsPanel';
 import toolStyles from './MapTools.module.css';
+import { WeatherPanel } from './WeatherPanel';
+import { todayOf, weatherOfDay } from '../../data/weather';
+import { useCalendar } from '../../hooks/useCalendar';
+import { useUpdateWeatherZone, useWeatherDays, useWeatherZones } from '../../hooks/useWeather';
 import styles from './MapView.module.css';
 import { MeasureBar } from './MeasureBar';
 import { PinPanel } from './PinPanel';
@@ -55,7 +61,7 @@ const NO_TRAIL: MapTrailStep[] = [];
 const NO_REGIONS: Region[] = [];
 const NO_PINS: Pin[] = [];
 
-type Selection = { kind: 'pin' | 'region' | 'spawn'; id: string } | { kind: 'settings' };
+type Selection = { kind: 'pin' | 'region' | 'spawn'; id: string } | { kind: 'settings' } | { kind: 'weather' };
 const NO_SPAWN_PINS: SpawnPin[] = [];
 const NO_CONTENT: RegionContent[] = [];
 
@@ -95,6 +101,24 @@ function MapView() {
   const content = useRegionContent(regionIds, dmMode);
   const createSpawnPin = useCreateSpawnPin(mapId);
   const updateSpawnPin = useUpdateSpawnPin(mapId);
+  // what a player sees: the zones on a map they can read, each with today's weather as an icon
+  const allZones = useWeatherZones(campaignId);
+  const updateZone = useUpdateWeatherZone(campaignId);
+  const calendar = useCalendar(campaignId);
+  const mapZones = useMemo(() => (allZones.data ?? []).filter(z => z.mapId === mapId), [allZones.data, mapId]);
+  const zoneDays = useWeatherDays(
+    campaignId,
+    mapZones.map(z => z.id),
+  );
+  const today = todayOf(campaign.data?.gameSeconds ?? 0);
+  const canvasZones = useMemo(
+    () =>
+      mapZones.map(z => ({
+        ...z,
+        condition: weatherOfDay(z, today, calendar.data ?? null, zoneDays.data ?? []).condition,
+      })),
+    [mapZones, today, calendar.data, zoneDays.data],
+  );
   const steps = trail.data ?? NO_TRAIL;
   const up = steps.length > 0 ? steps[steps.length - 1] : null;
   // the maps that cannot go beneath a pin or region on this map: this one and every map above it
@@ -102,7 +126,8 @@ function MapView() {
 
   // one thing is open in the side panel at a time: a pin, a region or the map settings
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [tool, setTool] = useState<'pin' | 'region' | 'spawn' | 'measure' | null>(null);
+  const [tool, setTool] = useState<'pin' | 'region' | 'spawn' | 'measure' | 'weather' | null>(null);
+  const [zoneDraft, setZoneDraft] = useState<RegionCircle | null>(null);
   const [layers, setLayers] = useState<LayerState>({ pins: true, regions: true, grid: true, compass: true });
   const [route, setRoute] = useState<ImagePoint[]>([]);
   const [focus, setFocus] = useState<{ x: number; y: number; key: number } | null>(null);
@@ -114,6 +139,7 @@ function MapView() {
   const drawing = tool === 'region' && dmMode && layers.regions;
   const measuring = tool === 'measure';
   const spawning = tool === 'spawn' && dmMode;
+  const drawingZone = tool === 'weather' && dmMode;
   const selectedSpawn =
     dmMode && selection?.kind === 'spawn' ? (spawnPins.data?.find(p => p.id === selection.id) ?? null) : null;
   const subMapPinIds = useMemo(() => (subMaps.data ? new Set(subMaps.data.byPin.keys()) : NO_SUB_MAPS), [subMaps.data]);
@@ -122,7 +148,8 @@ function MapView() {
     [subMaps.data],
   );
   const selectPin = (id: string) => setSelection({ kind: 'pin', id });
-  const toggleTool = (which: 'pin' | 'region' | 'spawn' | 'measure') => setTool(t => (t === which ? null : which));
+  const toggleTool = (which: 'pin' | 'region' | 'spawn' | 'measure' | 'weather') =>
+    setTool(t => (t === which ? null : which));
 
   // Alt+Up goes up one level, as the button does (MAP-2). Not while typing, where Alt+Up may mean something else.
   useEffect(() => {
@@ -253,6 +280,24 @@ function MapView() {
             >
               <PawPrint {...ICON_PROPS} className={iconClasses.icon} />
               {spawning ? 'Click the map to place it' : 'Add spawn pin'}
+            </Button>
+            <Button
+              variant={drawingZone ? 'primary' : 'ghost'}
+              aria-pressed={drawingZone}
+              className={iconClasses.host}
+              onClick={() => toggleTool('weather')}
+            >
+              <CloudSun {...ICON_PROPS} className={iconClasses.icon} />
+              {drawingZone ? 'Click the centre, then the edge' : 'Draw weather zone'}
+            </Button>
+            <Button
+              variant={selection?.kind === 'weather' ? 'primary' : 'ghost'}
+              aria-pressed={selection?.kind === 'weather'}
+              className={iconClasses.host}
+              onClick={() => setSelection(s => (s?.kind === 'weather' ? null : { kind: 'weather' }))}
+            >
+              <Thermometer {...ICON_PROPS} className={iconClasses.icon} />
+              Weather
             </Button>
             <Button
               variant={selection?.kind === 'settings' ? 'primary' : 'ghost'}
@@ -399,6 +444,16 @@ function MapView() {
                 selectedSpawnPinId={selectedSpawn?.id ?? null}
                 onSelectSpawnPin={id => setSelection({ kind: 'spawn', id })}
                 onMoveSpawnPin={(id, point) => updateSpawnPin.mutate({ id, changes: point })}
+                weatherZones={canvasZones}
+                canEditZones={dmMode}
+                zoneDrawMode={drawingZone}
+                onDrawZone={circle => {
+                  setZoneDraft(circle);
+                  setTool(null);
+                  setSelection({ kind: 'weather' });
+                }}
+                onChangeZone={(id, changes) => updateZone.mutate({ id, changes })}
+                onSelectZone={() => setSelection({ kind: 'weather' })}
                 spawnMode={spawning}
                 onPlaceSpawnPin={point =>
                   createSpawnPin.mutate(
@@ -454,6 +509,18 @@ function MapView() {
               content={content.data ?? NO_CONTENT}
               regions={regions.data ?? NO_REGIONS}
               onClose={() => setSelection(null)}
+            />
+          )}
+          {selection?.kind === 'weather' && dmMode && (
+            <WeatherPanel
+              campaignId={campaignId}
+              map={current}
+              draft={zoneDraft}
+              onDraftDone={() => setZoneDraft(null)}
+              onClose={() => {
+                setZoneDraft(null);
+                setSelection(null);
+              }}
             />
           )}
           {selection?.kind === 'settings' && dmMode && (

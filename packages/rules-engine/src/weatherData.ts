@@ -1,0 +1,199 @@
+// P3-8: climate tables for daily weather. Original to this app, written to be plausible; not taken from any published
+// table. Every row is a percentage chance and adds up to 100.
+
+export const CLIMATES = ['arid', 'temperate', 'boreal', 'tropical', 'arctic', 'coastal', 'mountain'] as const;
+export type Climate = (typeof CLIMATES)[number];
+
+export const WEATHER_SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
+export type WeatherSeason = (typeof WEATHER_SEASONS)[number];
+
+export const WEATHER_CONDITIONS = [
+  'clear',
+  'partly_cloudy',
+  'overcast',
+  'fog',
+  'drizzle',
+  'rain',
+  'storm',
+  'snow',
+  'blizzard',
+  'sleet',
+  'hail',
+  'dust_wind',
+] as const;
+export type WeatherCondition = (typeof WEATHER_CONDITIONS)[number];
+
+export const TEMPERATURE_BANDS = ['freezing', 'cold', 'cool', 'mild', 'warm', 'hot', 'scorching'] as const;
+export type TemperatureBand = (typeof TEMPERATURE_BANDS)[number];
+
+export const WIND_LEVELS = ['calm', 'breeze', 'strong', 'gale'] as const;
+export type WindLevel = (typeof WIND_LEVELS)[number];
+
+export interface SeasonTables {
+  /** One percentage for each of WEATHER_CONDITIONS, in that order. */
+  condition: readonly number[];
+  /** One percentage for each of TEMPERATURE_BANDS, in that order. */
+  temperature: readonly number[];
+  /** One percentage for each of WIND_LEVELS, in that order. */
+  wind: readonly number[];
+}
+
+//                 clear cloud over fog driz rain storm snow bliz sleet hail dust
+const c = (...row: number[]) => row;
+
+export const CLIMATE_TABLES: Record<Climate, Record<WeatherSeason, SeasonTables>> = {
+  arid: {
+    spring: {
+      condition: c(45, 25, 8, 0, 2, 3, 2, 0, 0, 0, 0, 15),
+      temperature: [0, 2, 10, 28, 35, 20, 5],
+      wind: [25, 45, 23, 7],
+    },
+    summer: {
+      condition: c(58, 20, 4, 0, 0, 1, 2, 0, 0, 0, 0, 15),
+      temperature: [0, 0, 0, 4, 16, 45, 35],
+      wind: [30, 42, 22, 6],
+    },
+    autumn: {
+      condition: c(48, 25, 8, 1, 2, 3, 2, 0, 0, 0, 1, 10),
+      temperature: [0, 2, 12, 30, 34, 18, 4],
+      wind: [30, 45, 20, 5],
+    },
+    winter: {
+      condition: c(42, 25, 14, 3, 3, 4, 1, 1, 0, 1, 1, 5),
+      temperature: [5, 22, 35, 28, 10, 0, 0],
+      wind: [30, 45, 20, 5],
+    },
+  },
+  temperate: {
+    spring: {
+      condition: c(20, 27, 18, 6, 11, 13, 3, 0, 0, 1, 1, 0),
+      temperature: [0, 4, 26, 42, 24, 4, 0],
+      wind: [25, 50, 20, 5],
+    },
+    summer: {
+      condition: c(34, 30, 12, 2, 6, 9, 6, 0, 0, 0, 1, 0),
+      temperature: [0, 0, 2, 18, 50, 27, 3],
+      wind: [35, 50, 13, 2],
+    },
+    autumn: {
+      condition: c(20, 24, 22, 10, 10, 11, 2, 0, 0, 1, 0, 0),
+      temperature: [1, 8, 34, 40, 15, 2, 0],
+      wind: [25, 48, 21, 6],
+    },
+    winter: {
+      condition: c(14, 18, 28, 9, 4, 5, 1, 14, 2, 4, 1, 0),
+      temperature: [24, 42, 26, 8, 0, 0, 0],
+      wind: [22, 46, 24, 8],
+    },
+  },
+  boreal: {
+    spring: {
+      condition: c(18, 24, 22, 7, 8, 7, 1, 8, 1, 4, 0, 0),
+      temperature: [14, 38, 34, 13, 1, 0, 0],
+      wind: [30, 48, 18, 4],
+    },
+    summer: {
+      condition: c(26, 30, 18, 5, 9, 9, 3, 0, 0, 0, 0, 0),
+      temperature: [0, 1, 14, 45, 32, 8, 0],
+      wind: [38, 48, 12, 2],
+    },
+    autumn: {
+      condition: c(14, 20, 28, 10, 7, 7, 1, 8, 1, 4, 0, 0),
+      temperature: [16, 38, 32, 13, 1, 0, 0],
+      wind: [28, 48, 19, 5],
+    },
+    winter: {
+      condition: c(14, 18, 24, 4, 0, 0, 0, 30, 8, 2, 0, 0),
+      temperature: [62, 32, 6, 0, 0, 0, 0],
+      wind: [30, 42, 20, 8],
+    },
+  },
+  tropical: {
+    spring: {
+      condition: c(18, 26, 12, 3, 10, 21, 10, 0, 0, 0, 0, 0),
+      temperature: [0, 0, 0, 6, 44, 42, 8],
+      wind: [35, 45, 15, 5],
+    },
+    summer: {
+      condition: c(10, 18, 14, 2, 10, 28, 18, 0, 0, 0, 0, 0),
+      temperature: [0, 0, 0, 4, 36, 48, 12],
+      wind: [28, 40, 20, 12],
+    },
+    autumn: {
+      condition: c(14, 22, 14, 3, 11, 24, 12, 0, 0, 0, 0, 0),
+      temperature: [0, 0, 0, 8, 46, 40, 6],
+      wind: [30, 42, 18, 10],
+    },
+    winter: {
+      condition: c(34, 32, 10, 4, 8, 10, 2, 0, 0, 0, 0, 0),
+      temperature: [0, 0, 2, 18, 54, 24, 2],
+      wind: [40, 46, 12, 2],
+    },
+  },
+  arctic: {
+    spring: {
+      condition: c(20, 18, 20, 8, 0, 0, 0, 24, 8, 2, 0, 0),
+      temperature: [70, 26, 4, 0, 0, 0, 0],
+      wind: [22, 42, 24, 12],
+    },
+    summer: {
+      condition: c(24, 26, 22, 10, 8, 5, 0, 4, 0, 1, 0, 0),
+      temperature: [8, 32, 46, 14, 0, 0, 0],
+      wind: [30, 46, 18, 6],
+    },
+    autumn: {
+      condition: c(14, 16, 26, 8, 1, 1, 0, 26, 6, 2, 0, 0),
+      temperature: [62, 32, 6, 0, 0, 0, 0],
+      wind: [20, 40, 26, 14],
+    },
+    winter: {
+      condition: c(20, 16, 16, 2, 0, 0, 0, 30, 16, 0, 0, 0),
+      temperature: [94, 6, 0, 0, 0, 0, 0],
+      wind: [18, 36, 28, 18],
+    },
+  },
+  coastal: {
+    spring: {
+      condition: c(20, 24, 20, 12, 9, 11, 3, 0, 0, 1, 0, 0),
+      temperature: [0, 4, 32, 46, 16, 2, 0],
+      wind: [14, 44, 30, 12],
+    },
+    summer: {
+      condition: c(34, 30, 12, 8, 5, 6, 5, 0, 0, 0, 0, 0),
+      temperature: [0, 0, 6, 34, 48, 12, 0],
+      wind: [20, 50, 24, 6],
+    },
+    autumn: {
+      condition: c(18, 22, 22, 12, 9, 12, 5, 0, 0, 0, 0, 0),
+      temperature: [0, 4, 30, 46, 18, 2, 0],
+      wind: [12, 40, 32, 16],
+    },
+    winter: {
+      condition: c(14, 18, 26, 10, 8, 12, 6, 3, 0, 3, 0, 0),
+      temperature: [4, 30, 44, 20, 2, 0, 0],
+      wind: [10, 36, 34, 20],
+    },
+  },
+  mountain: {
+    spring: {
+      condition: c(20, 22, 18, 10, 4, 6, 4, 10, 2, 3, 1, 0),
+      temperature: [22, 40, 28, 10, 0, 0, 0],
+      wind: [16, 38, 30, 16],
+    },
+    summer: {
+      condition: c(28, 26, 14, 8, 6, 8, 8, 0, 0, 0, 2, 0),
+      temperature: [1, 8, 34, 42, 15, 0, 0],
+      wind: [24, 44, 24, 8],
+    },
+    autumn: {
+      condition: c(20, 20, 20, 10, 3, 5, 3, 12, 3, 3, 1, 0),
+      temperature: [26, 40, 26, 8, 0, 0, 0],
+      wind: [14, 36, 32, 18],
+    },
+    winter: {
+      condition: c(20, 16, 18, 6, 0, 0, 0, 26, 12, 2, 0, 0),
+      temperature: [62, 32, 6, 0, 0, 0, 0],
+      wind: [12, 32, 34, 22],
+    },
+  },
+};

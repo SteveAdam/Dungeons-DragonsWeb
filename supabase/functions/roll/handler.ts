@@ -8,6 +8,7 @@
 //   roll     the same, plus hidden (DM only)                  -> the logged roll row
 //   search   { campaignId, characterId }                       -> { roll, found: [{ name, kind }] }   (P3-3)
 //   move-group { campaignId, groupId, mapId, regionId } (DM)   -> { revealed: [name] }                 (P3-3)
+//   weather-here { campaignId, characterId }                   -> { weather | null }                   (P3-8)
 //
 // Everything that touches the database or the token is in RollDeps, so the tests can run without a server.
 import {
@@ -29,6 +30,16 @@ import {
   type RollMode,
   type RollModeReason,
   type SkillKey,
+  validateCalendar,
+  weatherFor,
+  weatherForMap,
+  weatherSeason,
+  type CalendarDefinition,
+  type Climate,
+  type Point,
+  type WeatherMapLink,
+  type ZoneShape,
+  absoluteDayFromSeconds,
 } from '../_shared/rules-engine/index.ts';
 
 export type RollKind = 'check' | 'save' | 'attack';
@@ -99,6 +110,12 @@ export interface RollDeps {
   rollD20(args: RollD20Args): Promise<{ data: unknown; error: { code?: string; message: string } | null }>;
   /** P3-3: the group's campaign and the characters in it, or null when there is no such group. */
   loadGroup(groupId: string): Promise<{ campaignId: string; characterIds: string[] } | null>;
+  /** P3-8: where the character's group is, and the zones it could be in. */
+  loadWeatherContext(campaignId: string, characterId: string): Promise<WeatherContext>;
+  /** P3-8: the fixed row of this zone and day, if there is one. */
+  weatherDay(zoneId: string, day: number): Promise<WeatherDayRecord | null>;
+  /** P3-8: the first time players see a day, it goes into the history. Never replaces a row. */
+  recordWeatherDay(zoneId: string, day: number, weather: Omit<WeatherDayRecord, 'overridden' | 'note'>): Promise<void>;
   /** P3-3: calls public.search_region or public.move_group with the service role. */
   rpc(
     name: 'search_region' | 'move_group',
@@ -120,6 +137,34 @@ export interface MoveGroupInput {
   groupId: string;
   mapId: string | null;
   regionId: string | null;
+}
+
+/** P3-8: today's weather where the character's group is; shown to a player, it is written to the history. */
+export interface WeatherHereInput {
+  action: 'weather-here';
+  campaignId: string;
+  characterId: string;
+}
+
+export interface WeatherZoneRecord extends ZoneShape {
+  climate: Climate;
+}
+
+export interface WeatherDayRecord {
+  condition: string;
+  temperature: string;
+  wind: string;
+  overridden: boolean;
+  note: string;
+}
+
+/** Everything the server needs to place a group in a weather zone. Includes hidden maps: the player sees only the sky. */
+export interface WeatherContext {
+  position: { mapId: string; point: Point | null } | null;
+  maps: Record<string, WeatherMapLink & { parentMapId: string | null }>;
+  zonesByMap: Record<string, WeatherZoneRecord[]>;
+  links: Record<string, Point>;
+  calendar: unknown;
 }
 
 export interface RollInput {
@@ -179,8 +224,14 @@ const optionalId = (v: unknown, name: string): string | null => {
 };
 
 /** Reads the request body. Only these fields are read: a `bonus` or `advantage` sent along is never looked at. */
-export function parseInput(body: unknown): RollInput | SearchInput | MoveGroupInput {
+export function parseInput(body: unknown): RollInput | SearchInput | MoveGroupInput | WeatherHereInput {
   const b = (body ?? {}) as Record<string, unknown>;
+  if (b.action === 'weather-here') {
+    if (typeof b.campaignId !== 'string' || !UUID.test(b.campaignId)) throw new HttpError(400, 'campaignId is missing');
+    if (typeof b.characterId !== 'string' || !UUID.test(b.characterId))
+      throw new HttpError(400, 'characterId is missing');
+    return { action: 'weather-here', campaignId: b.campaignId, characterId: b.characterId };
+  }
   if (b.action === 'search' || b.action === 'move-group') {
     if (typeof b.campaignId !== 'string' || !UUID.test(b.campaignId)) throw new HttpError(400, 'campaignId is missing');
     if (b.action === 'search') {
@@ -199,7 +250,7 @@ export function parseInput(body: unknown): RollInput | SearchInput | MoveGroupIn
     };
   }
   if (b.action !== 'preview' && b.action !== 'roll') {
-    throw new HttpError(400, 'action must be preview, roll, search or move-group');
+    throw new HttpError(400, 'action must be preview, roll, search, move-group or weather-here');
   }
   if (typeof b.campaignId !== 'string' || !UUID.test(b.campaignId)) throw new HttpError(400, 'campaignId is missing');
   if (typeof b.characterId !== 'string' || !UUID.test(b.characterId)) {
@@ -498,6 +549,45 @@ async function moveGroup(input: MoveGroupInput, userId: string, deps: RollDeps):
 }
 
 /** The whole request: CORS, the token, the body, who may roll for whom, then preview or roll. */
+/** Today's weather for the group: a fixed row if the day has one, else the climate's. Players' views become history. */
+async function weatherHere(input: WeatherHereInput, role: 'dm' | 'player', deps: RollDeps): Promise<Response> {
+  const context = await deps.loadWeatherContext(input.campaignId, input.characterId);
+  const here = context.position ? context.maps[context.position.mapId] : undefined;
+  if (!context.position || !here) return json(200, { weather: null });
+  const zone = weatherForMap(here, context.maps, context.zonesByMap, context.links, context.position.point);
+  if (!zone) return json(200, { weather: null });
+  const day = absoluteDayFromSeconds(await deps.gameSeconds(input.campaignId));
+  const calendar = usableCalendar(context.calendar);
+  const generated = weatherFor({
+    campaignId: input.campaignId,
+    zoneId: zone.id,
+    day,
+    climate: zone.climate,
+    season: weatherSeason(calendar, day),
+  });
+  const row = await deps.weatherDay(zone.id, day);
+  if (row) {
+    const { condition, temperature, wind, overridden, note } = row;
+    return json(200, {
+      weather: { zoneId: zone.id, day, condition, temperature, wind, trend: 'steady', overridden, note },
+    });
+  }
+  if (role !== 'dm') {
+    const { condition, temperature, wind } = generated;
+    await deps.recordWeatherDay(zone.id, day, { condition, temperature, wind });
+  }
+  return json(200, { weather: { zoneId: zone.id, day, ...generated, overridden: false, note: '' } });
+}
+
+function usableCalendar(value: unknown): CalendarDefinition | null {
+  if (!value || typeof value !== 'object') return null;
+  try {
+    return validateCalendar(value as CalendarDefinition).length === 0 ? (value as CalendarDefinition) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function handle(req: Request, deps: RollDeps): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
@@ -520,6 +610,7 @@ export async function handle(req: Request, deps: RollDeps): Promise<Response> {
     if (role !== 'dm' && character.ownerId !== userId) {
       throw new HttpError(403, 'You can only roll for your own character');
     }
+    if (input.action === 'weather-here') return await weatherHere(input, role, deps);
     const c = await characterContext(character, deps);
     if (input.action === 'search') {
       // P3-3: one d20 with the Perception bonus, logged; each entry compares it with the bonus in its own skill

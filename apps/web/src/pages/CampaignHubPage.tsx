@@ -15,6 +15,9 @@ import { ErrorNotice } from '../components/ErrorNotice';
 import { Band, Cell, Dice, IconLink, PageGrid, Paper, RibbonTabs, Toggle } from '../components/ui';
 import { friendlyMessage, toDataError } from '../data/errors';
 import { ClockWidget } from '../components/ClockWidget';
+import { WeatherCard } from '../components/WeatherCard';
+import { useAuth } from '../auth/authContext';
+import { useCharacters } from '../hooks/useCharacters';
 import {
   useCampaign,
   useInviteCode,
@@ -58,6 +61,9 @@ export function CampaignHubPage() {
   const navigate = useNavigate();
   const campaign = useCampaign(campaignId);
   const calendar = useCalendar(campaignId);
+  const { session } = useAuth();
+  const characters = useCharacters(campaignId);
+  const myCharacter = characters.data?.find(c => c.ownerId === session?.user.id);
   const members = useMembers(campaignId);
   const { isDm, dmMode, setDmMode } = useDmMode(campaignId);
   const invite = useInviteCode(campaignId, dmMode);
@@ -199,6 +205,12 @@ export function CampaignHubPage() {
             ]}
           />
         </Cell>
+
+        {myCharacter && (
+          <Cell>
+            <WeatherCard campaignId={campaignId} characterId={myCharacter.id} />
+          </Cell>
+        )}
 
         <Cell>
           <RibbonTabs

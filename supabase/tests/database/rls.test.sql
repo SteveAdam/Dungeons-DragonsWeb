@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T81) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T82) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(627);
+select plan(648);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1576,6 +1576,38 @@ select throws_ok($$ select set_game_date(tests.u('campaign'), 0, 0, 'x') $$, '22
 select throws_ok($$ select set_game_date(tests.u('campaign'), 20, 86400, 'x') $$, '22023', null, 'T81: nor a time past the end of the day');
 select is((select set_game_date(tests.u('campaign'), 10, 0, 'Same')), 9*86400::bigint, 'T81: the same moment is no move');
 reset role;
+
+-- T82: weather zones and days (P3-8): DMs write; members read only what is on maps they can see
+select tests.act_as('dm');
+select lives_ok($$ insert into weather_zones (id, campaign_id, map_id, name, center_x, center_y, radius, climate) values (tests.u('wz:open'), tests.u('campaign'), tests.u('map:visible'), 'Glass Sands', 10, 10, 50, 'arid') $$, 'T82: a DM draws a zone');
+select lives_ok($$ insert into weather_zones (id, campaign_id, map_id, name, center_x, center_y, radius, climate) values (tests.u('wz:hidden'), tests.u('campaign'), tests.u('map:hidden'), 'SECRET-ZONE', 10, 10, 50, 'boreal') $$, 'T82: and one on a hidden map');
+select lives_ok($$ insert into weather_days (zone_id, day, condition, temperature, wind, overridden, note) values (tests.u('wz:open'), 5, 'storm', 'cold', 'gale', true, 'The sky breaks') $$, 'T82: a DM overrides a day');
+select lives_ok($$ insert into weather_days (zone_id, day, condition, temperature, wind, overridden) values (tests.u('wz:hidden'), 5, 'snow', 'cold', 'calm', true) $$, 'T82: on the hidden map too');
+select is((select count(*)::int from weather_zones where campaign_id = tests.u('campaign')), 2, 'T82: the DM reads both zones');
+select throws_ok($$ insert into weather_zones (campaign_id, map_id, name, center_x, center_y, radius, climate) values (tests.u('campaign'), tests.u('map:visible'), 'Bad', 1, 1, 5, 'lunar') $$, '23514', null, 'T82: only the known climates');
+select throws_ok($$ insert into weather_zones (campaign_id, map_id, name, center_x, center_y, radius, climate) values (tests.u('campaign'), tests.u('map:visible'), 'Bad', 1, 1, 0, 'arid') $$, '23514', null, 'T82: a zone has a size');
+select throws_ok($$ insert into weather_days (zone_id, day, condition, temperature, wind) values (tests.u('wz:open'), 6, 'frogs', 'cold', 'calm') $$, '23514', null, 'T82: only the known conditions');
+select throws_ok($$ insert into weather_days (zone_id, day, condition, temperature, wind) values (tests.u('wz:open'), 5, 'clear', 'mild', 'calm') $$, '23505', null, 'T82: one row per zone and day');
+reset role;
+
+select tests.act_as('player');
+select is((select string_agg(name, ',') from weather_zones where campaign_id = tests.u('campaign')), 'Glass Sands', 'T82: a player reads zones on visible maps only');
+select is((select count(*)::int from weather_days where zone_id = tests.u('wz:hidden')), 0, 'T82: and no days of a zone on a hidden map');
+select is((select condition from weather_days where zone_id = tests.u('wz:open') and day = 5), 'storm', 'T82: a player sees an override');
+select throws_ok($$ insert into weather_zones (campaign_id, map_id, name, center_x, center_y, radius, climate) values (tests.u('campaign'), tests.u('map:visible'), 'Mine', 1, 1, 5, 'arid') $$, '42501', null, 'T82: a player cannot draw a zone');
+select is_empty($$ update weather_zones set name = 'Mine' where id = tests.u('wz:open') returning id $$, 'T82: nor change one');
+select is_empty($$ delete from weather_zones where id = tests.u('wz:open') returning id $$, 'T82: nor remove one');
+select throws_ok($$ insert into weather_days (zone_id, day, condition, temperature, wind) values (tests.u('wz:open'), 7, 'clear', 'mild', 'calm') $$, '42501', null, 'T82: nor write a day');
+select is_empty($$ update weather_days set condition = 'clear' where zone_id = tests.u('wz:open') returning day $$, 'T82: nor change an override');
+select is_empty($$ delete from weather_days where zone_id = tests.u('wz:open') returning day $$, 'T82: nor clear one');
+reset role;
+
+select tests.act_as_anon();
+select throws_ok($$ select * from weather_zones $$, '42501', null, 'T82: a signed-out visitor reads no zones');
+select throws_ok($$ select * from weather_days $$, '42501', null, 'T82: nor any days');
+reset role;
+
+select throws_ok($$ insert into weather_zones (campaign_id, map_id, name, center_x, center_y, radius, climate) values (gen_random_uuid(), tests.u('map:visible'), 'Elsewhere', 1, 1, 5, 'arid') $$, '23514', null, 'T82: a zone stays with its own campaign map');
 
 select * from finish();
 rollback;

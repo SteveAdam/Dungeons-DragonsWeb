@@ -29,3 +29,5 @@ export * from './requirements.ts';
 export * from './sheet.ts';
 export * from './spellcasting.ts';
 export * from './spellTier.ts';
+export * from './weather.ts';
+export * from './weatherData.ts';

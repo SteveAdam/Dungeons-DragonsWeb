@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T81) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T82) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -863,6 +863,24 @@ end $fn$;`,
     why: 'the legacy text is meant to stay as it was until converted',
     sql: `drop trigger pages_legacy_date_guard_trg on pages;`,
     fails: ['T81'],
+  },
+  {
+    name: 'weather zones on hidden maps readable by members (P3-8)',
+    why: 'a zone would give away a map the DM has not revealed',
+    sql: `create policy "members read every zone" on weather_zones for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T82'],
+  },
+  {
+    name: 'weather zones writable by members (P3-8)',
+    why: 'a player could redraw the weather',
+    sql: `create policy "members draw zones" on weather_zones for insert to authenticated with check (true);`,
+    fails: ['T82'],
+  },
+  {
+    name: 'weather days writable by members (P3-8)',
+    why: 'a player could rewrite the sky, or change what the DM decided',
+    sql: `create policy "members write days" on weather_days for all to authenticated using (true) with check (true);`,
+    fails: ['T82'],
   },
   {
     name: 'discovery notices readable by every member (P3-3)',

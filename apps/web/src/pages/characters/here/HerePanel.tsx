@@ -3,6 +3,7 @@ import { Compass, Eye, Hand, MessageCircle, Search, ShoppingBag, Swords, X } fro
 import { useEffect, useState } from 'react';
 import { OddsPopup, type OddsCheck } from '../../../components/odds/OddsPopup';
 import { Button, ICON_PROPS, iconClasses, Paper, Tag } from '../../../components/ui';
+import { WeatherCard } from '../../../components/WeatherCard';
 import { friendlyMessage } from '../../../data/errors';
 import type { HereEntry, SearchResult } from '../../../data/here';
 import { useRollPreview } from '../../../hooks/useCharacters';
@@ -149,6 +150,7 @@ export function HerePanel({ campaignId, characterId }: { campaignId: string; cha
               <X {...ICON_PROPS} />
             </Button>
           </header>
+          {data?.group && <WeatherCard campaignId={campaignId} characterId={characterId} />}
 
           {here.isPending ? (
             <p role="status">Looking around…</p>

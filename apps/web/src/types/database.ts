@@ -1145,6 +1145,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"weather_days": {
+                  Row: {
+                    "condition": string,"day": number,"note": string,"overridden": boolean,"temperature": string,"wind": string,"zone_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "condition": string,"day": number,"note"?: string,"overridden"?: boolean,"temperature": string,"wind": string,"zone_id": string
+                  }
+                  Update: {
+                    "condition"?: string,"day"?: number,"note"?: string,"overridden"?: boolean,"temperature"?: string,"wind"?: string,"zone_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "weather_days_zone_id_fkey"
+      columns: ["zone_id"]
+isOneToOne: false
+      referencedRelation: "weather_zones"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"weather_zones": {
+                  Row: {
+                    "campaign_id": string,"center_x": number,"center_y": number,"climate": string,"color": string,"created_at": string,"id": string,"map_id": string,"name": string,"radius": number,"show_border": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"center_x": number,"center_y": number,"climate": string,"color"?: string,"created_at"?: string,"id"?: string,"map_id": string,"name": string,"radius": number,"show_border"?: boolean
+                  }
+                  Update: {
+                    "campaign_id"?: string,"center_x"?: number,"center_y"?: number,"climate"?: string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string,"name"?: string,"radius"?: number,"show_border"?: boolean
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "weather_zones_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "weather_zones_map_id_fkey"
+      columns: ["map_id"]
+isOneToOne: false
+      referencedRelation: "maps"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"world_events": {
                   Row: {
                     "campaign_id": string,"created_at": string,"day": number,"description": string,"entity_id": string | null,"id": string,"title": string,"visible_to_players": boolean
@@ -1986,6 +2032,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"weather_zone_campaign":
+{ Args: { "z": string }; Returns: string
+                           },
 "withdraw_from_party":
 { Args: { "p_character": string,"p_coins": Json,"p_note"?: string }; Returns: undefined
                            }

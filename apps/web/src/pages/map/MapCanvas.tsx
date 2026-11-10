@@ -2,7 +2,7 @@
 // and drawing regions. Kept apart from the page logic so the page can be tested without a browser layout engine
 // (jsdom cannot run Leaflet).
 import 'leaflet/dist/leaflet.css';
-import { TERRAIN_INFO, WEATHER_INFO, type Weather } from '@dnd-manager/rules-engine';
+import { TERRAIN_INFO, WEATHER_INFO, type Weather, type WeatherCondition } from '@dnd-manager/rules-engine';
 import L from 'leaflet';
 import { Layers } from 'lucide-react';
 import { createElement, useEffect, useMemo, useRef, useState } from 'react';
@@ -35,6 +35,7 @@ import {
 import styles from './MapCanvas.module.css';
 import { PIN_TYPE_ICONS, PIN_TYPE_LABELS } from './pinIcons';
 import { WEATHER_ICONS } from './regionIcons';
+import { CONDITION_ICONS, CONDITION_LABELS } from '../../lib/weatherText';
 import { SPAWN_PIN_ICONS, SPAWN_PIN_LABELS } from './spawnIcons';
 
 export interface MapCanvasProps {
@@ -83,6 +84,25 @@ export interface MapCanvasProps {
   /** While true, a click on the map places a spawn pin there. */
   spawnMode: boolean;
   onPlaceSpawnPin: (point: ImagePoint) => void;
+  /** P3-8: weather zones. A DM sees and edits the circles; players see the icon, and the circle only if it is shown. */
+  weatherZones: CanvasWeatherZone[];
+  canEditZones: boolean;
+  /** While true, two clicks on the map draw a weather zone: the first sets its centre, the second its edge. */
+  zoneDrawMode: boolean;
+  onDrawZone: (circle: RegionCircle) => void;
+  onChangeZone: (zoneId: string, changes: { x?: number; y?: number; radius?: number }) => void;
+  onSelectZone: () => void;
+}
+
+export interface CanvasWeatherZone {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  radius: number;
+  color: string;
+  showBorder: boolean;
+  condition: WeatherCondition;
 }
 
 /** The spawn pin icons as SVG markup, built once per kind. */
@@ -121,6 +141,23 @@ const weatherMarkup = Object.fromEntries(
     renderToStaticMarkup(createElement(Icon, { size: '62%', strokeWidth: 2, 'aria-hidden': true })),
   ]),
 ) as Record<Weather, string>;
+
+const conditionMarkup = Object.fromEntries(
+  Object.entries(CONDITION_ICONS).map(([condition, Icon]) => [
+    condition,
+    renderToStaticMarkup(createElement(Icon, { size: '62%', strokeWidth: 2, 'aria-hidden': true })),
+  ]),
+) as Record<WeatherCondition, string>;
+
+function zoneIcon(condition: WeatherCondition): L.DivIcon {
+  return L.divIcon({
+    className: styles.sealHost,
+    html: `<span class="${styles.weather}">${conditionMarkup[condition]}</span>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    tooltipAnchor: [0, 17],
+  });
+}
 
 export interface RegionCircle {
   cx: number;
@@ -356,6 +393,88 @@ function RegionShape({
 }
 
 /** Two clicks draw a region: the centre, then a point on the edge. The circle follows the mouse in between. */
+function WeatherZoneShape({
+  zone,
+  size,
+  editable,
+  busy,
+  onSelect,
+  onChange,
+}: {
+  zone: CanvasWeatherZone;
+  size: ImageSize;
+  editable: boolean;
+  busy: boolean;
+  onSelect: () => void;
+  onChange: (changes: { x?: number; y?: number; radius?: number }) => void;
+}) {
+  const map = useMap();
+  const circle = useRef<L.Circle>(null);
+  const handle = useRef<L.Marker>(null);
+  const centre = toLatLng(zone, size);
+  const label = `${zone.name}: ${CONDITION_LABELS[zone.condition]}`;
+  const circleShown = editable || zone.showBorder;
+  const color = PIN_COLOR_PATTERN.test(zone.color) ? zone.color : DEFAULT_PIN_COLOR;
+  const shape = { cx: zone.x, cy: zone.y, radius: zone.radius };
+  return (
+    <>
+      {circleShown && (
+        <Circle
+          ref={circle}
+          center={centre}
+          radius={zone.radius}
+          interactive={false}
+          pathOptions={{ color, fillColor: color, fillOpacity: 0.14, weight: 2, dashArray: '6 6' }}
+        />
+      )}
+      <Marker
+        key={`${zone.id}:${label}`}
+        position={centre}
+        icon={zoneIcon(zone.condition)}
+        title={label}
+        draggable={editable && !busy}
+        eventHandlers={{
+          click: () => {
+            if (!busy && editable) onSelect();
+          },
+          drag: (event: L.LeafletEvent) => {
+            const at = (event.target as L.Marker).getLatLng();
+            circle.current?.setLatLng(at);
+            const moved = toImagePoint(at, size);
+            handle.current?.setLatLng(
+              toLatLng(edgePoint({ cx: moved.x, cy: moved.y, radius: zone.radius }, size), size),
+            );
+          },
+          dragend: (event: L.DragEndEvent) => {
+            const moved = clampToImage(toImagePoint((event.target as L.Marker).getLatLng(), size), size);
+            onChange({ x: Math.round(moved.x), y: Math.round(moved.y) });
+          },
+        }}
+      >
+        <Tooltip>{label}</Tooltip>
+      </Marker>
+      {editable && !busy && (
+        <Marker
+          ref={handle}
+          position={toLatLng(edgePoint(shape, size), size)}
+          icon={resizeIcon}
+          draggable
+          title={`Resize ${zone.name}`}
+          eventHandlers={{
+            drag: (event: L.LeafletEvent) => {
+              circle.current?.setRadius(map.distance(centre, (event.target as L.Marker).getLatLng()));
+            },
+            dragend: (event: L.DragEndEvent) => {
+              const radius = map.distance(centre, (event.target as L.Marker).getLatLng());
+              if (radius >= MIN_REGION_RADIUS) onChange({ radius: Math.round(radius) });
+            },
+          }}
+        />
+      )}
+    </>
+  );
+}
+
 function DrawRegion({ size, onDraw }: { size: ImageSize; onDraw: (circle: RegionCircle) => void }) {
   const [centre, setCentre] = useState<L.LatLng | null>(null);
   const [radius, setRadius] = useState(0);
@@ -475,6 +594,12 @@ export function MapCanvas({
   selectedRegionId,
   onSelectRegion,
   drawMode,
+  weatherZones,
+  canEditZones,
+  zoneDrawMode,
+  onDrawZone,
+  onChangeZone,
+  onSelectZone,
   onDrawRegion,
   canEditRegions,
   onChangeRegion,
@@ -491,7 +616,7 @@ export function MapCanvas({
   spawnMode,
   onPlaceSpawnPin,
 }: MapCanvasProps) {
-  const busy = addMode || drawMode || measuring || spawnMode;
+  const busy = addMode || drawMode || measuring || spawnMode || zoneDrawMode;
   const bounds = useMemo(() => imageBounds(size), [size]);
   return (
     <MapContainer
@@ -530,6 +655,18 @@ export function MapCanvas({
         />
       ))}
       {drawMode && <DrawRegion size={size} onDraw={onDrawRegion} />}
+      {zoneDrawMode && <DrawRegion size={size} onDraw={onDrawZone} />}
+      {weatherZones.map(zone => (
+        <WeatherZoneShape
+          key={zone.id}
+          zone={zone}
+          size={size}
+          editable={canEditZones}
+          busy={busy}
+          onSelect={onSelectZone}
+          onChange={changes => onChangeZone(zone.id, changes)}
+        />
+      ))}
       {spawnPins.map(sp => {
         const name = `Spawn pin: ${sp.label || SPAWN_PIN_LABELS[sp.kind]} (${SPAWN_PIN_LABELS[sp.kind]}, DM only)`;
         return (

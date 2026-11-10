@@ -1,0 +1,147 @@
+/* P3-8: the DM's weather panel, beside the map */
+.panel {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  color: var(--ink);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.head h3,
+.form h4,
+.zone h4,
+.zone h5 {
+  margin: 0;
+  font-family: var(--font-heading);
+}
+
+.head h3,
+.zone h4 {
+  color: var(--wax-red);
+  font-size: 1.3rem;
+}
+
+.zone h5 {
+  font-size: 1.05rem;
+}
+
+.zone,
+.form {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.zone {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--rule);
+}
+
+.zone p {
+  margin: 0;
+}
+
+.tags,
+.actions,
+.manage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.manage {
+  justify-content: space-between;
+}
+
+.today {
+  font-weight: 700;
+}
+
+.trend {
+  font-style: italic;
+}
+
+.notes,
+.days {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.notes {
+  padding-inline-start: 1.1rem;
+}
+
+.days {
+  padding: 0;
+  list-style: none;
+}
+
+.days li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.15rem 0.6rem;
+  padding-block: 0.15rem;
+  border-bottom: 1px solid var(--rule-faint);
+}
+
+.date {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+  gap: 0.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.field input:not([type='color']),
+.field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.select {
+  min-height: 2.75rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hint {
+  margin: 0;
+  font-style: italic;
+}
+
+.problem {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}

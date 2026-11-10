@@ -16,6 +16,8 @@ import type { Region } from '../../data/regions';
 import * as regionsApi from '../../data/regions';
 import * as contentApi from '../../data/regionContent';
 import type { SpawnPin } from '../../data/spawnPins';
+import * as weatherApi from '../../data/weather';
+import * as calendarApi from '../../data/calendar';
 import * as spawnApi from '../../data/spawnPins';
 import { useDmModeStore } from '../../state/dmModeStore';
 import type { MapCanvasProps } from './MapCanvas';
@@ -26,6 +28,10 @@ import { MapViewPage } from './MapViewPage';
 vi.mock('./MapCanvas', () => ({
   MapCanvas: ({
     pins,
+    weatherZones = [],
+    canEditZones,
+    zoneDrawMode,
+    onDrawZone,
     onSelectPin,
     addMode,
     onPlace,
@@ -79,6 +85,12 @@ vi.mock('./MapCanvas', () => ({
           )}
         </span>
       ))}
+      {zoneDrawMode && <button onClick={() => onDrawZone({ cx: 640, cy: 410, radius: 180 })}>draw zone</button>}
+      {weatherZones.map(z => (
+        <span
+          key={z.id}
+        >{`zone: ${z.name} (${z.condition})${canEditZones ? ' editable' : ''}${z.showBorder ? ' bordered' : ''}`}</span>
+      ))}
       {drawMode && <button onClick={() => onDrawRegion({ cx: 600, cy: 500, radius: 150 })}>draw region</button>}
       {pins.map(p => (
         <span key={p.id}>
@@ -113,6 +125,14 @@ vi.mock('../../data/regionContent', async importOriginal => ({
   listRegionContent: vi.fn(async () => []),
 }));
 vi.mock('../../data/spawnPins');
+vi.mock('../../data/weather', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/weather')>()),
+  listWeatherZones: vi.fn(),
+  listWeatherDays: vi.fn(),
+  listLinkPoints: vi.fn(),
+  createWeatherZone: vi.fn(),
+}));
+vi.mock('../../data/calendar');
 vi.mock('../../data/maps');
 vi.mock('../../data/campaigns');
 vi.mock('../../data/members');
@@ -170,6 +190,10 @@ function signInAs(role: 'dm' | 'player') {
   vi.mocked(mapsApi.listSubMaps).mockResolvedValue({ byPin: new Map(), byRegion: new Map() });
   vi.mocked(mapsApi.listAllMaps).mockResolvedValue([]);
   vi.mocked(spawnApi.listSpawnPins).mockResolvedValue([]);
+  vi.mocked(weatherApi.listWeatherZones).mockResolvedValue([]);
+  vi.mocked(weatherApi.listWeatherDays).mockResolvedValue([]);
+  vi.mocked(weatherApi.listLinkPoints).mockResolvedValue({});
+  vi.mocked(calendarApi.getCalendar).mockResolvedValue(null);
   vi.mocked(contentApi.listRegionContent).mockResolvedValue([]);
   vi.mocked(mapsApi.getMapTrail).mockResolvedValue([]);
   vi.mocked(regionsApi.listRegions).mockImplementation(async (_id, { includeHidden }) =>
@@ -983,5 +1007,58 @@ describe('map tools', () => {
     renderMap();
     await screen.findByRole('button', { name: 'Measure' });
     expect(screen.queryByRole('button', { name: 'Map settings' })).not.toBeInTheDocument();
+  });
+});
+
+describe('weather zones (P3-8)', () => {
+  const desert = {
+    id: 'z1',
+    campaignId: 'c1',
+    mapId: 'm1',
+    name: 'Glass Sands',
+    x: 100,
+    y: 100,
+    radius: 90,
+    climate: 'arid' as const,
+    color: '#3d6a5d',
+    showBorder: false,
+    createdAt: '2026-01-01',
+  };
+
+  it('draws a zone: centre, radius, then name and climate', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(weatherApi.createWeatherZone).mockResolvedValue(desert);
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'Draw weather zone' }));
+    await user.click(await screen.findByRole('button', { name: 'draw zone' }));
+    const form = await screen.findByRole('form', { name: 'New weather zone' });
+    await user.type(within(form).getByLabelText('Name'), 'Glass Sands');
+    await user.selectOptions(within(form).getByLabelText('Climate'), 'arid');
+    await user.click(within(form).getByRole('button', { name: 'Save zone' }));
+    expect(weatherApi.createWeatherZone).toHaveBeenCalledWith(
+      expect.objectContaining({ mapId: 'm1', name: 'Glass Sands', climate: 'arid', x: 640, y: 410, radius: 180 }),
+    );
+  });
+
+  it('lists a zone with today, the week ahead and a way to override', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(weatherApi.listWeatherZones).mockResolvedValue([desert]);
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'Weather' }));
+    const zone = await screen.findByRole('region', { name: 'Glass Sands' });
+    expect(within(zone).getByText(/^Today: /)).toBeInTheDocument();
+    expect(within(zone).getAllByRole('button', { name: /^Override Day/ })).toHaveLength(7);
+    await user.click(within(zone).getByRole('button', { name: 'Override today' }));
+    expect(within(zone).getByRole('form', { name: 'Override the weather in Glass Sands' })).toBeInTheDocument();
+  });
+
+  it('shows a player the weather icon, without editing or the panel', async () => {
+    signInAs('player');
+    vi.mocked(weatherApi.listWeatherZones).mockResolvedValue([desert]);
+    renderMap();
+    expect(await screen.findByText(/^zone: Glass Sands \(/)).not.toHaveTextContent('editable');
+    expect(screen.queryByRole('button', { name: 'Weather' })).not.toBeInTheDocument();
   });
 });

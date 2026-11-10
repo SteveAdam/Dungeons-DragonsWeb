@@ -9,6 +9,8 @@ import {
   type ItemRow,
   type RollD20Args,
   type RollDeps,
+  type WeatherContext,
+  type WeatherDayRecord,
 } from './handler.ts';
 
 const CAMPAIGN = '00000000-0000-4000-8000-000000000001';
@@ -39,9 +41,12 @@ function world(
     rollError?: { code: string; message: string };
     /** P3-3: what search_region or move_group answers. */
     rpcResult?: { data: unknown; error: { code?: string; message: string } | null };
+    weather?: WeatherContext;
+    weatherRow?: WeatherDayRecord | null;
   } = {},
 ) {
   const calls: RollD20Args[] = [];
+  const recorded: Record<string, unknown>[] = [];
   const rpcCalls: { name: string; args: Record<string, unknown> }[] = [];
   const characters: Record<string, CharacterRecord> = {
     [BRANNOC_ID]: {
@@ -65,6 +70,13 @@ function world(
     loadEffects: () => Promise.resolve(over.effects ?? []),
     loadItems: () => Promise.resolve(over.items ?? GEAR),
     gameSeconds: () => Promise.resolve(0),
+    loadWeatherContext: () =>
+      Promise.resolve(over.weather ?? { position: null, maps: {}, zonesByMap: {}, links: {}, calendar: null }),
+    weatherDay: () => Promise.resolve(over.weatherRow ?? null),
+    recordWeatherDay: (zoneId, day, weather) => {
+      recorded.push({ zoneId, day, ...weather });
+      return Promise.resolve();
+    },
     loadGroup: id =>
       Promise.resolve(id === GROUP_ID ? { campaignId: CAMPAIGN, characterIds: [BRANNOC_ID, SERA_ID] } : null),
     rpc: (name, args) => {
@@ -90,7 +102,7 @@ function world(
       });
     },
   };
-  return { deps, calls, rpcCalls };
+  return { deps, calls, rpcCalls, recorded };
 }
 
 // Brannoc's gear as items (P2-7), all equipped, as the database stores them
@@ -401,4 +413,62 @@ Deno.test('move-group: a group from another campaign is not found', async () => 
   const { deps } = world();
   const move = { action: 'move-group', campaignId: CAMPAIGN, groupId: SERA_ID, mapId: null, regionId: null };
   assert.equal((await call(deps, 'token-dm', move)).status, 404);
+});
+
+// P3-8: today's weather where the group is ----------------------------------------------------------------------
+
+const weatherHere = { action: 'weather-here', campaignId: CAMPAIGN, characterId: BRANNOC_ID };
+const FOREST = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const inTown: WeatherContext = {
+  position: { mapId: 'town', point: null },
+  maps: {
+    world: { id: 'world', parentPinId: null, parentRegionId: null, parentMapId: null },
+    town: { id: 'town', parentPinId: 'pin', parentRegionId: null, parentMapId: 'world' },
+  },
+  zonesByMap: {
+    world: [{ id: FOREST, x: 10, y: 10, radius: 50, climate: 'boreal', createdAt: '2026-01-01' }],
+  },
+  links: { pin: { x: 12, y: 12 } },
+  calendar: null,
+};
+
+Deno.test('weather-here: a player gets the inherited weather, and the day goes into the history', async () => {
+  const { deps, recorded } = world({ weather: inTown });
+  const { status, body } = await call(deps, 'token-player', weatherHere);
+  assert.equal(status, 200);
+  assert.equal(body.weather.zoneId, FOREST);
+  assert.equal(body.weather.day, 1);
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0].zoneId, FOREST);
+  assert.equal(recorded[0].condition, body.weather.condition);
+});
+
+Deno.test('weather-here: a DM looking does not write history', async () => {
+  const { deps, recorded } = world({ weather: inTown });
+  const { status } = await call(deps, 'token-dm', weatherHere);
+  assert.equal(status, 200);
+  assert.equal(recorded.length, 0);
+});
+
+Deno.test('weather-here: an override wins, and is not written again', async () => {
+  const row = { condition: 'storm', temperature: 'cold', wind: 'gale', overridden: true, note: 'The sky breaks' };
+  const { deps, recorded } = world({ weather: inTown, weatherRow: row });
+  const { body } = await call(deps, 'token-player', weatherHere);
+  assert.equal(body.weather.condition, 'storm');
+  assert.equal(body.weather.overridden, true);
+  assert.equal(body.weather.note, 'The sky breaks');
+  assert.equal(recorded.length, 0);
+});
+
+Deno.test('weather-here: a group nowhere has no weather', async () => {
+  const { deps } = world();
+  const { status, body } = await call(deps, 'token-player', weatherHere);
+  assert.equal(status, 200);
+  assert.equal(body.weather, null);
+});
+
+Deno.test('weather-here: another player cannot ask about my character', async () => {
+  const { deps } = world({ weather: inTown, brannoc: { ownerId: 'someone-else' } });
+  const { status } = await call(deps, 'token-player', weatherHere);
+  assert.equal(status, 403);
 });

@@ -43,7 +43,7 @@ jobs:
       - run: pnpm db:test
       - run: pnpm db:test:mutations
 
-  # P2-12: the Phase 2 scenario end to end (a DM and two players), against a fresh local stack
+  # P2-12, P3-9: the Phase 2 and Phase 3 scenarios end to end (a DM and two players each), against a fresh local stack
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
