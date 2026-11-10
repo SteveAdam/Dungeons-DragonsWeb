@@ -27,12 +27,31 @@ const backgrounds = backgroundSchema.array().parse(read('backgrounds.json'));
 const spells = spellSchema.array().parse(read('spells.json'));
 const monsters = monsterSchema.array().parse(read('monsters.json'));
 
+const isJwt = (key: string) => key.split('.').length === 3;
+
+/** Stops before any request when the key cannot write: only a service role or secret key can load the SRD tables. */
+function checkServiceKey(key: string) {
+  const wrong = (what: string) =>
+    new Error(`SRD_IMPORT_SERVICE_KEY is ${what}. Use the service role or secret key from the project's API settings.`);
+  if (key.startsWith('sb_publishable_')) throw wrong('the publishable key');
+  if (key.startsWith('sb_secret_')) return;
+  if (!isJwt(key)) throw wrong('not a Supabase API key');
+  let role: unknown;
+  try {
+    role = JSON.parse(Buffer.from(key.split('.')[1], 'base64url').toString('utf8')).role;
+  } catch {
+    throw wrong('not a Supabase API key');
+  }
+  if (role !== 'service_role') throw wrong(`the ${String(role)} key`);
+}
+
 function target(): { url: string; key: string } {
   const url = process.env.SRD_IMPORT_URL;
   const key = process.env.SRD_IMPORT_SERVICE_KEY;
   if (url || key) {
     if (!url || !key) throw new Error('Set both SRD_IMPORT_URL and SRD_IMPORT_SERVICE_KEY, or neither');
-    return { url, key };
+    checkServiceKey(key.trim());
+    return { url, key: key.trim() };
   }
   const env = Object.fromEntries(
     execSync('pnpm exec supabase status -o env', { encoding: 'utf8' })
@@ -60,7 +79,8 @@ async function upsert(table: string, rows: object[]) {
     method: 'POST',
     headers: {
       apikey: key,
-      Authorization: `Bearer ${key}`,
+      // a secret key (sb_secret_...) is not a JWT, so it goes in apikey alone
+      ...(isJwt(key) ? { Authorization: `Bearer ${key}` } : {}),
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates,return=minimal',
     },
