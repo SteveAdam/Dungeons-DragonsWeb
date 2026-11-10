@@ -49,11 +49,13 @@ const PAGES = [
   '/campaigns',
   '/campaigns/c1',
   '/campaigns/c1/entities',
+  '/campaigns/c1/library',
   '/campaigns/c1/characters/ch1',
   '/theme',
   '/dev/odds',
   '/dev/srd',
   '/dev/classes',
+  '/dev/monsters',
   '/no-such-page',
 ];
 

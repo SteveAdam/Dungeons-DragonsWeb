@@ -1,0 +1,830 @@
+[
+  {
+    "challengeRating": "0",
+    "challengeValue": 0,
+    "count": 29,
+    "armourClass": {
+      "p10": 9.8,
+      "median": 12,
+      "p90": 13
+    },
+    "hitPoints": {
+      "p10": 1,
+      "median": 3,
+      "p90": 5.8
+    },
+    "bestAttackBonus": {
+      "p10": 1,
+      "median": 2,
+      "p90": 4.4
+    },
+    "saveDc": null,
+    "damagePerRound": {
+      "p10": 1,
+      "median": 1,
+      "p90": 3.5
+    }
+  },
+  {
+    "challengeRating": "1/8",
+    "challengeValue": 0.125,
+    "count": 19,
+    "armourClass": {
+      "p10": 10,
+      "median": 12,
+      "p90": 15
+    },
+    "hitPoints": {
+      "p10": 5,
+      "median": 9,
+      "p90": 11.4
+    },
+    "bestAttackBonus": {
+      "p10": 3,
+      "median": 4,
+      "p90": 5
+    },
+    "saveDc": null,
+    "damagePerRound": {
+      "p10": 4.5,
+      "median": 4.5,
+      "p90": 6.1
+    }
+  },
+  {
+    "challengeRating": "1/4",
+    "challengeValue": 0.25,
+    "count": 32,
+    "armourClass": {
+      "p10": 10,
+      "median": 12,
+      "p90": 14
+    },
+    "hitPoints": {
+      "p10": 10.1,
+      "median": 13,
+      "p90": 19
+    },
+    "bestAttackBonus": {
+      "p10": 3,
+      "median": 4,
+      "p90": 5
+    },
+    "saveDc": {
+      "p10": 10.4,
+      "median": 12,
+      "p90": 12
+    },
+    "damagePerRound": {
+      "p10": 5,
+      "median": 6.5,
+      "p90": 9
+    }
+  },
+  {
+    "challengeRating": "1/2",
+    "challengeValue": 0.5,
+    "count": 27,
+    "armourClass": {
+      "p10": 11,
+      "median": 12,
+      "p90": 14
+    },
+    "hitPoints": {
+      "p10": 13.6,
+      "median": 21,
+      "p90": 28.6
+    },
+    "bestAttackBonus": {
+      "p10": 3,
+      "median": 4,
+      "p90": 5.4
+    },
+    "saveDc": {
+      "p10": 10.2,
+      "median": 11,
+      "p90": 11.8
+    },
+    "damagePerRound": {
+      "p10": 5.5,
+      "median": 7,
+      "p90": 11
+    }
+  },
+  {
+    "challengeRating": "1",
+    "challengeValue": 1,
+    "count": 27,
+    "armourClass": {
+      "p10": 11,
+      "median": 13,
+      "p90": 16
+    },
+    "hitPoints": {
+      "p10": 22,
+      "median": 26,
+      "p90": 39
+    },
+    "bestAttackBonus": {
+      "p10": 4,
+      "median": 5,
+      "p90": 5
+    },
+    "saveDc": {
+      "p10": 11,
+      "median": 11,
+      "p90": 11
+    },
+    "damagePerRound": {
+      "p10": 7.3,
+      "median": 10,
+      "p90": 15.4
+    }
+  },
+  {
+    "challengeRating": "2",
+    "challengeValue": 2,
+    "count": 42,
+    "armourClass": {
+      "p10": 11.1,
+      "median": 13,
+      "p90": 16.9
+    },
+    "hitPoints": {
+      "p10": 36,
+      "median": 45,
+      "p90": 66.6
+    },
+    "bestAttackBonus": {
+      "p10": 4,
+      "median": 5,
+      "p90": 6
+    },
+    "saveDc": {
+      "p10": 10.9,
+      "median": 12,
+      "p90": 14
+    },
+    "damagePerRound": {
+      "p10": 10.1,
+      "median": 15,
+      "p90": 22
+    }
+  },
+  {
+    "challengeRating": "3",
+    "challengeValue": 3,
+    "count": 25,
+    "armourClass": {
+      "p10": 12.4,
+      "median": 15,
+      "p90": 17
+    },
+    "hitPoints": {
+      "p10": 52,
+      "median": 65,
+      "p90": 82
+    },
+    "bestAttackBonus": {
+      "p10": 4.4,
+      "median": 5,
+      "p90": 6
+    },
+    "saveDc": {
+      "p10": 12,
+      "median": 12,
+      "p90": 13
+    },
+    "damagePerRound": {
+      "p10": 17.8,
+      "median": 22.5,
+      "p90": 31.3
+    }
+  },
+  {
+    "challengeRating": "4",
+    "challengeValue": 4,
+    "count": 16,
+    "armourClass": {
+      "p10": 11.5,
+      "median": 15,
+      "p90": 17.5
+    },
+    "hitPoints": {
+      "p10": 63,
+      "median": 76,
+      "p90": 97
+    },
+    "bestAttackBonus": {
+      "p10": 5,
+      "median": 6,
+      "p90": 7
+    },
+    "saveDc": {
+      "p10": 13,
+      "median": 14,
+      "p90": 15.5
+    },
+    "damagePerRound": {
+      "p10": 18,
+      "median": 28.5,
+      "p90": 31.5
+    }
+  },
+  {
+    "challengeRating": "5",
+    "challengeValue": 5,
+    "count": 25,
+    "armourClass": {
+      "p10": 13,
+      "median": 15,
+      "p90": 18.6
+    },
+    "hitPoints": {
+      "p10": 87,
+      "median": 104,
+      "p90": 121.8
+    },
+    "bestAttackBonus": {
+      "p10": 6,
+      "median": 7,
+      "p90": 8
+    },
+    "saveDc": {
+      "p10": 13.7,
+      "median": 15,
+      "p90": 15.3
+    },
+    "damagePerRound": {
+      "p10": 20.2,
+      "median": 33,
+      "p90": 41.5
+    }
+  },
+  {
+    "challengeRating": "6",
+    "challengeValue": 6,
+    "count": 11,
+    "armourClass": {
+      "p10": 14,
+      "median": 15,
+      "p90": 17
+    },
+    "hitPoints": {
+      "p10": 84,
+      "median": 123,
+      "p90": 127
+    },
+    "bestAttackBonus": {
+      "p10": 6,
+      "median": 7,
+      "p90": 7
+    },
+    "saveDc": {
+      "p10": 14,
+      "median": 15,
+      "p90": 16.5
+    },
+    "damagePerRound": {
+      "p10": 33,
+      "median": 41,
+      "p90": 49.5
+    }
+  },
+  {
+    "challengeRating": "7",
+    "challengeValue": 7,
+    "count": 6,
+    "armourClass": {
+      "p10": 14.5,
+      "median": 17,
+      "p90": 17.5
+    },
+    "hitPoints": {
+      "p10": 119,
+      "median": 126.5,
+      "p90": 155
+    },
+    "bestAttackBonus": {
+      "p10": 7,
+      "median": 7,
+      "p90": 9
+    },
+    "saveDc": {
+      "p10": 14,
+      "median": 15.5,
+      "p90": 17
+    },
+    "damagePerRound": {
+      "p10": 36.8,
+      "median": 42,
+      "p90": 45
+    }
+  },
+  {
+    "challengeRating": "8",
+    "challengeValue": 8,
+    "count": 10,
+    "armourClass": {
+      "p10": 13.9,
+      "median": 15.5,
+      "p90": 18
+    },
+    "hitPoints": {
+      "p10": 90.4,
+      "median": 136,
+      "p90": 159.7
+    },
+    "bestAttackBonus": {
+      "p10": 6.9,
+      "median": 7,
+      "p90": 9.1
+    },
+    "saveDc": {
+      "p10": 14.2,
+      "median": 15,
+      "p90": 15
+    },
+    "damagePerRound": {
+      "p10": 31,
+      "median": 53.3,
+      "p90": 66.9
+    }
+  },
+  {
+    "challengeRating": "9",
+    "challengeValue": 9,
+    "count": 8,
+    "armourClass": {
+      "p10": 14,
+      "median": 16.5,
+      "p90": 18
+    },
+    "hitPoints": {
+      "p10": 133.5,
+      "median": 161.5,
+      "p90": 192.3
+    },
+    "bestAttackBonus": {
+      "p10": 8.7,
+      "median": 9.5,
+      "p90": 11.3
+    },
+    "saveDc": {
+      "p10": 16.2,
+      "median": 17,
+      "p90": 17
+    },
+    "damagePerRound": {
+      "p10": 41.4,
+      "median": 54.8,
+      "p90": 69.6
+    }
+  },
+  {
+    "challengeRating": "10",
+    "challengeValue": 10,
+    "count": 6,
+    "armourClass": {
+      "p10": 17,
+      "median": 18,
+      "p90": 18
+    },
+    "hitPoints": {
+      "p10": 143,
+      "median": 178,
+      "p90": 224.5
+    },
+    "bestAttackBonus": {
+      "p10": 8,
+      "median": 9.5,
+      "p90": 10
+    },
+    "saveDc": {
+      "p10": 16,
+      "median": 16.5,
+      "p90": 17
+    },
+    "damagePerRound": {
+      "p10": 41.3,
+      "median": 50.3,
+      "p90": 64.5
+    }
+  },
+  {
+    "challengeRating": "11",
+    "challengeValue": 11,
+    "count": 7,
+    "armourClass": {
+      "p10": 16.2,
+      "median": 17,
+      "p90": 17.4
+    },
+    "hitPoints": {
+      "p10": 169.2,
+      "median": 199,
+      "p90": 230
+    },
+    "bestAttackBonus": {
+      "p10": 8.6,
+      "median": 10,
+      "p90": 11.8
+    },
+    "saveDc": {
+      "p10": 16.2,
+      "median": 17,
+      "p90": 17.8
+    },
+    "damagePerRound": {
+      "p10": 38.9,
+      "median": 57,
+      "p90": 78.6
+    }
+  },
+  {
+    "challengeRating": "12",
+    "challengeValue": 12,
+    "count": 2,
+    "armourClass": {
+      "p10": 17.1,
+      "median": 17.5,
+      "p90": 17.9
+    },
+    "hitPoints": {
+      "p10": 170.8,
+      "median": 174,
+      "p90": 177.2
+    },
+    "bestAttackBonus": {
+      "p10": 8.1,
+      "median": 8.5,
+      "p90": 8.9
+    },
+    "saveDc": {
+      "p10": 16,
+      "median": 16,
+      "p90": 16
+    },
+    "damagePerRound": {
+      "p10": 75.6,
+      "median": 90,
+      "p90": 104.4
+    }
+  },
+  {
+    "challengeRating": "13",
+    "challengeValue": 13,
+    "count": 6,
+    "armourClass": {
+      "p10": 16,
+      "median": 17.5,
+      "p90": 18
+    },
+    "hitPoints": {
+      "p10": 178,
+      "median": 197.5,
+      "p90": 225.5
+    },
+    "bestAttackBonus": {
+      "p10": 9.5,
+      "median": 10.5,
+      "p90": 12.5
+    },
+    "saveDc": {
+      "p10": 16,
+      "median": 18,
+      "p90": 18.5
+    },
+    "damagePerRound": {
+      "p10": 41.8,
+      "median": 68.8,
+      "p90": 87.8
+    }
+  },
+  {
+    "challengeRating": "14",
+    "challengeValue": 14,
+    "count": 3,
+    "armourClass": {
+      "p10": 18,
+      "median": 18,
+      "p90": 18.8
+    },
+    "hitPoints": {
+      "p10": 186.2,
+      "median": 195,
+      "p90": 221.4
+    },
+    "bestAttackBonus": {
+      "p10": 10.2,
+      "median": 11,
+      "p90": 11
+    },
+    "saveDc": {
+      "p10": 18,
+      "median": 18,
+      "p90": 18
+    },
+    "damagePerRound": {
+      "p10": 54.9,
+      "median": 64.5,
+      "p90": 71.7
+    }
+  },
+  {
+    "challengeRating": "15",
+    "challengeValue": 15,
+    "count": 4,
+    "armourClass": {
+      "p10": 17.3,
+      "median": 18,
+      "p90": 18.7
+    },
+    "hitPoints": {
+      "p10": 193,
+      "median": 209.5,
+      "p90": 236.5
+    },
+    "bestAttackBonus": {
+      "p10": 9.6,
+      "median": 11.5,
+      "p90": 13.4
+    },
+    "saveDc": {
+      "p10": 17.2,
+      "median": 18,
+      "p90": 18.8
+    },
+    "damagePerRound": {
+      "p10": 54.7,
+      "median": 65.3,
+      "p90": 71.3
+    }
+  },
+  {
+    "challengeRating": "16",
+    "challengeValue": 16,
+    "count": 5,
+    "armourClass": {
+      "p10": 17.2,
+      "median": 19,
+      "p90": 19.6
+    },
+    "hitPoints": {
+      "p10": 213.6,
+      "median": 220,
+      "p90": 258
+    },
+    "bestAttackBonus": {
+      "p10": 10.8,
+      "median": 12,
+      "p90": 12.6
+    },
+    "saveDc": {
+      "p10": 17.4,
+      "median": 19,
+      "p90": 20
+    },
+    "damagePerRound": {
+      "p10": 64.5,
+      "median": 72,
+      "p90": 110.4
+    }
+  },
+  {
+    "challengeRating": "17",
+    "challengeValue": 17,
+    "count": 4,
+    "armourClass": {
+      "p10": 17.6,
+      "median": 19,
+      "p90": 19.7
+    },
+    "hitPoints": {
+      "p10": 212.2,
+      "median": 249.5,
+      "p90": 326
+    },
+    "bestAttackBonus": {
+      "p10": 12.3,
+      "median": 13.5,
+      "p90": 14
+    },
+    "saveDc": {
+      "p10": 19.3,
+      "median": 20.5,
+      "p90": 21
+    },
+    "damagePerRound": {
+      "p10": 47.5,
+      "median": 60,
+      "p90": 83.4
+    }
+  },
+  {
+    "challengeRating": "19",
+    "challengeValue": 19,
+    "count": 1,
+    "armourClass": {
+      "p10": 19,
+      "median": 19,
+      "p90": 19
+    },
+    "hitPoints": {
+      "p10": 287,
+      "median": 287,
+      "p90": 287
+    },
+    "bestAttackBonus": {
+      "p10": 14,
+      "median": 14,
+      "p90": 14
+    },
+    "saveDc": null,
+    "damagePerRound": {
+      "p10": 79.5,
+      "median": 79.5,
+      "p90": 79.5
+    }
+  },
+  {
+    "challengeRating": "20",
+    "challengeValue": 20,
+    "count": 3,
+    "armourClass": {
+      "p10": 20,
+      "median": 20,
+      "p90": 20.8
+    },
+    "hitPoints": {
+      "p10": 332.2,
+      "median": 333,
+      "p90": 336.2
+    },
+    "bestAttackBonus": {
+      "p10": 14,
+      "median": 14,
+      "p90": 14
+    },
+    "saveDc": {
+      "p10": 21.1,
+      "median": 21.5,
+      "p90": 21.9
+    },
+    "damagePerRound": {
+      "p10": 73.2,
+      "median": 78,
+      "p90": 106.4
+    }
+  },
+  {
+    "challengeRating": "21",
+    "challengeValue": 21,
+    "count": 4,
+    "armourClass": {
+      "p10": 20.3,
+      "median": 21,
+      "p90": 21.7
+    },
+    "hitPoints": {
+      "p10": 302.4,
+      "median": 341,
+      "p90": 367
+    },
+    "bestAttackBonus": {
+      "p10": 12.9,
+      "median": 15,
+      "p90": 15
+    },
+    "saveDc": {
+      "p10": 22,
+      "median": 22,
+      "p90": 22
+    },
+    "damagePerRound": {
+      "p10": 79.8,
+      "median": 88.5,
+      "p90": 109.1
+    }
+  },
+  {
+    "challengeRating": "22",
+    "challengeValue": 22,
+    "count": 2,
+    "armourClass": {
+      "p10": 21.1,
+      "median": 21.5,
+      "p90": 21.9
+    },
+    "hitPoints": {
+      "p10": 406.2,
+      "median": 423,
+      "p90": 439.8
+    },
+    "bestAttackBonus": {
+      "p10": 15.1,
+      "median": 15.5,
+      "p90": 15.9
+    },
+    "saveDc": {
+      "p10": 22.1,
+      "median": 22.5,
+      "p90": 22.9
+    },
+    "damagePerRound": {
+      "p10": 81.2,
+      "median": 81.8,
+      "p90": 82.4
+    }
+  },
+  {
+    "challengeRating": "23",
+    "challengeValue": 23,
+    "count": 3,
+    "armourClass": {
+      "p10": 18.8,
+      "median": 22,
+      "p90": 22
+    },
+    "hitPoints": {
+      "p10": 470.6,
+      "median": 481,
+      "p90": 481
+    },
+    "bestAttackBonus": {
+      "p10": 16.2,
+      "median": 17,
+      "p90": 17
+    },
+    "saveDc": {
+      "p10": 23.2,
+      "median": 24,
+      "p90": 24.8
+    },
+    "damagePerRound": {
+      "p10": 81.6,
+      "median": 84,
+      "p90": 86.4
+    }
+  },
+  {
+    "challengeRating": "24",
+    "challengeValue": 24,
+    "count": 2,
+    "armourClass": {
+      "p10": 22,
+      "median": 22,
+      "p90": 22
+    },
+    "hitPoints": {
+      "p10": 510.9,
+      "median": 526.5,
+      "p90": 542.1
+    },
+    "bestAttackBonus": {
+      "p10": 17,
+      "median": 17,
+      "p90": 17
+    },
+    "saveDc": {
+      "p10": 24,
+      "median": 24,
+      "p90": 24
+    },
+    "damagePerRound": {
+      "p10": 84.5,
+      "median": 86.3,
+      "p90": 88.1
+    }
+  },
+  {
+    "challengeRating": "30",
+    "challengeValue": 30,
+    "count": 1,
+    "armourClass": {
+      "p10": 25,
+      "median": 25,
+      "p90": 25
+    },
+    "hitPoints": {
+      "p10": 697,
+      "median": 697,
+      "p90": 697
+    },
+    "bestAttackBonus": {
+      "p10": 19,
+      "median": 19,
+      "p90": 19
+    },
+    "saveDc": {
+      "p10": 27,
+      "median": 27,
+      "p90": 27
+    },
+    "damagePerRound": {
+      "p10": 120,
+      "median": 120,
+      "p90": 120
+    }
+  }
+]

@@ -86,7 +86,7 @@ function cutStatBlocks(body: string[]): { body: string[]; blocks: { name: string
  * Joins wrapped lines. A word split at the end of a line keeps its hyphen only where the flow text prints it
  * hyphenated ("10-foot-" + "radius"); otherwise the hyphen only marks the break ("sav-" + "ing").
  */
-function joiner(flowWords: string) {
+export function joiner(flowWords: string) {
   return (lines: string[]) =>
     lines.reduce((text, line) => {
       if (!text) return line;
@@ -101,8 +101,37 @@ function joiner(flowWords: string) {
     }, '');
 }
 
+/**
+ * Text the PDF prints away from the spell it belongs to, which no rule can place: the end of Antilife Shell's second
+ * sentence sits below Animate Objects, and the end of Antipathy/Sympathy at the top of the next page, in the middle
+ * of Antilife Shell. Each passage (first line to last line) goes back after the line it continues.
+ */
+const DISPLACED = [
+  {
+    first: 'or make attacks with Ranged or Reach weapons',
+    last: 'to pass through the barrier, the spell ends.',
+    after: 'ing through it. An affected creature can cast spells',
+  },
+  {
+    first: 'Wisdom saving throw to end the effect, as de-',
+    last: '1 minute, after which it can be affected again.',
+    after: 'Charmed creature, that creature can make a',
+  },
+];
+
+function replaceDisplaced(lines: string[]) {
+  for (const { first, last, after } of DISPLACED) {
+    const from = lines.indexOf(first);
+    const to = lines.indexOf(last, from);
+    if (from < 0 || to < 0 || !lines.includes(after)) throw new Error(`Displaced text not found: "${first}"`);
+    const passage = lines.splice(from, to - from + 1);
+    lines.splice(lines.indexOf(after) + 1, 0, ...passage);
+  }
+}
+
 export function convertSpells(rawText: string, flowText: string): SrdSpell[] {
   const { lines, orphans } = rawLines(rawText);
+  replaceDisplaced(lines);
   const start = lines.indexOf('Spell Descriptions');
   if (start < 0) throw new Error('No "Spell Descriptions" in the spell pages');
   const { body, blocks } = cutStatBlocks(lines.slice(start + 1));

@@ -19,7 +19,11 @@ interface Props {
   kind: ContentKind;
   /** The kinds this form may switch between (Finds also holds interactables). */
   kinds: readonly ContentKind[];
+  /** Filled in on a new entry, e.g. a monster placed from the library. */
+  initial?: Partial<ContentDraft>;
   onDone: () => void;
+  /** Leaving without saving, when that differs from finishing. */
+  onCancel?: () => void;
 }
 
 const toDraft = (e: RegionContent): ContentDraft => ({
@@ -38,9 +42,11 @@ const toDraft = (e: RegionContent): ContentDraft => ({
 });
 
 /** Add or edit one region entry, with its DM notes. Only for a DM in DM mode. */
-export function ContentForm({ regionId, campaignId, entry, kind, kinds, onDone }: Props) {
+export function ContentForm({ regionId, campaignId, entry, kind, kinds, initial, onDone, onCancel }: Props) {
   const id = useId();
-  const [draft, setDraft] = useState<ContentDraft>(() => (entry ? toDraft(entry) : emptyDraft(kind)));
+  const [draft, setDraft] = useState<ContentDraft>(() =>
+    entry ? toDraft(entry) : { ...emptyDraft(kind), ...initial },
+  );
   const notes = useContentNotes(entry?.id, true);
   const [notesDraft, setNotesDraft] = useState<string | null>(null);
   const save = useSaveContent();
@@ -289,7 +295,7 @@ export function ContentForm({ regionId, campaignId, entry, kind, kinds, onDone }
           <Save {...ICON_PROPS} className={iconClasses.icon} />
           {save.isPending ? 'Saving…' : 'Save entry'}
         </Button>
-        <Button variant="ghost" onClick={onDone}>
+        <Button variant="ghost" onClick={onCancel ?? onDone}>
           Cancel
         </Button>
         {entry &&

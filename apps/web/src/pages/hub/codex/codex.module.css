@@ -1,13 +1,14 @@
-/* The codex: folders | entities | detail. Players get entities | detail. One column on phones. */
+/* The codex, in the layout kit's proportions: folders (3) | entities (4) | detail (5). Players get entities (5) |
+   detail (7). Below 1100px the folders take a row of their own; one column on phones. */
 .codex {
   display: grid;
-  grid-template-columns: minmax(12rem, 0.9fr) minmax(14rem, 1fr) minmax(16rem, 1.3fr);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 4fr) minmax(0, 5fr);
+  gap: 1rem var(--page-gutter);
   align-items: start;
 }
 
-.codexPlayer {
-  grid-template-columns: minmax(14rem, 1fr) minmax(16rem, 1.5fr);
+.codex.codexPlayer {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
 }
 
 .column {
@@ -17,9 +18,19 @@
   min-width: 0;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1099px) {
+  .codex {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .codex:not(.codexPlayer) > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 699px) {
   .codex,
-  .codexPlayer {
+  .codex.codexPlayer {
     grid-template-columns: minmax(0, 1fr);
   }
 }

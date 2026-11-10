@@ -25,6 +25,7 @@ matches.
 | `classes/wizard.flow.txt`, `.raw.txt` | Classes, pages 77 to 82: Wizard, its spell list and the Evoker |
 | `species.raw.txt`, `.flow.txt`, `.layout.txt` | Character Origins, pages 83 to 86: the nine species (raw for the traits, flow for where paragraphs end, layout for where table cells split) |
 | `feats.raw.txt`, `.flow.txt` | Feats, page 87: the Origin feats the backgrounds give (the backgrounds themselves are on page 83, in `species.raw.txt`) |
+| `monsters.raw.txt`, `.flow.txt` | Monsters A–Z and Animals, pages 258 to 364: 330 stat blocks (raw for the entries, flow for paragraph ends and for which line-end hyphens are real) |
 | `spells.raw.txt`, `.flow.txt` | Spells, pages 107 to 175: every spell description, Acid Arrow to Zone of Truth (raw for the entries, flow for paragraph ends and for which line-end hyphens are real) |
 
 One change from the PDF text: in `attribution.txt` the licence URL was broken over two lines in the PDF

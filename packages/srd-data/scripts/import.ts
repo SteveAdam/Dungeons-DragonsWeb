@@ -1,5 +1,5 @@
-// P2-3 to P2-5: loads the SRD data into the database (srd_weapons, srd_armor, srd_species, srd_classes,
-// srd_backgrounds, srd_spells). Run from the repo root:
+// P2-3 to P3-4: loads the SRD data into the database (srd_weapons, srd_armor, srd_species, srd_classes,
+// srd_backgrounds, srd_spells, srd_monsters). Run from the repo root:
 //
 //   pnpm srd:import
 //
@@ -12,6 +12,7 @@ import {
   armorSchema,
   backgroundSchema,
   classSchema,
+  monsterSchema,
   speciesSchema,
   spellSchema,
   weaponSchema,
@@ -24,6 +25,7 @@ const species = speciesSchema.array().parse(read('species.json'));
 const classes = classSchema.array().parse(read('classes.json'));
 const backgrounds = backgroundSchema.array().parse(read('backgrounds.json'));
 const spells = spellSchema.array().parse(read('spells.json'));
+const monsters = monsterSchema.array().parse(read('monsters.json'));
 
 function target(): { url: string; key: string } {
   const url = process.env.SRD_IMPORT_URL;
@@ -88,5 +90,16 @@ await upsert('srd_backgrounds', backgrounds.map(named));
 await upsert(
   'srd_spells',
   spells.map(s => ({ id: s.id, name: s.name, source: s.source, level: s.level, data: s })),
+);
+await upsert(
+  'srd_monsters',
+  monsters.map(m => ({
+    id: m.id,
+    name: m.name,
+    source: m.source,
+    challenge_value: m.challengeValue,
+    creature_type: m.creatureType,
+    data: m,
+  })),
 );
 console.log(`Loaded into ${new URL(url).host}.`);

@@ -1,0 +1,186 @@
+// P3-4: monster arithmetic, from the SRD 5.2.1's stat block notation. Pure functions: the data lives in srd-data.
+
+/**
+ * Experience Points by Challenge Rating (SRD 5.2.1, "Monsters"). Challenge Rating 0 is worth 0 or 10: the table
+ * prints both, so the entry here is the higher one and the test accepts either.
+ */
+export const XP_BY_CHALLENGE_RATING: Readonly<Record<string, number>> = {
+  '0': 10,
+  '1/8': 25,
+  '1/4': 50,
+  '1/2': 100,
+  '1': 200,
+  '2': 450,
+  '3': 700,
+  '4': 1100,
+  '5': 1800,
+  '6': 2300,
+  '7': 2900,
+  '8': 3900,
+  '9': 5000,
+  '10': 5900,
+  '11': 7200,
+  '12': 8400,
+  '13': 10000,
+  '14': 11500,
+  '15': 13000,
+  '16': 15000,
+  '17': 18000,
+  '18': 20000,
+  '19': 22000,
+  '20': 25000,
+  '21': 33000,
+  '22': 41000,
+  '23': 50000,
+  '24': 62000,
+  '25': 75000,
+  '26': 90000,
+  '27': 105000,
+  '28': 120000,
+  '29': 135000,
+  '30': 155000,
+};
+
+/** The XP for a Challenge Rating as printed ("1/4", "10"), or null when there is no such rating. */
+export function xpForChallengeRating(challengeRating: string): number | null {
+  return XP_BY_CHALLENGE_RATING[challengeRating] ?? null;
+}
+
+/** The numeric value of a Challenge Rating as printed: "1/4" is 0.25. */
+export function challengeValue(challengeRating: string): number {
+  const [top, bottom] = challengeRating.split('/').map(Number);
+  return bottom ? top / bottom : top;
+}
+
+export interface DiceExpression {
+  count: number;
+  sides: number;
+  bonus: number;
+}
+
+/** Reads "20d10 + 40", "1d4 - 1", "2d8" or a flat "5" (no dice). Returns null for anything else. */
+export function parseDice(text: string): DiceExpression | null {
+  const m = /^\s*(?:(\d+)d(\d+))?\s*(?:([+\-−])?\s*(\d+))?\s*$/.exec(text);
+  if (!m || (m[1] === undefined && m[4] === undefined)) return null;
+  // a bare number is a flat amount; a number after dice needs its sign
+  if (m[1] !== undefined && m[4] !== undefined && m[3] === undefined) return null;
+  const sign = m[3] === '-' || m[3] === '−' ? -1 : 1;
+  return { count: Number(m[1] ?? 0), sides: Number(m[2] ?? 0), bonus: sign * Number(m[4] ?? 0) };
+}
+
+/** The exact average of a dice expression: "2d6 + 5" is 12. Throws on text that is not one. */
+export function averageDamage(dice: string): number {
+  const parsed = parseDice(dice);
+  if (!parsed) throw new Error(`Not a dice expression: "${dice}"`);
+  return (parsed.count * (parsed.sides + 1)) / 2 + parsed.bonus;
+}
+
+export interface HitDice extends DiceExpression {
+  /** The hit points the expression averages to, rounded down, as the SRD prints them. */
+  average: number;
+}
+
+/** Reads a stat block's hit dice: "20d10 + 40" has 20 d10s, a bonus of 40, and averages 150. */
+export function parseHitDice(text: string): HitDice {
+  const parsed = parseDice(text);
+  if (!parsed) throw new Error(`Not a hit dice expression: "${text}"`);
+  return { ...parsed, average: Math.floor(averageDamage(text)) };
+}
+
+export interface MonsterAttackLike {
+  name: string;
+  damage: readonly { dice: string }[];
+  /** A Recharge or uses per day: not available every round. */
+  limited?: boolean;
+}
+
+export interface MonsterDamageLike {
+  actions: readonly { name: string; description: string }[];
+  /** Read only for "has five heads" (the Hydra). */
+  traits?: readonly { description: string }[];
+  attacks: readonly MonsterAttackLike[];
+}
+
+const WORD_COUNTS: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+};
+const COUNT_WORDS = Object.keys(WORD_COUNTS).join('|');
+const attackAverage = (attack: MonsterAttackLike) => attack.damage.reduce((sum, d) => sum + averageDamage(d.dice), 0);
+
+/** The best-damaging attack among the given names, ignoring case; names it cannot match count for nothing. */
+function bestOf(names: string[], attacks: readonly MonsterAttackLike[]): number {
+  const found = names
+    .map(n => attacks.find(a => a.name.toLowerCase() === n.trim().toLowerCase()))
+    .filter((a): a is MonsterAttackLike => !!a);
+  return found.length ? Math.max(...found.map(attackAverage)) : 0;
+}
+
+/**
+ * Average damage of one round, for comparing monsters. It reads the first sentence of Multiattack:
+ *   - "makes two Tentacle attacks": two times that attack;
+ *   - "makes one Bite attack and two Claw attacks": each named attack, that many times;
+ *   - "makes two Rend or Bite attacks" or "two attacks, using Rend or Bite in any combination": the better one;
+ *   - "as many Bite attacks as it has heads": the number of heads from its traits;
+ *   - "and uses Consume Memories": once, when that action is listed and is available every round.
+ * With no Multiattack, or one that names nothing it can read, it is the best single attack that is available every
+ * round (or the best limited one if that is all there is); the result is never below that best single attack. Hits are
+ * assumed; a save's damage counts in full; damage a creature must first be grappled or otherwise set up for is not
+ * separated out. It is a yardstick, not a simulation.
+ */
+export function damagePerRound(monster: MonsterDamageLike): number {
+  const { attacks } = monster;
+  if (!attacks.length) return 0;
+  const usable = attacks.filter(a => !a.limited);
+  const bestSingle = Math.max(...(usable.length ? usable : attacks).map(attackAverage));
+  const multi = monster.actions.find(a => a.name === 'Multiattack');
+  if (multi) {
+    const sentence = multi.description.split(/\.(?: |$)/)[0];
+    let total = 0;
+
+    // "two attacks, using Rend or Bite in any combination", "three other attacks, using Claw or Tail"
+    const generic = new RegExp(`\\b(${COUNT_WORDS})(?: other)? attacks?,? using ([^.]+)`, 'i').exec(sentence);
+    if (generic) {
+      const named = generic[2]
+        .replace(/ in any combination.*$/i, '')
+        .split(/, | or | and /)
+        .filter(Boolean);
+      total += WORD_COUNTS[generic[1].toLowerCase()] * bestOf(named, attacks);
+    }
+
+    // "one Bite attack", "two Rend or Claw attacks"
+    const named = new RegExp(
+      `\\b(${COUNT_WORDS}) ((?:[A-Z][\\w'’-]*)(?: (?:[A-Z][\\w'’-]*|of|the))*(?: or (?:[A-Z][\\w'’-]*)(?: (?:[A-Z][\\w'’-]*|of|the))*)*) attacks?\\b`,
+      'g',
+    );
+    for (const m of sentence.matchAll(named)) {
+      total += WORD_COUNTS[m[1]] * bestOf(m[2].split(' or '), attacks);
+    }
+
+    // "as many Bite attacks as it has heads": the number comes from the trait that says how many it has
+    const perHead = /as many ([A-Z][\w'’-]*) attacks as it has heads/.exec(sentence);
+    if (perHead) {
+      const heads = new RegExp(`\\bhas (${COUNT_WORDS}) heads\\b`).exec(
+        (monster.traits ?? []).map(t => t.description).join(' '),
+      );
+      if (heads) total += WORD_COUNTS[heads[1]] * bestOf([perHead[1]], attacks);
+    }
+
+    // "and uses Consume Memories or Dominate Mind": once, the better one, if it can be used every round
+    const uses = /\buses (?:either )?([A-Z][^.]*)/.exec(sentence);
+    if (uses) {
+      const everyRound = attacks.filter(a => !a.limited);
+      total += bestOf(uses[1].replace(/ if available$/i, '').split(/, | or | and /), everyRound);
+    }
+    if (total > 0) return Math.max(total, bestSingle);
+  }
+  return bestSingle;
+}

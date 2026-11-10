@@ -104,6 +104,25 @@ function toRow(changes: RegionChanges): RegionUpdate {
   return row as RegionUpdate;
 }
 
+export interface CampaignRegion {
+  id: string;
+  name: string;
+  mapName: string;
+}
+
+/** Every region on every map of a campaign, by map then name, for placing something in one. DMs only. */
+export async function listCampaignRegions(campaignId: string): Promise<CampaignRegion[]> {
+  const { data, error } = await supabase
+    .from('regions')
+    .select('id, name, maps!regions_map_id_fkey!inner(name, campaign_id)')
+    .eq('maps.campaign_id', campaignId)
+    .order('name');
+  if (error) throw toDataError(error);
+  return (data ?? [])
+    .map(r => ({ id: r.id, name: r.name, mapName: r.maps.name }))
+    .sort((a, b) => a.mapName.localeCompare(b.mapName));
+}
+
 /**
  * The regions of a map. With includeHidden false only revealed regions are asked for, so a player (or a DM
  * previewing as one) never receives a hidden one. Players are also filtered by row level security.

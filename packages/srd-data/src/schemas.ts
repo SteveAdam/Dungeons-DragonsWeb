@@ -178,6 +178,8 @@ export const classSchema = z
           .strict(),
       )
       .length(3),
+    /** From the whole class table: the class level at which each spell level (key) first has a slot. */
+    firstSlotAt: z.record(z.string().regex(/^[1-9]$/), z.number().int().min(1).max(20)).optional(),
     /** The SRD's sidebar boxes in the class's pages, e.g. "Breaking Your Oath". */
     sidebars: z.array(z.object({ title: z.string(), text: z.string().min(1) }).strict()).optional(),
     subclasses: z
@@ -315,3 +317,105 @@ export const spellSchema = z
   .strict();
 
 export type SrdSpell = z.infer<typeof spellSchema>;
+
+// P3-4: SRD monsters, in the stat block's own wording.
+const abilityRecord = z
+  .object({
+    str: z.number().int(),
+    dex: z.number().int(),
+    con: z.number().int(),
+    int: z.number().int(),
+    wis: z.number().int(),
+    cha: z.number().int(),
+  })
+  .strict();
+const monsterEntry = z
+  .object({
+    name: z.string().min(1),
+    /** As printed in brackets after the name: "Recharge 5–6", "3/Day". */
+    usage: z.string().optional(),
+    description: z.string(),
+  })
+  .strict();
+
+export const monsterSchema = z
+  .object({
+    id,
+    name: z.string().min(1),
+    source: z.literal(SOURCE),
+    category: z.enum(['monster', 'animal']),
+    /** One size, or two for "Medium or Small". */
+    size: z.array(z.enum(['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Gargantuan'])).min(1),
+    creatureType: z.string().min(1),
+    /** As printed in brackets after the type: "Devil", "Chromatic". */
+    creatureTags: z.string().optional(),
+    alignment: z.string().min(1),
+    armourClass: z.number().int().positive(),
+    armourNote: z.string().optional(),
+    initiative: z.object({ bonus: z.number().int(), score: z.number().int() }).strict(),
+    hitPoints: z.number().int().positive(),
+    hitDice: z.string().min(1),
+    speeds: z
+      .object({
+        walk: z.number().int().nonnegative().optional(),
+        burrow: z.number().int().positive().optional(),
+        climb: z.number().int().positive().optional(),
+        fly: z.number().int().positive().optional(),
+        swim: z.number().int().positive().optional(),
+        hover: z.literal(true).optional(),
+      })
+      .strict(),
+    /** As printed, including speeds that apply only in one form. */
+    speedText: z.string().min(1),
+    abilityScores: abilityRecord,
+    saves: abilityRecord,
+    skills: z.array(z.object({ name: z.string().min(1), bonus: z.number().int() }).strict()),
+    damageVulnerabilities: z.array(z.string()),
+    damageResistances: z.array(z.string()),
+    damageImmunities: z.array(z.string()),
+    conditionImmunities: z.array(z.string()),
+    gear: z.array(z.string()),
+    senses: z.array(z.string()),
+    passivePerception: z.number().int(),
+    languages: z.string(),
+    /** As printed: "1/4", "10". */
+    challengeRating: z.string().regex(/^\d+(\/\d+)?$/),
+    challengeValue: z.number().nonnegative(),
+    xp: z.number().int().nonnegative(),
+    xpInLair: z.number().int().positive().optional(),
+    proficiencyBonus: z.number().int().positive(),
+    traits: z.array(monsterEntry),
+    actions: z.array(monsterEntry),
+    bonusActions: z.array(monsterEntry),
+    reactions: z.array(monsterEntry),
+    legendaryIntro: z.string().optional(),
+    legendaryActions: z.array(monsterEntry),
+    /** Only what is directly readable from the text: an attack roll, or a save with damage on a failure. */
+    attacks: z.array(
+      z
+        .object({
+          name: z.string().min(1),
+          attackBonus: z.number().int().optional(),
+          reachOrRange: z.string().optional(),
+          damage: z.array(
+            z
+              .object({
+                /** The number the SRD prints. */
+                average: z.number().int().nonnegative(),
+                /** The dice expression it prints beside that, or the number alone for flat damage. */
+                dice: z.string().min(1),
+                type: damageType,
+              })
+              .strict(),
+          ),
+          saveDc: z.number().int().positive().optional(),
+          saveAbility: z.enum(['str', 'dex', 'con', 'int', 'wis', 'cha']).optional(),
+          /** It has a Recharge or uses per day, so it is not available every round. */
+          limited: z.literal(true).optional(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export type SrdMonster = z.infer<typeof monsterSchema>;

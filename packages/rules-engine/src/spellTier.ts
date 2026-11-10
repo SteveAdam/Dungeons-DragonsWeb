@@ -1,0 +1,68 @@
+// P3-5: the tier of play a spell normally appears in, so the DM can see that a high-level spell is an endgame goal.
+// A spell's tier is the tier of the lowest character level at which any of its classes first gains a slot of the
+// spell's level, read from the class tables. Cantrips are tier 1.
+
+export type TierOfPlay = 1 | 2 | 3 | 4;
+export type SpellTier = TierOfPlay | 'unknown';
+
+export const TIERS_OF_PLAY: { tier: TierOfPlay; label: string }[] = [
+  { tier: 1, label: 'Levels 1 to 4' },
+  { tier: 2, label: 'Levels 5 to 10' },
+  { tier: 3, label: 'Levels 11 to 16' },
+  { tier: 4, label: 'Levels 17 to 20' },
+];
+
+/** What the tier needs from a spell. */
+export interface TierSpell {
+  level: number;
+  classes: readonly string[];
+}
+
+/** What the tier needs from a class: the character level of its first slot of each spell level. */
+export interface TierClass {
+  name: string;
+  firstSlotAt?: Readonly<Record<string, number>>;
+}
+
+/** The tier of play a character level belongs to. */
+export function tierOfPlay(characterLevel: number): TierOfPlay {
+  if (characterLevel <= 4) return 1;
+  if (characterLevel <= 10) return 2;
+  if (characterLevel <= 16) return 3;
+  return 4;
+}
+
+/** The spell's classes whose table is missing: without them the lowest level cannot be known. */
+function classesWithoutTable(spell: TierSpell, classes: readonly TierClass[]): string[] {
+  return spell.classes.filter(name => !classes.find(c => c.name === name)?.firstSlotAt);
+}
+
+/**
+ * The lowest character level at which any of the spell's classes first gains a slot of its level, or null when that
+ * cannot be told. A class with a table but no slot of that level never casts it from a slot (a Warlock's 6th-level
+ * spells come from Mystic Arcanum, not slots), so it is passed over rather than counted as missing.
+ */
+export function spellFirstLevel(spell: TierSpell, classes: readonly TierClass[]): number | null {
+  if (spell.level === 0) return 1;
+  if (spell.classes.length === 0 || classesWithoutTable(spell, classes).length > 0) return null;
+  const levels = spell.classes.flatMap(name => {
+    const at = classes.find(c => c.name === name)?.firstSlotAt?.[String(spell.level)];
+    return at === undefined ? [] : [at];
+  });
+  return levels.length > 0 ? Math.min(...levels) : null;
+}
+
+/** The spell's tier of play, or 'unknown' when a class table is missing data. */
+export function spellTier(spell: TierSpell, classes: readonly TierClass[]): SpellTier {
+  const level = spellFirstLevel(spell, classes);
+  return level === null ? 'unknown' : tierOfPlay(level);
+}
+
+/** Why a spell's tier is unknown, in words for a console warning; empty when its tier is known. */
+export function spellTierGap(spell: TierSpell & { name: string }, classes: readonly TierClass[]): string | null {
+  if (spellFirstLevel(spell, classes) !== null) return null;
+  const missing = classesWithoutTable(spell, classes);
+  return missing.length > 0
+    ? `${spell.name}: no class table for ${missing.join(', ')}`
+    : `${spell.name}: no class gains a level ${spell.level} slot`;
+}

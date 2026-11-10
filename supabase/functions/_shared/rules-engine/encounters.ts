@@ -29,7 +29,12 @@ export interface SpawnRule {
   count: { min: number; max: number };
 }
 
-export const DEFAULT_SPAWN_RULE: SpawnRule = { mode: 'always', chance: 100, timeOfDay: 'any', count: { min: 1, max: 1 } };
+export const DEFAULT_SPAWN_RULE: SpawnRule = {
+  mode: 'always',
+  chance: 100,
+  timeOfDay: 'any',
+  count: { min: 1, max: 1 },
+};
 
 const whole = (n: unknown, lo: number, hi: number): n is number =>
   typeof n === 'number' && Number.isInteger(n) && n >= lo && n <= hi;

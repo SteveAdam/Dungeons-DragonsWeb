@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T78) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T79) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(566);
+select plan(573);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1474,6 +1474,23 @@ select tests.act_as('dm');
 select lives_ok($$ select reveal_content(tests.u('rc:h-vault'), (select id from here_groups where label = 'a'), 'found') $$, 'T78: the DM marks the vault found for group A');
 select is((select state from content_discoveries where content_id = tests.u('rc:h-vault')), 'found', 'T78: and it is found');
 reset role;
+
+-- T79: SRD monsters are read-only (P3-4): anyone signed in reads them, nobody but the import writes them
+insert into srd_monsters (id, name, source, challenge_value, creature_type, data) values
+  ('test-wolf', 'Test Wolf', 'srd-5.2', 0.25, 'Beast', '{"id":"test-wolf","name":"Test Wolf"}');
+select tests.act_as('player');
+select is((select name from srd_monsters where id = 'test-wolf'), 'Test Wolf', 'T79: a player reads an SRD monster');
+select throws_ok($$ insert into srd_monsters (id, name, source, challenge_value, creature_type, data) values ('x', 'X', 'srd-5.2', 1, 'Beast', '{"id":"x"}') $$, '42501', null, 'T79: a player cannot add one');
+select throws_ok($$ update srd_monsters set name = 'Tamed' where id = 'test-wolf' $$, '42501', null, 'T79: nor change one');
+select throws_ok($$ delete from srd_monsters where id = 'test-wolf' $$, '42501', null, 'T79: nor remove one');
+reset role;
+select tests.act_as('dm');
+select throws_ok($$ update srd_monsters set name = 'Tamed' where id = 'test-wolf' $$, '42501', null, 'T79: nor can a DM');
+reset role;
+select tests.act_as_anon();
+select is((select count(*)::int from srd_monsters), 0, 'T79: a signed-out visitor reads nothing');
+reset role;
+select throws_ok($$ insert into srd_monsters (id, name, source, challenge_value, creature_type, data) values ('bad', 'Bad', 'homebrew', 1, 'Beast', '{"id":"bad"}') $$, '23514', null, 'T79: only SRD content can be stored here');
 
 select * from finish();
 rollback;

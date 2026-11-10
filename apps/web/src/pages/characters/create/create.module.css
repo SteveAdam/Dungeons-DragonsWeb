@@ -1,10 +1,7 @@
-/* P2-9: the character creation wizard. One column, so it works at phone width. */
+/* P2-9: the character creation and level-up wizards, on the layout kit's grid: the steps down a rail (3 columns of
+   12) beside the step itself (9). Below 1100px the rail becomes a ribbon across the top. */
 .page {
-  display: grid;
-  gap: 1rem;
-  max-width: 52rem;
-  margin: 0 auto;
-  padding: 1rem;
+  row-gap: 1rem;
 }
 
 .paper {
@@ -55,12 +52,35 @@
 
 .wizard {
   display: grid;
-  gap: 1rem;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem var(--page-gutter);
+  align-items: start;
+}
+
+.wizard > nav {
+  grid-row: 1 / span 2;
+  grid-column: span 3;
+}
+
+.wizard > :not(nav) {
+  grid-column: 4 / -1;
+}
+
+@media (max-width: 1099px) {
+  .wizard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wizard > nav,
+  .wizard > :not(nav) {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
 }
 
 .ribbon {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.35rem;
   margin: 0;
   padding: 0;
@@ -91,6 +111,12 @@
 
 .stepNumber {
   font-weight: 700;
+}
+
+@media (max-width: 1099px) {
+  .ribbon {
+    flex-flow: row wrap;
+  }
 }
 
 /* on a phone only the current step's title shows */

@@ -260,6 +260,28 @@ function spellcasting(source: ClassSource, classFeatures: SrdFeature[]): Pick<Sr
 // of a row whose features run on ("2 +2 Monk’s Focus, Unarmored Movement,") is not mistaken for a whole row
 const tail = (n: number) => new RegExp(`^(\\d{1,2}) \\+(\\d) (.+?)((?: [^\\s,]+){${n}})$`);
 
+/**
+ * The class level at which each spell level first has a slot, from every row of the class table: the Spell Slots
+ * columns (1 to 9), or for Pact Magic the Slot Level column. Nothing for a class with no slots in its table.
+ */
+function firstSlots(source: ClassSource, rows: RegExpExecArray[]): { firstSlotAt?: Record<string, number> } {
+  const at: Record<string, number> = {};
+  const note = (spellLevel: number, classLevel: number) => {
+    at[spellLevel] = Math.min(at[spellLevel] ?? classLevel, classLevel);
+  };
+  for (const row of rows) {
+    const level = Number(row[1]);
+    const cells = row[4].trim().split(' ');
+    source.columns.forEach((c, i) => {
+      const count = Number(cells[i]);
+      const slot = /^slots(\d)$/.exec(c.key);
+      if (slot && count > 0) note(Number(slot[1]), level);
+      if (c.key === 'slotLevel' && count > 0) for (let n = 1; n <= count; n++) note(n, level);
+    });
+  }
+  return Object.keys(at).length ? { firstSlotAt: at } : {};
+}
+
 export function convertClass(source: ClassSource, flowText: string, rawText: string): SrdClass {
   const { name } = source;
   const lines = cleanFlow(flowText, `${name} Features`);
@@ -328,6 +350,8 @@ export function convertClass(source: ClassSource, flowText: string, rawText: str
   // next lines ("1 +2 Bardic Inspiration," / "Spellcasting" / "D6 2 4 2 — ...")
   const row = tail(source.columns.length);
   const rows: RegExpExecArray[] = [];
+  // every row of the table, for the class level at which each spell level first has a slot (P3-5)
+  const allRows: RegExpExecArray[] = [];
   let pending = '';
   for (const raw of rawText.split('\n')) {
     const line = raw.trim();
@@ -340,6 +364,7 @@ export function convertClass(source: ClassSource, flowText: string, rawText: str
     const m = row.exec(pending.replace(/(\d) ft\./g, '$1_ft.'));
     if (m) {
       if (Number(m[1]) <= MAX_LEVEL) rows.push(m);
+      allRows.push(m);
       pending = '';
     }
   }
@@ -386,6 +411,7 @@ export function convertClass(source: ClassSource, flowText: string, rawText: str
     ...spellcasting(source, classFeatures),
     columns: source.columns,
     levels,
+    ...firstSlots(source, allRows),
     subclasses: [subclass],
     ...(sidebars.length ? { sidebars } : {}),
   };

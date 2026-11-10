@@ -19,6 +19,7 @@ const ThemePage = import.meta.env.DEV ? lazy(() => import('./pages/ThemePage')) 
 const OddsDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/OddsDevPage')) : null;
 const SrdDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/SrdDevPage')) : null;
 const ClassesDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/ClassesDevPage')) : null;
+const MonstersDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/MonstersDevPage')) : null;
 // The map view brings Leaflet; load it only when a map is opened.
 const MapViewPage = lazy(() => import('./pages/map/MapViewPage').then(m => ({ default: m.MapViewPage })));
 const CharacterSheetPage = lazy(() =>
@@ -26,6 +27,7 @@ const CharacterSheetPage = lazy(() =>
 );
 const CreateCharacterPage = lazy(() => import('./pages/characters/create/CreateCharacterPage'));
 const LevelUpPage = lazy(() => import('./pages/characters/levelup/LevelUpPage'));
+const LibraryPage = lazy(() => import('./pages/library/LibraryPage'));
 
 function HeaderActions() {
   const { session, signOut } = useAuth();
@@ -73,6 +75,16 @@ export function App() {
           element={
             <ProtectedRoute>
               <CampaignListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/library"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<p className="auth-status">Unlocking the library…</p>}>
+                <LibraryPage />
+              </Suspense>
             </ProtectedRoute>
           }
         />
@@ -160,6 +172,16 @@ export function App() {
             element={
               <Suspense fallback={null}>
                 <ClassesDevPage />
+              </Suspense>
+            }
+          />
+        )}
+        {MonstersDevPage && (
+          <Route
+            path="/dev/monsters"
+            element={
+              <Suspense fallback={null}>
+                <MonstersDevPage />
               </Suspense>
             }
           />

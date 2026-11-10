@@ -87,9 +87,22 @@ describe('the SRD spells (SRD 5.2.1 pages 107 to 175)', () => {
   it('end every paragraph of every spell shipped so far like a sentence (no stray table or page fragments)', () => {
     for (const s of SRD_SPELLS) {
       for (const p of [...s.text.split('\n\n'), ...(s.higherLevels?.split('\n\n') ?? [])]) {
-        expect(/[.:?!)”]$/.test(p) || p.startsWith('• '), `${s.name}: "${p.slice(-40)}"`).toBe(true);
+        // the SRD itself ends Telekinesis on a comma, and Control Weather on its Wind table
+        const endsAsPrinted = (s.name === 'Telekinesis' && p.endsWith('a simple tool,')) || p.endsWith('5 Storm');
+        expect(/[.:?!)”]$/.test(p) || p.startsWith('• ') || endsAsPrinted, `${s.name}: "${p.slice(-40)}"`).toBe(true);
       }
     }
+  });
+
+  it('put back the passages the PDF prints away from their spells', () => {
+    expect(byName('Antilife Shell').text).toMatch(
+      /can cast spells or make attacks with Ranged or Reach weapons through the barrier\.\n\nIf you move/,
+    );
+    expect(byName('Antipathy/Sympathy').text).toMatch(
+      /can make a Wisdom saving throw to end the effect, as described below\./,
+    );
+    expect(byName('Antilife Shell').text).not.toMatch(/Wisdom saving throw/);
+    expect(byName('Animate Objects').higherLevels).not.toMatch(/or make attacks/);
   });
 
   it('attach each stat block to the spell that uses it, not to the spell printed next to it', () => {
@@ -125,13 +138,11 @@ describe('the SRD spells (SRD 5.2.1 pages 107 to 175)', () => {
     });
   });
 
-  it('include all 42 level 3 spells, plus Greater Restoration and Regenerate for the library mockups', () => {
+  it('include all 42 level 3 spells, and every level above them for the library', () => {
     expect(SRD_SPELLS.filter(s => s.level === 3)).toHaveLength(42);
-    expect(SRD_SPELLS.filter(s => s.level > 3).map(s => [s.name, s.level])).toEqual([
-      ['Greater Restoration', 5],
-      ['Regenerate', 7],
-    ]);
-    expect(SRD_SPELLS).toHaveLength(27 + 57 + 57 + 42 + 2);
+    expect(SRD_SPELLS).toHaveLength(339);
+    expect(byName('Greater Restoration').level).toBe(5);
+    expect(byName('Regenerate').level).toBe(7);
     for (const name of ['Cure Wounds', 'Lesser Restoration', 'Revivify', 'Greater Restoration', 'Regenerate']) {
       expect(byName(name), name).toBeDefined();
     }

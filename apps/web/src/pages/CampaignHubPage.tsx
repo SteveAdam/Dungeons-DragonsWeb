@@ -1,4 +1,14 @@
-import { ArrowLeft, BookMarked, Feather, Map as MapIcon, ScrollText, Tent, Users, Waypoints } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookMarked,
+  Feather,
+  Library,
+  Map as MapIcon,
+  ScrollText,
+  Tent,
+  Users,
+  Waypoints,
+} from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { Band, Cell, Dice, IconLink, PageGrid, Paper, RibbonTabs, Toggle } from '../components/ui';
@@ -33,6 +43,8 @@ const TABS = [
   { id: 'web', label: 'Web', icon: Waypoints },
   { id: 'people', label: 'People', icon: Users },
 ] as const;
+// the DM's library is a page of its own at /campaigns/:id/library, so the ribbon simply leads there
+const LIBRARY_TAB = { id: 'library', label: 'Library', icon: Library };
 type TabId = (typeof TABS)[number]['id'];
 const isTab = (value: string | undefined): value is TabId => TABS.some(t => t.id === value);
 
@@ -185,7 +197,7 @@ export function CampaignHubPage() {
         <Cell>
           <RibbonTabs
             aria-label="Campaign sections"
-            tabs={[...TABS]}
+            tabs={dmMode ? [...TABS, LIBRARY_TAB] : [...TABS]}
             value={activeTab}
             onChange={id => navigate(`/campaigns/${campaignId}/${id}`)}
           />

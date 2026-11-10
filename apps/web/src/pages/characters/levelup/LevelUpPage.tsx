@@ -6,7 +6,7 @@ import { ArrowLeft, ScrollText } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../../components/ErrorNotice';
-import { IconLink, Paper } from '../../../components/ui';
+import { Cell, IconLink, PageGrid, Paper } from '../../../components/ui';
 import { getHitDieRoll, type AppliedLevel } from '../../../data/levelup';
 import { listSrdClasses, listSrdSpells } from '../../../data/srd';
 import { queryKeys } from '../../../hooks/queryKeys';
@@ -43,57 +43,61 @@ export default function LevelUpPage() {
   const pending = sheet ? pendingLevels(sheet) : 0;
 
   return (
-    <main className={styles.page}>
-      <IconLink to={back} end icon={ArrowLeft}>
-        Back to the sheet
-      </IconLink>
-      <Paper as="section" texture="full" className={styles.paper} aria-labelledby="level-up-title">
-        <h1 id="level-up-title" className={styles.title}>
-          {sheet ? `Level up ${sheet.name}` : 'Level up'}
-        </h1>
-        {applied && (
-          <p role="status" className={styles.saved}>
-            {`Level ${applied.level} applied: ${applied.hitPoints} hit points (+${applied.hitPointsGained}), proficiency +${applied.proficiencyBonus}.`}
-          </p>
-        )}
-        {failed ? (
-          <ErrorNotice error={failed.error} onRetry={() => failed.refetch()} />
-        ) : !sheet || !classes.data || !spells.data || roll.isPending ? (
-          <p role="status" className={styles.muted}>
-            Turning the page…
-          </p>
-        ) : !cls ? (
-          <p className={styles.muted}>{`The SRD has no class called ${sheet.className}.`}</p>
-        ) : pending === 0 ? (
-          <>
-            <p
-              className={styles.muted}
-            >{`${sheet.name} is level ${sheet.levelApplied ?? 1}, with no level-up waiting.`}</p>
-            <IconLink to={back} icon={ScrollText}>
-              Open the sheet
-            </IconLink>
-          </>
-        ) : (
-          <>
-            {pending > 1 && (
+    <PageGrid className={styles.page}>
+      <Cell>
+        <IconLink to={back} end icon={ArrowLeft}>
+          Back to the sheet
+        </IconLink>
+      </Cell>
+      <Cell>
+        <Paper as="section" texture="full" className={styles.paper} aria-labelledby="level-up-title">
+          <h1 id="level-up-title" className={styles.title}>
+            {sheet ? `Level up ${sheet.name}` : 'Level up'}
+          </h1>
+          {applied && (
+            <p role="status" className={styles.saved}>
+              {`Level ${applied.level} applied: ${applied.hitPoints} hit points (+${applied.hitPointsGained}), proficiency +${applied.proficiencyBonus}.`}
+            </p>
+          )}
+          {failed ? (
+            <ErrorNotice error={failed.error} onRetry={() => failed.refetch()} />
+          ) : !sheet || !classes.data || !spells.data || roll.isPending ? (
+            <p role="status" className={styles.muted}>
+              Turning the page…
+            </p>
+          ) : !cls ? (
+            <p className={styles.muted}>{`The SRD has no class called ${sheet.className}.`}</p>
+          ) : pending === 0 ? (
+            <>
               <p
                 className={styles.muted}
-              >{`${pending} levels are waiting; they are applied one at a time, in order.`}</p>
-            )}
-            <LevelUpFlow
-              // a fresh flow for each level
-              key={sheet.levelApplied}
-              characterId={characterId}
-              sheet={sheet}
-              cls={cls}
-              spells={spells.data}
-              optionalFeats={campaign.data?.optionalFeats ?? false}
-              existingRoll={roll.data ?? null}
-              onApplied={onApplied}
-            />
-          </>
-        )}
-      </Paper>
-    </main>
+              >{`${sheet.name} is level ${sheet.levelApplied ?? 1}, with no level-up waiting.`}</p>
+              <IconLink to={back} icon={ScrollText}>
+                Open the sheet
+              </IconLink>
+            </>
+          ) : (
+            <>
+              {pending > 1 && (
+                <p
+                  className={styles.muted}
+                >{`${pending} levels are waiting; they are applied one at a time, in order.`}</p>
+              )}
+              <LevelUpFlow
+                // a fresh flow for each level
+                key={sheet.levelApplied}
+                characterId={characterId}
+                sheet={sheet}
+                cls={cls}
+                spells={spells.data}
+                optionalFeats={campaign.data?.optionalFeats ?? false}
+                existingRoll={roll.data ?? null}
+                onApplied={onApplied}
+              />
+            </>
+          )}
+        </Paper>
+      </Cell>
+    </PageGrid>
   );
 }

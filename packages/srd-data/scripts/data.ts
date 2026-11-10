@@ -11,7 +11,9 @@ import { convertArmor, convertCurrency, convertWeapons } from '../src/convert.ts
 import { convertBackgrounds } from '../src/convertBackgrounds.ts';
 import { convertClass } from '../src/convertClass.ts';
 import { convertSpecies } from '../src/convertSpecies.ts';
+import { convertMonsters } from '../src/convertMonsters.ts';
 import { convertSpells } from '../src/convertSpells.ts';
+import { crBenchmarks } from '../src/crBenchmarks.ts';
 import { featuresPending } from '../src/featuresPending.ts';
 import { SPECIES_SOURCES } from '../src/speciesSources.ts';
 import { SPELL_BATCH } from '../src/spellSources.ts';
@@ -20,6 +22,7 @@ import {
   backgroundSchema,
   classSchema,
   currencySchema,
+  monsterSchema,
   speciesSchema,
   spellSchema,
   weaponSchema,
@@ -66,6 +69,11 @@ const sets: { file: string; records: unknown; schema: ZodTypeAny }[] = [
     ),
     schema: spellSchema.array(),
   },
+  {
+    file: 'data/monsters.json',
+    records: convertMonsters(read('source/monsters.raw.txt'), read('source/monsters.flow.txt')),
+    schema: monsterSchema.array(),
+  },
 ];
 
 let failed = false;
@@ -81,6 +89,13 @@ for (const { file, records, schema } of sets) {
   outputs.push({ file, text: `${JSON.stringify(records, null, 2)}\n`, count });
 }
 if (!failed) {
+  const monsters = monsterSchema.array().parse(sets.find(s => s.file === 'data/monsters.json')!.records);
+  outputs.push({
+    file: 'generated/crBenchmarks.json',
+    text: `${JSON.stringify(crBenchmarks(monsters), null, 2)}
+`,
+    count: 'generated from the monsters',
+  });
   const classes = classSchema.array().parse(sets.find(s => s.file === 'data/classes.json')!.records);
   const species = speciesSchema.array().parse(sets.find(s => s.file === 'data/species.json')!.records);
   const backgrounds = backgroundSchema.array().parse(sets.find(s => s.file === 'data/backgrounds.json')!.records);

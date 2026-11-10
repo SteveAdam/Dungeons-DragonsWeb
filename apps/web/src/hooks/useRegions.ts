@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createRegion,
   deleteRegion,
+  listCampaignRegions,
   listRegions,
   updateRegion,
   type Region,
@@ -16,6 +17,13 @@ export const useRegions = (mapId: string | undefined, includeHidden: boolean) =>
     queryKey: queryKeys.regions(mapId ?? '', includeHidden),
     queryFn: () => listRegions(mapId as string, { includeHidden }),
     enabled: !!mapId,
+  });
+
+/** Every region of the campaign, read afresh each time something is about to be placed. DM only. */
+export const useCampaignRegions = (campaignId: string) =>
+  useQuery({
+    queryKey: ['campaigns', campaignId, 'all-regions'],
+    queryFn: () => listCampaignRegions(campaignId),
   });
 
 const regionsKey = (mapId: string) => ['maps', mapId, 'regions'];

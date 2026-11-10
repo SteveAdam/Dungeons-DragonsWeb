@@ -25,6 +25,20 @@ vi.mock('../../data/here', () => ({
   searchHere: vi.fn(),
   subscribeToNotices: vi.fn(() => () => {}),
 }));
+// the spell and details tabs have their own tests; here they must not reach for a real server, since a refetch of
+// them holds up every "characters" mutation until it answers
+vi.mock('../../data/spells', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/spells')>()),
+  getSpellState: async () => {
+    throw new Error('not part of this test');
+  },
+}));
+vi.mock('../../data/details', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/details')>()),
+  getDetails: async () => {
+    throw new Error('not part of this test');
+  },
+}));
 vi.mock('../../data/items', async importOriginal => ({
   ...(await importOriginal<typeof import('../../data/items')>()),
   listCharacterItems: vi.fn(),

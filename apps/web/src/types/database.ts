@@ -1029,6 +1029,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"srd_monsters": {
+                  Row: {
+                    "challenge_value": number,"creature_type": string,"data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "challenge_value": number,"creature_type": string,"data": NonNullable<Json>,"id": string,"name": string,"source": string
+                  }
+                  Update: {
+                    "challenge_value"?: number,"creature_type"?: string,"data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"srd_species": {
                   Row: {
                     "data": NonNullable<Json>,"id": string,"name": string,"source": string

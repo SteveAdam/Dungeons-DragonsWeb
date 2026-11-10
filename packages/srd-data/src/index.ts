@@ -6,9 +6,10 @@
 // Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
 import backgroundsJson from '../data/backgrounds.json';
 import classesJson from '../data/classes.json';
+import monstersJson from '../data/monsters.json';
 import speciesJson from '../data/species.json';
 import spellsJson from '../data/spells.json';
-import { backgroundSchema, classSchema, speciesSchema, spellSchema } from './schemas';
+import { backgroundSchema, classSchema, monsterSchema, speciesSchema, spellSchema } from './schemas';
 
 export * from './attribution';
 export * from './equipment';
@@ -21,3 +22,6 @@ export const SRD_BACKGROUNDS = backgroundSchema.array().parse(backgroundsJson);
 
 // P2-5: SRD spells, imported in batches by level (see spellSources.ts).
 export const SRD_SPELLS = spellSchema.array().parse(spellsJson);
+
+// P3-4: SRD monsters.
+export const SRD_MONSTERS = monsterSchema.array().parse(monstersJson);

@@ -5,7 +5,8 @@
   "type": "module",
   "description": "D&D 5e rules: modifiers, proficiency, odds, derived character stats.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./monsters": "./src/monsters.ts"
   },
   "scripts": {
     "lint": "eslint .",

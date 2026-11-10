@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T78) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T79) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -759,6 +759,13 @@ alter table region_searches rename to region_searches_old;
 create table region_searches (like region_searches_old);
 create rule never_store as on insert to region_searches do instead nothing;`,
     fails: ['T77'],
+  },
+  {
+    name: 'SRD monsters writable by signed-in users (P3-4)',
+    why: 'a player could rewrite a stat block for everyone',
+    sql: `grant insert, update, delete on srd_monsters to authenticated;
+create policy "anyone writes srd monsters" on srd_monsters for all to authenticated using (true) with check (true);`,
+    fails: ['T79'],
   },
   {
     name: 'discovery notices readable by every member (P3-3)',

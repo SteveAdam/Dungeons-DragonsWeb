@@ -1,0 +1,393 @@
+/* The library: filters (3 columns), list (4) and the open entry (5) on the layout kit's 12. Below 1100px the filters
+   take a row of their own above list and entry; on a phone the list comes first and an entry takes the whole screen. */
+
+.page {
+  color: var(--paper);
+}
+
+.back {
+  color: var(--gold);
+}
+
+.shelves {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--page-gutter);
+  row-gap: 1rem;
+  align-items: start;
+}
+
+.filters,
+.list,
+.detail {
+  min-width: 0;
+  padding: 1rem;
+  color: var(--ink);
+}
+
+.filters {
+  display: grid;
+  grid-column: span 3;
+  gap: 0.9rem;
+  align-items: start;
+  border: 1px dashed var(--gold-dark);
+}
+
+.list {
+  display: grid;
+  grid-column: span 4;
+  gap: 0.5rem;
+}
+
+.detail {
+  position: sticky;
+  top: 1rem;
+  grid-column: span 5;
+  border-block: 3px solid var(--wax-red);
+}
+
+.detailBody {
+  display: grid;
+  gap: 0.75rem;
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.detailContent {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.phoneOnly {
+  display: none;
+}
+
+/* filters */
+.filterField {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.filterGroup {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.filterGroup legend {
+  padding: 0;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2rem;
+}
+
+.select {
+  min-height: 2.75rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.crRange {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+/* the list */
+.entries {
+  max-height: calc(100vh - 8rem);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.3rem 0.5rem;
+  border: 0;
+  border-bottom: 1px solid var(--rule-faint);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.entry:hover {
+  background: var(--ink-wash);
+}
+
+.entry[aria-current='true'] {
+  background: var(--ink-wash-strong);
+  box-shadow: inset 3px 0 0 var(--wax-red);
+}
+
+.entryName {
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.entryMeta {
+  color: var(--ink);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.note {
+  margin: 0;
+  color: var(--ink);
+  font-style: italic;
+}
+
+.linkButton {
+  margin-inline-start: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--wax-red);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* an entry */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.detailName {
+  margin: 0;
+  color: var(--wax-red);
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  line-height: 1.1;
+}
+
+.detailName:focus {
+  outline: none;
+}
+
+.detailSub {
+  margin: 0.15rem 0 0;
+  font-style: italic;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.tier {
+  font-weight: 700;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem 1rem;
+  margin: 0.5rem 0;
+  padding-block: 0.5rem;
+  border-block: 1px solid var(--rule);
+}
+
+.facts dt {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.prose p {
+  margin: 0 0 0.6rem;
+}
+
+.prose h3 {
+  margin: 0.5rem 0 0.25rem;
+  font-family: var(--font-heading);
+}
+
+.preserved {
+  white-space: pre-line;
+}
+
+.placing {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--gold-dark);
+}
+
+.placed {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid var(--verdigris);
+  background: var(--ink-wash);
+  font-weight: 700;
+}
+
+/* the stat block */
+.statBlock {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.statRule {
+  padding-block: 0.4rem;
+  border-block: 2px solid var(--wax-red);
+}
+
+.statLine {
+  margin: 0.1rem 0;
+  overflow-wrap: anywhere;
+}
+
+.abilities {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  table-layout: fixed;
+}
+
+.abilities th,
+.abilities td {
+  padding: 0.1rem 0.25rem;
+  border-bottom: 1px solid var(--rule-faint);
+}
+
+.abilities tbody th {
+  font-family: var(--font-heading);
+  text-align: left;
+}
+
+.abilities thead th {
+  font-family: var(--font-heading);
+}
+
+.statSection h3 {
+  margin: 0.4rem 0 0.25rem;
+  border-bottom: 1px solid var(--wax-red);
+  color: var(--wax-red);
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+}
+
+.statSection p {
+  margin: 0 0 0.5rem;
+}
+
+.entryText p + p {
+  margin-top: -0.25rem;
+}
+
+/* the weapon rules a DM will be able to set */
+.itemRules {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  border: 1px dashed var(--wax-red);
+}
+
+.itemRules legend {
+  padding-inline: 0.35rem;
+  color: var(--wax-red);
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.ruleField {
+  display: grid;
+  gap: 0.25rem;
+}
+
+@media (max-width: 1099px) {
+  .shelves {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .filters {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  }
+
+  .list,
+  .detail {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 699px) {
+  .shelves {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .list,
+  .detail {
+    grid-column: 1 / -1;
+  }
+
+  .list {
+    order: 2;
+  }
+
+  .filters {
+    display: none;
+    order: 1;
+  }
+
+  .filtersOpen {
+    display: grid;
+  }
+
+  .phoneOnly {
+    display: inline-flex;
+    justify-self: start;
+  }
+
+  .phoneHidden {
+    display: none;
+  }
+
+  .detail {
+    position: static;
+  }
+
+  .detailBody,
+  .entries {
+    max-height: none;
+    overflow: visible;
+  }
+}

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorNotice } from '../components/ErrorNotice';
-import { Button, Input, Paper, Tag } from '../components/ui';
+import { Button, Cell, Input, PageGrid, Paper, SectionTitle, Tag } from '../components/ui';
 import { friendlyMessage } from '../data/errors';
 import { useCampaigns, useCreateCampaign, useJoinCampaign } from '../hooks/useCampaigns';
 import styles from './CampaignListPage.module.css';
@@ -36,10 +36,14 @@ export function CampaignListPage() {
   }
 
   return (
-    <main className={styles.page}>
-      <h1 className={styles.title}>Your campaigns</h1>
+    <PageGrid className={styles.page}>
+      <Cell>
+        <SectionTitle as="h1" onDesk>
+          Your campaigns
+        </SectionTitle>
+      </Cell>
 
-      <section aria-labelledby="my-campaigns">
+      <Cell as="section" span={8} spanMd={6} aria-labelledby="my-campaigns">
         <h2 id="my-campaigns" className={styles.sectionTitle}>
           The tables you sit at
         </h2>
@@ -66,9 +70,9 @@ export function CampaignListPage() {
             ))}
           </ul>
         )}
-      </section>
+      </Cell>
 
-      <div className={styles.forms}>
+      <Cell as="aside" span={4} spanMd={6} aria-label="Start or join a campaign" className={styles.forms}>
         <Paper as="section" texture="flat" aria-labelledby="new-campaign" className={styles.panel}>
           <h2 id="new-campaign" className={styles.panelTitle}>
             New campaign
@@ -121,7 +125,7 @@ export function CampaignListPage() {
             )}
           </form>
         </Paper>
-      </div>
-    </main>
+      </Cell>
+    </PageGrid>
   );
 }

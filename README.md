@@ -536,6 +536,31 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
   realtime as a notice ("You notice Mossy shrine") and a refresh of the Here list.
 - pgTAP T74 to T78; manual script in `docs/p3-3-manual-test.md`.
 
+## SRD monsters (P3-4)
+
+- `0021_srd_monsters.sql` adds `srd_monsters`, read-only like the other SRD tables; `pnpm srd:import` loads all 330
+  stat blocks from SRD 5.2.1 (pages 258 to 364). All 339 spells ship now too.
+- `pnpm -C packages/srd-data convert` rebuilds `data/monsters.json` from the text extracts in `source/`, and writes
+  the Challenge Rating benchmarks to `generated/crBenchmarks.json`. `pnpm -C packages/srd-data build` fails if either
+  has been edited by hand.
+- `damagePerRound` and the XP and dice functions live in the rules engine (`monsters.ts`).
+- `/dev/monsters` (development only) shows each stat block as imported, to compare it with the SRD.
+- The tests pin what the SRD prints against its own rules: Archmage's XP 8,000 (its table says 8,400), and the
+  initiative scores of Gray Ooze and Invisible Stalker. The converter corrects three typing slips, each noted there
+  (Young White Dragon's Int save, Adult White Dragon's Con, Gold Dragon Wyrmling's XP).
+
+## The library (P3-5)
+
+- `/campaigns/:campaignId/library`, DMs in DM mode only (others go back to the hub); the hub shows it as a ribbon.
+- Shelves: Spells, Monsters, Weapons, and Items (armour for now). Filters are in `pages/library/libraryFilters.ts`;
+  source Campaign stays empty until custom content (P3-6).
+- A spell's tier of play is `spellTier` in the rules engine: the tier of the lowest level at which any of its classes
+  first gains a slot of its level, from `firstSlotAt` in the class data. A class with a table but no slot of that level
+  is passed over (a Warlock's 6th-level spells come from Mystic Arcanum). A missing table shows "tier unknown" and
+  is listed in a console warning.
+- Place in a region opens the region entry form with the monster filled in, as `srd:<id>` in its monster reference.
+- `0022_move_group_order.sql` makes a group's move list its finds in the DM's order; it was unordered before.
+
 ## End-to-end test (P2-12)
 
 `e2e/` is a Playwright test of the whole of Phase 2 with three browser contexts, a DM and two players, against
