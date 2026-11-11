@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T82) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T84) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -887,6 +887,55 @@ end $fn$;`,
     why: 'the other group would be told what this group noticed',
     sql: `create policy "members read notices" on discovery_notices for select to authenticated using (is_member(campaign_id));`,
     fails: ['T78'],
+  },
+  {
+    name: 'any signed-in person can listen on campaign: (P4-1)',
+    why: 'strangers could join a campaign channel and hear every event',
+    sql: `create or replace function realtime_can_read(p_topic text) returns boolean language sql stable security definer set search_path = public as $$ select auth.uid() is not null and p_topic ~ '^(campaign|dm|user|rolls|clock|discoveries):[0-9a-f-]{36}(:[0-9a-f-]{36})?$' $$;`,
+    fails: ['T83'],
+  },
+  {
+    name: 'players can listen on dm: (P4-1)',
+    why: 'DM-only events would reach players',
+    sql: `create or replace function realtime_can_read(p_topic text) returns boolean language plpgsql stable security definer set search_path = public as $$ declare parts text[] := string_to_array(p_topic, ':'); begin if p_topic is null or auth.uid() is null or array_length(parts, 1) not in (2, 3) or parts[2] !~ '^[0-9a-f-]{36}$' then return false; end if; if parts[1] = 'discoveries' then return exists (select 1 from party_groups g where g.id = parts[2]::uuid and is_member(g.campaign_id)); end if; if parts[1] in ('campaign', 'rolls', 'clock', 'dm') and array_length(parts, 1) = 2 then return is_member(parts[2]::uuid); end if; if parts[1] = 'user' and array_length(parts, 1) = 3 then return is_dm(parts[2]::uuid) or (parts[3]::uuid = auth.uid() and is_member(parts[2]::uuid)); end if; return false; end $$;`,
+    fails: ['T83'],
+  },
+  {
+    name: 'any member can listen on any user: (P4-1)',
+    why: "one player could read another player's private channel",
+    sql: `create or replace function realtime_can_read(p_topic text) returns boolean language plpgsql stable security definer set search_path = public as $$ declare parts text[] := string_to_array(p_topic, ':'); begin if p_topic is null or auth.uid() is null or array_length(parts, 1) not in (2, 3) or parts[2] !~ '^[0-9a-f-]{36}$' then return false; end if; if parts[1] = 'dm' then return is_dm(parts[2]::uuid); end if; if parts[1] = 'discoveries' then return exists (select 1 from party_groups g where g.id = parts[2]::uuid and is_member(g.campaign_id)); end if; if parts[1] in ('campaign', 'rolls', 'clock') and array_length(parts, 1) = 2 then return is_member(parts[2]::uuid); end if; if parts[1] = 'user' and array_length(parts, 1) = 3 then return is_member(parts[2]::uuid); end if; return false; end $$;`,
+    fails: ['T83'],
+  },
+  {
+    name: 'clients can broadcast directly (P4-1)',
+    why: 'any member could forge any event, with any sender',
+    sql: `drop policy "publish presence only" on realtime.messages;
+create policy "publish presence only" on realtime.messages for insert to authenticated with check (public.realtime_can_track((select realtime.topic())));`,
+    fails: ['T83'],
+  },
+  {
+    name: 'read policy removed from realtime.messages (P4-1)',
+    why: 'nobody could join a private channel',
+    sql: `drop policy "listen on allowed topics" on realtime.messages;`,
+    fails: ['T83'],
+  },
+  {
+    name: 'the sender is taken from the payload (P4-1)',
+    why: 'a player could send as the DM',
+    sql: `create or replace function send_realtime_event(p_campaign uuid, p_channel text, p_event text, p_payload jsonb, p_target uuid default null) returns jsonb language sql volatile security definer set search_path = public as $$ select jsonb_build_object('sender', coalesce(p_payload ->> 'sender', auth.uid()::text), 'senderRole', coalesce(p_payload ->> 'senderRole', 'player'), 'data', p_payload) $$;`,
+    fails: ['T84'],
+  },
+  {
+    name: 'players can send any event (P4-1)',
+    why: 'a player could send reveals and toasts to the table',
+    sql: `create or replace function send_realtime_event(p_campaign uuid, p_channel text, p_event text, p_payload jsonb, p_target uuid default null) returns jsonb language plpgsql volatile security definer set search_path = public as $$ begin if auth.uid() is null or not is_member(p_campaign) then raise exception 'no' using errcode = '42501'; end if; if p_event not in ('reveal','ping','toast','message','handout') or jsonb_typeof(p_payload) <> 'object' or octet_length(p_payload::text) > 16384 or p_channel not in ('campaign','dm','user') or (p_channel = 'user' and p_target is null) then raise exception 'bad' using errcode = '22023'; end if; return jsonb_build_object('sender', auth.uid(), 'senderRole', case when is_dm(p_campaign) then 'dm' else 'player' end, 'data', p_payload); end $$;`,
+    fails: ['T84'],
+  },
+  {
+    name: 'send_realtime_event open to signed-out visitors (P4-1)',
+    why: 'the function must refuse anyone who is not a member',
+    sql: `create or replace function send_realtime_event(p_campaign uuid, p_channel text, p_event text, p_payload jsonb, p_target uuid default null) returns jsonb language plpgsql volatile security definer set search_path = public as $$ declare dm boolean := is_dm(p_campaign); begin if p_event not in ('reveal','ping','toast','message','handout') or jsonb_typeof(p_payload) <> 'object' or octet_length(p_payload::text) > 16384 or p_channel not in ('campaign','dm','user') or (p_channel = 'user' and p_target is null) then raise exception 'bad' using errcode = '22023'; end if; if not dm and (p_channel = 'dm' or (p_channel = 'campaign' and p_event <> 'ping') or (p_channel = 'user' and (p_target <> auth.uid() or p_event <> 'message'))) and is_member(p_campaign) then raise exception 'no' using errcode = '42501'; end if; return jsonb_build_object('sender', auth.uid(), 'senderRole', case when dm then 'dm' else 'player' end, 'data', p_payload); end $$;`,
+    fails: ['T84'],
   },
 ];
 

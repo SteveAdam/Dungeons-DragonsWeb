@@ -181,7 +181,7 @@ test('Phase 2: a DM and two players, from campaign to level 3, items, effects, r
     const clock = dm.page.getByRole('form', { name: 'Advance by another amount' });
     await clock.getByLabel('Amount', { exact: true }).fill('61');
     await clock.getByRole('button', { name: 'Advance' }).click();
-    await expect(dm.page.getByText('Day 1, 01:01')).toBeVisible();
+    await expect(dm.page.getByRole('region', { name: 'Game clock' }).getByText('Day 1, 01:01')).toBeVisible();
     await a.page.reload();
     await expect(greatsword().getByText('Locked: needs STR 17, you have 16')).toBeVisible();
   });

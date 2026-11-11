@@ -67,7 +67,7 @@ export async function searchHere(campaignId: string, characterId: string): Promi
 /** Calls back with each notice ("You notice a mossy shrine") for this group. Returns the function that stops. */
 export function subscribeToNotices(groupId: string, onNotice: (text: string) => void): () => void {
   const channel = supabase
-    .channel(`discoveries:${groupId}`)
+    .channel(`discoveries:${groupId}`, { config: { private: true } })
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'discovery_notices', filter: `group_id=eq.${groupId}` },

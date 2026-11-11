@@ -18,13 +18,7 @@ import { ClockWidget } from '../components/ClockWidget';
 import { WeatherCard } from '../components/WeatherCard';
 import { useAuth } from '../auth/authContext';
 import { useCharacters } from '../hooks/useCharacters';
-import {
-  useCampaign,
-  useInviteCode,
-  useLiveClock,
-  useSetOptionalFeats,
-  useSetPrepareAfterRestOnly,
-} from '../hooks/useCampaigns';
+import { useCampaign, useInviteCode, useSetOptionalFeats, useSetPrepareAfterRestOnly } from '../hooks/useCampaigns';
 import { useDmMode } from '../hooks/useDmMode';
 import { useMembers } from '../hooks/useMembers';
 import { useCalendar } from '../hooks/useCalendar';
@@ -67,7 +61,6 @@ export function CampaignHubPage() {
   const members = useMembers(campaignId);
   const { isDm, dmMode, setDmMode } = useDmMode(campaignId);
   const invite = useInviteCode(campaignId, dmMode);
-  useLiveClock(campaignId);
   const feats = useSetOptionalFeats(campaignId ?? '');
   const prepareRule = useSetPrepareAfterRestOnly(campaignId ?? '');
   useShowDmIndicator(dmMode);

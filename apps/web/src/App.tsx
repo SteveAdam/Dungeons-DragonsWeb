@@ -1,17 +1,11 @@
 import { lazy, Suspense } from 'react';
-import { DoorOpen, SlidersHorizontal, Swords } from 'lucide-react';
-import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { useAuth } from './auth/authContext';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from './auth/LoginPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
-import { DisplaySettingsControls } from './components/DisplaySettingsControls';
-import { DmModeIndicator } from './components/DmModeIndicator';
-import { SrdAttribution } from './components/SrdAttribution';
-import { DeskFrame, ICON_PROPS, IconLink, iconClasses } from './components/ui';
+import { AppShell } from './components/AppShell';
 import { CampaignHubPage } from './pages/CampaignHubPage';
 import { CampaignListPage } from './pages/CampaignListPage';
 import { HomePage } from './pages/HomePage';
-import styles from './App.module.css';
 
 // /theme exists only in development: in a production build import.meta.env.DEV is false,
 // so the route and the page's code are dropped.
@@ -20,6 +14,7 @@ const OddsDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/OddsDev
 const SrdDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/SrdDevPage')) : null;
 const ClassesDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/ClassesDevPage')) : null;
 const MonstersDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/MonstersDevPage')) : null;
+const RealtimeDevPage = import.meta.env.DEV ? lazy(() => import('./pages/dev/RealtimeDevPage')) : null;
 // The map view brings Leaflet; load it only when a map is opened.
 const MapViewPage = lazy(() => import('./pages/map/MapViewPage').then(m => ({ default: m.MapViewPage })));
 const CharacterSheetPage = lazy(() =>
@@ -29,45 +24,11 @@ const CreateCharacterPage = lazy(() => import('./pages/characters/create/CreateC
 const LevelUpPage = lazy(() => import('./pages/characters/levelup/LevelUpPage'));
 const LibraryPage = lazy(() => import('./pages/library/LibraryPage'));
 
-function HeaderActions() {
-  const { session, signOut } = useAuth();
-  const navigate = useNavigate();
-  return (
-    <nav aria-label="Main" className={styles.nav}>
-      <DmModeIndicator />
-      <IconLink to="/campaigns" icon={Swords}>
-        Campaigns
-      </IconLink>
-      <details className={styles.display}>
-        <summary className={iconClasses.host}>
-          <SlidersHorizontal {...ICON_PROPS} className={iconClasses.icon} />
-          Display
-        </summary>
-        <div className={styles.displayMenu}>
-          <DisplaySettingsControls />
-        </div>
-      </details>
-      {session && (
-        <button
-          type="button"
-          className={`${styles.signOut} ${iconClasses.host}`}
-          onClick={async () => {
-            await signOut();
-            navigate('/login');
-          }}
-        >
-          <DoorOpen {...ICON_PROPS} className={iconClasses.icon} />
-          Sign out
-        </button>
-      )}
-    </nav>
-  );
-}
-
 export function App() {
   return (
-    <DeskFrame brand={<Link to="/">D&D MANAGER</Link>} actions={<HeaderActions />} footer={<SrdAttribution />}>
-      <Routes>
+    <Routes>
+      {/* P4-1: the shell stays mounted while the screens inside it change */}
+      <Route element={<AppShell />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -186,9 +147,21 @@ export function App() {
             }
           />
         )}
+        {RealtimeDevPage && (
+          <Route
+            path="/campaigns/:campaignId/dev/realtime"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={null}>
+                  <RealtimeDevPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+        )}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </DeskFrame>
+      </Route>
+    </Routes>
   );
 }
 

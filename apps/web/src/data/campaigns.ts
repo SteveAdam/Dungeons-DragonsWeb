@@ -118,7 +118,7 @@ export async function advanceClock(campaignId: string, seconds: number, reason: 
  */
 export function subscribeToClock(campaignId: string, onTime: (gameSeconds: number) => void): () => void {
   const channel = supabase
-    .channel(`clock:${campaignId}`)
+    .channel(`clock:${campaignId}`, { config: { private: true } })
     .on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'campaigns', filter: `id=eq.${campaignId}` },

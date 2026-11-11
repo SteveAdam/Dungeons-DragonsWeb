@@ -1666,6 +1666,12 @@ isOneToOne: false
 "pin_is_revealed":
 { Args: { "p": string }; Returns: boolean
                            },
+"realtime_can_read":
+{ Args: { "p_topic": string }; Returns: boolean
+                           },
+"realtime_can_track":
+{ Args: { "p_topic": string }; Returns: boolean
+                           },
 "record_discovery":
 { Args: { "p_content": string,"p_group": string,"p_state": string }; Returns: boolean
                            },
@@ -1829,6 +1835,9 @@ isOneToOne: false
                            },
 "search_region":
 { Args: { "p_actor": string,"p_bonus": number,"p_bonuses": Json,"p_breakdown": Json,"p_character": string,"p_mode": string }; Returns: Json
+                           },
+"send_realtime_event":
+{ Args: { "p_campaign": string,"p_channel": string,"p_event": string,"p_payload": Json,"p_target"?: string }; Returns: Json
                            },
 "set_daylight_hours":
 { Args: { "p_campaign": string,"p_end": number,"p_start": number }; Returns: undefined

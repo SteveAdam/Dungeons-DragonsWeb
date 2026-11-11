@@ -1,0 +1,128 @@
+/* P4-1: the live parts of the header, on the iron bar, and the toasts on their own parchment */
+.clock,
+.connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--gold);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.connection[data-state='offline'],
+.connection[data-state='reconnecting'] {
+  color: var(--paper);
+}
+
+.avatars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.avatars::-webkit-details-marker {
+  display: none;
+}
+
+.avatar {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.dot {
+  position: absolute;
+  right: -0.15rem;
+  bottom: -0.15rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 2px solid var(--iron);
+  border-radius: 50%;
+  background: var(--verdigris);
+}
+
+/* away is an empty ring and in-scene a diamond, so the shape says it too */
+.dot[data-status='away'] {
+  border: 2px solid var(--gold);
+  background: var(--iron);
+}
+
+.dot[data-status='in-scene'] {
+  border-radius: 0;
+  background: var(--wax-red);
+  transform: rotate(45deg);
+}
+
+.people {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.toasts {
+  position: fixed;
+  z-index: 50;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  width: min(22rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  color: var(--ink);
+  pointer-events: auto;
+}
+
+.toastText {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.toastClose {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}

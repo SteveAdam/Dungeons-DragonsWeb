@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T82) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T84) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(648);
+select plan(697);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1608,6 +1608,85 @@ select throws_ok($$ select * from weather_days $$, '42501', null, 'T82: nor any 
 reset role;
 
 select throws_ok($$ insert into weather_zones (campaign_id, map_id, name, center_x, center_y, radius, climate) values (gen_random_uuid(), tests.u('map:visible'), 'Elsewhere', 1, 1, 5, 'arid') $$, '23514', null, 'T82: a zone stays with its own campaign map');
+
+-- T83: who may listen on which Realtime topic (P4-1). The live join is covered in e2e/tests/realtime.spec.ts.
+insert into party_groups (id, campaign_id, name) values (tests.u('rt:group'), tests.u('campaign'), 'Realtime group');
+
+select tests.act_as('dm');
+select ok(realtime_can_read('campaign:' || tests.u('campaign')), 'T83: a DM can listen on campaign:');
+select ok(realtime_can_read('dm:' || tests.u('campaign')), 'T83: a DM can listen on dm:');
+select ok(realtime_can_read('user:' || tests.u('campaign') || ':' || tests.u('user:player')), 'T83: a DM can listen on a player''s user:');
+select ok(realtime_can_track('campaign:' || tests.u('campaign')), 'T83: a DM can publish presence');
+reset role;
+
+select tests.act_as('player');
+select ok(realtime_can_read('campaign:' || tests.u('campaign')), 'T83: a player can listen on campaign:');
+select ok(not realtime_can_read('dm:' || tests.u('campaign')), 'T83: a player cannot listen on dm:');
+select ok(realtime_can_read('user:' || tests.u('campaign') || ':' || tests.u('user:player')), 'T83: a player can listen on their own user:');
+select ok(not realtime_can_read('user:' || tests.u('campaign') || ':' || tests.u('user:dm')), 'T83: a player cannot listen on another user:');
+select ok(realtime_can_read('rolls:' || tests.u('campaign')), 'T83: a player can follow the rolls feed');
+select ok(realtime_can_read('clock:' || tests.u('campaign')), 'T83: and the clock feed');
+select ok(realtime_can_read('discoveries:' || tests.u('rt:group')), 'T83: and a group feed in the campaign');
+select ok(realtime_can_track('campaign:' || tests.u('campaign')), 'T83: a player can publish presence on campaign:');
+select ok(not realtime_can_track('user:' || tests.u('campaign') || ':' || tests.u('user:player')), 'T83: but nowhere else');
+select ok(not realtime_can_read('campaign:not-a-uuid'), 'T83: a malformed topic is refused');
+select ok(not realtime_can_read('campaign:' || tests.u('campaign') || ':extra'), 'T83: a topic with extra parts is refused');
+select ok(not realtime_can_read('other:' || tests.u('campaign')), 'T83: an unknown topic is refused');
+select ok(not realtime_can_read(null), 'T83: no topic is refused');
+reset role;
+
+select tests.act_as('outsider');
+select ok(not realtime_can_read('campaign:' || tests.u('campaign')), 'T83: a non-member cannot listen on campaign:');
+select ok(not realtime_can_read('dm:' || tests.u('campaign')), 'T83: nor on dm:');
+select ok(not realtime_can_read('user:' || tests.u('campaign') || ':' || tests.u('user:outsider')), 'T83: nor on a user: with their own id');
+select ok(not realtime_can_read('rolls:' || tests.u('campaign')), 'T83: nor on the rolls feed');
+select ok(not realtime_can_read('discoveries:' || tests.u('rt:group')), 'T83: nor on a group feed');
+select ok(not realtime_can_track('campaign:' || tests.u('campaign')), 'T83: nor publish presence');
+reset role;
+
+select tests.act_as_anon();
+select throws_ok($$ select realtime_can_read('campaign:' || tests.u('campaign')) $$, '42501', null, 'T83: a signed-out visitor cannot ask');
+reset role;
+
+-- the policies themselves: reading follows the topic rules, and writing is presence only
+select is((select count(*)::int from pg_policies where schemaname = 'realtime' and tablename = 'messages'), 2, 'T83: realtime.messages has exactly its two policies');
+select is((select cmd from pg_policies where schemaname = 'realtime' and policyname = 'listen on allowed topics'), 'SELECT', 'T83: the read policy only reads');
+select ok((select qual like '%realtime_can_read%' from pg_policies where schemaname = 'realtime' and policyname = 'listen on allowed topics'), 'T83: the read policy applies the topic rules');
+select is((select cmd from pg_policies where schemaname = 'realtime' and policyname = 'publish presence only'), 'INSERT', 'T83: the write policy only inserts');
+select ok((select with_check like '%''presence''%' and with_check like '%realtime_can_track%' from pg_policies where schemaname = 'realtime' and policyname = 'publish presence only'), 'T83: the write policy allows presence, on allowed topics');
+select is((select roles::text from pg_policies where schemaname = 'realtime' and policyname = 'publish presence only'), '{authenticated}', 'T83: for signed-in people only');
+
+-- T84: sending goes through one function, which decides by role and stamps the sender
+select tests.act_as('dm');
+select is((select send_realtime_event(tests.u('campaign'), 'campaign', 'toast', '{"message":"Hello"}') ->> 'sender'), tests.u('user:dm')::text, 'T84: the DM''s send is stamped with the DM');
+select is((select send_realtime_event(tests.u('campaign'), 'campaign', 'toast', '{"message":"Hello"}') ->> 'senderRole'), 'dm', 'T84: and with the role');
+select is((select send_realtime_event(tests.u('campaign'), 'dm', 'toast', '{"message":"Hello"}') -> 'data' ->> 'message'), 'Hello', 'T84: a DM can send on dm:');
+select lives_ok($$ select send_realtime_event(tests.u('campaign'), 'user', 'handout', '{}', tests.u('user:player')) $$, 'T84: a DM can send on any user:');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'made_up', '{}') $$, '22023', null, 'T84: only known events');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'nowhere', 'toast', '{}') $$, '22023', null, 'T84: only known channels');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'user', 'toast', '{}') $$, '22023', null, 'T84: a user: send needs a target');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'toast', '[]') $$, '22023', null, 'T84: the payload is an object');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'toast', jsonb_build_object('m', repeat('x', 17000))) $$, '22023', null, 'T84: of a limited size');
+reset role;
+
+select tests.act_as('player');
+select is((select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', jsonb_build_object('sender', tests.u('user:dm'), 'senderRole', 'dm')) ->> 'sender'), tests.u('user:player')::text, 'T84: a sender claimed in the payload is ignored');
+select is((select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', jsonb_build_object('senderRole', 'dm')) ->> 'senderRole'), 'player', 'T84: and so is a claimed role');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'reveal', '{}') $$, '42501', null, 'T84: a player cannot send a reveal');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'toast', '{}') $$, '42501', null, 'T84: nor a toast');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'dm', 'ping', '{}') $$, '42501', null, 'T84: nor anything on dm:');
+select lives_ok($$ select send_realtime_event(tests.u('campaign'), 'user', 'message', '{}', tests.u('user:player')) $$, 'T84: a player can write on their own user:');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'user', 'reveal', '{}', tests.u('user:player')) $$, '42501', null, 'T84: only a message');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'user', 'message', '{}', tests.u('user:dm')) $$, '42501', null, 'T84: and not on someone else''s user:');
+reset role;
+
+select tests.act_as('outsider');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', '{}') $$, '42501', null, 'T84: a non-member cannot send');
+reset role;
+
+select tests.act_as_anon();
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', '{}') $$, '42501', null, 'T84: nor a signed-out visitor');
+reset role;
 
 select * from finish();
 rollback;

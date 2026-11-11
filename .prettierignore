@@ -12,3 +12,6 @@ packages/srd-data/source/
 docs/features-pending.md
 # the rules engine copy for the Edge Functions (scripts/sync-engine.mjs)
 supabase/functions/_shared/
+
+# other sessions' checkouts: never format into them
+.claude/

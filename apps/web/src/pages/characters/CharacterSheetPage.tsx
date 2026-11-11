@@ -22,7 +22,7 @@ import {
 import { friendlyMessage } from '../../data/errors';
 import { rollForCharacter, type CharacterRollRequest } from '../../data/rolls';
 import { ClockWidget } from '../../components/ClockWidget';
-import { useCampaign, useLiveClock } from '../../hooks/useCampaigns';
+import { useCampaign } from '../../hooks/useCampaigns';
 import {
   useCharacter,
   useCharacterEffects,
@@ -63,8 +63,6 @@ export function CharacterSheetPage() {
   const navigate = useNavigate();
   const activeTab = tab ?? 'sheet';
   const campaign = useCampaign(campaignId);
-  // effect countdowns follow the game clock, which the DM moves (P2-8)
-  useLiveClock(campaignId);
   const { isDm, dmMode, setDmMode } = useDmMode(campaignId);
   useShowDmIndicator(dmMode);
   const character = useCharacter(characterId);

@@ -156,7 +156,7 @@ export async function listRecentRolls(campaignId: string, limit = 20): Promise<R
  */
 export function subscribeToRolls(campaignId: string, onRoll: (roll: RollRow) => void): () => void {
   const channel = supabase
-    .channel(`rolls:${campaignId}`)
+    .channel(`rolls:${campaignId}`, { config: { private: true } })
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'rolls', filter: `campaign_id=eq.${campaignId}` },
