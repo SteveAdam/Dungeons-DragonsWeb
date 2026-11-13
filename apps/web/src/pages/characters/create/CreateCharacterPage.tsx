@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../../components/ErrorNotice';
-import { Cell, IconLink, PageGrid, Paper } from '../../../components/ui';
+import { Cell, IconLink, OrnateDivider, PageGrid, Paper } from '../../../components/ui';
 import { getDraft, loadCreationSrd } from '../../../data/creation';
 import { queryKeys } from '../../../hooks/queryKeys';
 import styles from './create.module.css';
@@ -34,6 +34,7 @@ export default function CreateCharacterPage() {
           <h1 id="create-title" className={styles.title}>
             Create a character
           </h1>
+          <OrnateDivider />
           {failed ? (
             <ErrorNotice error={failed.error} onRetry={() => failed.refetch()} />
           ) : !srd.data || draft.isPending ? (

@@ -303,6 +303,7 @@ export function ContentForm({ regionId, campaignId, entry, kind, kinds, initial,
             <span className={mapStyles.confirm}>
               <span>{`Delete ${entry.name}?`}</span>
               <Button
+                variant="danger"
                 disabled={remove.isPending}
                 onClick={() =>
                   remove.mutate(entry.id, {

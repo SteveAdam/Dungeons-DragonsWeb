@@ -1,4 +1,5 @@
 import styles from './DmBanner.module.css';
+import { GameIcon } from './GameIcon';
 
 /**
  * DM mode, always visible: a wax-red rule across the very top of the window and a dashed "DM mode" badge
@@ -14,6 +15,7 @@ export function DmBanner() {
         title="Hidden maps, pins and notes are visible to you"
         className={styles.badge}
       >
+        <GameIcon name="torch" className={styles.torch} />
         DM mode
       </span>
     </>

@@ -215,7 +215,7 @@ export function AwardXpForm({ campaignId, party, characters }: TargetProps) {
               : `Shared evenly among ${n}; any remainder is recorded, not awarded.`}
         </p>
       )}
-      <Button type="submit" disabled={xp < 1 || award.isPending || (target === 'party' && n === 0)}>
+      <Button variant="ribbon" type="submit" disabled={xp < 1 || award.isPending || (target === 'party' && n === 0)}>
         {award.isPending ? 'Awarding…' : 'Award XP'}
       </Button>
       <Outcome error={award.error} done={done} />
@@ -266,7 +266,7 @@ export function AwardCoinsForm({ campaignId, party, characters }: TargetProps) {
         <NoteField id={`${id}-note`} value={note} onChange={setNote} />
       </div>
       <CoinFields idBase={`${id}-coin`} value={coins} onChange={setCoins} />
-      <Button type="submit" disabled={!hasCoins(coins) || award.isPending}>
+      <Button variant="ribbon" type="submit" disabled={!hasCoins(coins) || award.isPending}>
         {award.isPending ? 'Awarding…' : 'Award coins'}
       </Button>
       <Outcome error={award.error} done={done} />

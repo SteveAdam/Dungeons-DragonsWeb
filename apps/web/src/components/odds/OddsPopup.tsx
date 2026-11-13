@@ -13,11 +13,11 @@ import {
   type RollMode,
   type RollModeReason,
 } from '@dnd-manager/rules-engine';
-import { Dices, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { friendlyMessage } from '../../data/errors';
 import type { RollRow } from '../../data/rolls';
-import { Button, ICON_PROPS, iconClasses, Paper } from '../ui';
+import { Button, ICON_PROPS, Paper } from '../ui';
 import styles from './OddsPopup.module.css';
 
 export interface OddsBonusDie extends BonusDie {
@@ -182,20 +182,20 @@ function OddsDialog({ onClose, check, onRoll, anchor, waiting, problem, hideOdds
               return (
                 <span
                   key={i}
-                  className={[styles.d20, kept ? '' : styles.faded, rolling ? styles.tumbling : ''].join(' ')}
+                  className={[
+                    styles.d20,
+                    kept ? '' : styles.faded,
+                    rolling ? styles.tumbling : '',
+                    roll && !rolling && kept ? styles.landed : '',
+                    roll && !rolling && kept && value === 20 ? styles.natural20 : '',
+                  ].join(' ')}
                 >
                   {value ?? '?'}
                 </span>
               );
             })}
           </div>
-          <Button
-            ref={rollButton}
-            className={iconClasses.host}
-            disabled={rolling || !!waiting || !!problem}
-            onClick={doRoll}
-          >
-            <Dices {...ICON_PROPS} className={iconClasses.icon} />
+          <Button variant="die" ref={rollButton} disabled={rolling || !!waiting || !!problem} onClick={doRoll}>
             {rolling ? 'Rolling…' : roll ? 'Roll again' : 'Roll'}
           </Button>
         </div>

@@ -1,6 +1,33 @@
 import { useState } from 'react';
 import { DisplaySettingsControls } from '../components/DisplaySettingsControls';
-import { Button, DmBanner, Input, Paper, RibbonTabs, Tag, Toggle } from '../components/ui';
+import { EmptyState } from '../components/EmptyState';
+import { LoadingRunes } from '../components/LoadingRunes';
+import { Button, DmBanner, GameIcon, Input, Paper, RibbonTabs, Tag, Toggle } from '../components/ui';
+import type { GameIconName } from '../components/ui';
+
+const GAME_ICON_NAMES: GameIconName[] = [
+  'd20',
+  'shield',
+  'blades',
+  'potion',
+  'scroll',
+  'spellbook',
+  'torch',
+  'skull',
+  'pouch',
+  'compass',
+  'tower',
+  'key',
+  'campfire',
+  'moon',
+  'hourglass',
+  'eye',
+  'hat',
+  'heart',
+  'tankard',
+  'banner',
+  'claws',
+];
 import styles from './ThemePage.module.css';
 
 const SWATCHES = [
@@ -116,6 +143,20 @@ export default function ThemePage() {
             <Button>Primary</Button>
             <Button variant="ghost">Ghost</Button>
             <Button disabled>Disabled</Button>
+            <Button variant="iron">Iron</Button>
+            <Button variant="ribbon">Award XP</Button>
+            <Button variant="die">Roll</Button>
+            <Button variant="danger">Delete</Button>
+            <Button variant="rune" aria-label="Reveal">
+              <GameIcon name="eye" size="1.6rem" />
+            </Button>
+            <LoadingRunes>Unrolling the map…</LoadingRunes>
+            <EmptyState title="No maps yet">Unroll your first one.</EmptyState>
+            <span>
+              {GAME_ICON_NAMES.map(n => (
+                <GameIcon key={n} name={n} size="2rem" label={n} />
+              ))}
+            </span>
           </div>
           <div className={styles.row}>
             <Tag>DM</Tag>

@@ -147,7 +147,11 @@ function DmTools({
       {confirm ? (
         <span className={styles.confirm}>
           <span>{`Delete ${entity.name} and its relationships?`}</span>
-          <Button disabled={remove.isPending} onClick={() => remove.mutate(entity.id, { onSuccess: onDeleted })}>
+          <Button
+            variant="danger"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate(entity.id, { onSuccess: onDeleted })}
+          >
             Yes, delete
           </Button>
           <Button variant="ghost" onClick={() => setConfirm(false)}>

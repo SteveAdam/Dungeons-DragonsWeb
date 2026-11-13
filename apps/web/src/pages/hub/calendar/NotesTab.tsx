@@ -138,7 +138,7 @@ export function NotesTab({ campaignId, dmMode }: { campaignId: string; dmMode: b
           </div>
         ))}
       {notes.data.length === 0 ? (
-        <EmptyState title="No notes yet">
+        <EmptyState title="No notes yet" icon="scroll">
           {dmMode ? 'Write the first one above.' : 'Your DM has not shared any notes.'}
         </EmptyState>
       ) : (

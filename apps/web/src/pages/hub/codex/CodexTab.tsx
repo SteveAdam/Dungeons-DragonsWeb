@@ -379,7 +379,11 @@ function FolderTools({
       {confirm ? (
         <span className={styles.confirm}>
           <span>Delete this folder? Everything in it moves up one level.</span>
-          <Button disabled={remove.isPending} onClick={() => remove.mutate(folder.id, { onSuccess: onDeleted })}>
+          <Button
+            variant="danger"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate(folder.id, { onSuccess: onDeleted })}
+          >
             Yes, delete
           </Button>
           <Button variant="ghost" onClick={() => setConfirm(false)}>

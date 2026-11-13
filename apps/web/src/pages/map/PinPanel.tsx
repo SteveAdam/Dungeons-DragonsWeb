@@ -327,6 +327,7 @@ function PinEditor({
                 : 'Delete this pin?'}
             </span>
             <Button
+              variant="danger"
               disabled={remove.isPending}
               onClick={() =>
                 remove.mutate(pin.id, {

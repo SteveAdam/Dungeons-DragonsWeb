@@ -87,30 +87,72 @@
   list-style: none;
 }
 
+/* the steps as waypoints on a road: sealed behind you, gold where you stand, quiet ahead */
 .ribbon li {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.55rem;
-  border: 1px solid var(--gold-dark);
-  border-radius: 999px;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
   color: var(--ink-faded);
   font-family: var(--font-ui);
   font-size: 1rem;
 }
 
+.stepNumber {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 2px solid var(--ink-faded);
+  border-radius: 50%;
+  background: var(--paper);
+  font-family: var(--font-heading);
+  font-weight: 800;
+  line-height: 1;
+}
+
 .ribbon li[aria-current='step'] {
-  border-width: 2px;
-  background: var(--ink-wash);
   color: var(--ink);
 }
 
-.ribbon .done {
-  color: var(--verdigris);
+.ribbon li[aria-current='step'] .stepNumber {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-color: var(--ink);
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 1.15rem;
 }
 
-.stepNumber {
-  font-weight: 700;
+.ribbon .done {
+  color: var(--ink);
+}
+
+.ribbon .done .stepNumber {
+  border-color: var(--wax-red-dark);
+  border-radius: 48% 52% 50% 50% / 52% 48% 52% 48%;
+  background: var(--wax-red);
+  color: var(--paper);
+}
+
+/* the dotted road between waypoints, on the wide layout where they stand in a column */
+@media (min-width: 1100px) {
+  .ribbon li:not(:last-child)::after {
+    position: absolute;
+    top: 100%;
+    left: 0.9rem;
+    height: 0.5rem;
+    border-left: 2px dotted var(--gold-dark);
+    content: '';
+  }
+
+  .ribbon li[aria-current='step']:not(:last-child)::after {
+    left: 1.1rem;
+  }
 }
 
 @media (max-width: 1099px) {
@@ -233,6 +275,67 @@
   border-collapse: collapse;
 }
 
+/* point buy: one pip per point, filled as they are spent */
+.pips {
+  display: grid;
+  grid-template-columns: repeat(27, minmax(0, 1fr));
+  gap: 0.2rem;
+  max-width: 34rem;
+}
+
+.pip,
+.pipSpent {
+  aspect-ratio: 1;
+  border: 1.5px solid var(--gold-dark);
+  border-radius: 50%;
+}
+
+.pipSpent {
+  border-color: var(--wax-red-dark);
+  background: var(--wax-red);
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stepButton {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.stepButton:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.stepButton:disabled {
+  border-color: var(--rule);
+  background: transparent;
+  color: var(--ink-faded);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.stepValue {
+  min-width: 2rem;
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 800;
+  text-align: center;
+}
+
 .scores caption {
   text-align: left;
 }
@@ -300,4 +403,65 @@
   margin: 0;
   font-size: 1.3rem;
   font-weight: 700;
+}
+
+/* a level gained: gold sparks rise beside the news, once */
+.levelUp {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sparks {
+  flex: none;
+  width: 3.2rem;
+  height: 2rem;
+  overflow: visible;
+  fill: var(--gold);
+  stroke: var(--gold-dark);
+  stroke-width: 0.5;
+}
+
+.sparks path {
+  animation: sparkRise 1.2s ease-out backwards;
+}
+
+.sparks path:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.sparks path:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.sparks path:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+@keyframes sparkRise {
+  0% {
+    opacity: 0;
+    transform: translateY(0.8rem) scale(0.4);
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* a finished step can be clicked to go back to it */
+.stepLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.stepLink:hover .stepTitle {
+  text-decoration: underline;
 }

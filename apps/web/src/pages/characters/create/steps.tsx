@@ -268,8 +268,27 @@ export function AbilitiesStep({
   const final = bg ? finalScores(choices, bg) : null;
   const cost = method === 'pointBuy' ? pointBuyCost(base) : null;
   const pool = method === 'standard' ? STANDARD_ARRAY : (totals ?? []);
-  const setBase = (a: Ability, v: number) =>
-    onChange({ abilities: { ...choices.abilities, base: { ...base, [a]: v } } });
+  const pointsLeft = cost === null ? 0 : POINT_BUY_BUDGET - cost;
+  // what this ability would cost at score v, with the others as they are; null when v is not a point-buy score
+  const canAfford = (a: Ability, v: number) => {
+    const total = pointBuyCost({ ...base, [a]: v });
+    return total !== null && total <= POINT_BUY_BUDGET;
+  };
+  function setBase(a: Ability, v: number) {
+    const next = { ...base, [a]: v };
+    if (method === 'pointBuy') {
+      // a score that cannot be paid for is never taken
+      const total = pointBuyCost(next);
+      if (total === null || total > POINT_BUY_BUDGET) return;
+    } else {
+      // each value of the array or the roll is used once: taking one that is in use swaps the two abilities
+      const used = ABILITY_KEYS.filter(k => next[k] === v).length;
+      const available = pool.filter(p => p === v).length;
+      const other = ABILITY_KEYS.find(k => k !== a && base[k] === v);
+      if (used > available && other) next[other] = base[a];
+    }
+    onChange({ abilities: { ...choices.abilities, base: next } });
+  }
 
   function pickMethod(m: AbilityMethod) {
     const values = m === 'roll' ? (totals ?? [0, 0, 0, 0, 0, 0]) : START[m];
@@ -301,12 +320,28 @@ export function AbilitiesStep({
         ))}
       </fieldset>
 
+      {method === 'pointBuy' && (
+        <p className={styles.muted}>
+          {pointsLeft === 0
+            ? 'All 27 points are spent. Lower a score to raise another.'
+            : 'A plus switches off when the next point costs more than you have left.'}
+        </p>
+      )}
+      {method === 'pointBuy' && cost !== null && (
+        <div className={styles.pips} role="img" aria-label={`${cost} of ${POINT_BUY_BUDGET} points spent`}>
+          {Array.from({ length: POINT_BUY_BUDGET }, (_, i) => (
+            <span key={i} className={i < cost ? styles.pipSpent : styles.pip} />
+          ))}
+        </div>
+      )}
+      {method === 'standard' && <p className={styles.muted}>Choosing a score another ability has swaps the two.</p>}
+
       {method === 'roll' && (
         <div className={styles.roll}>
           {totals ? (
             <p>{`You rolled ${totals.join(', ')}. The roll is kept with your draft and in the roll log: it cannot be rolled again.`}</p>
           ) : (
-            <Button onClick={onRoll} disabled={rolling}>
+            <Button variant="die" onClick={onRoll} disabled={rolling}>
               {rolling ? 'Rolling…' : 'Roll 4d6 six times'}
             </Button>
           )}
@@ -321,7 +356,9 @@ export function AbilitiesStep({
       {(method !== 'roll' || totals) && (
         <table className={styles.scores}>
           <caption className={styles.label}>
-            {method === 'pointBuy' && cost !== null ? `Scores (${cost} of ${POINT_BUY_BUDGET} points spent)` : 'Scores'}
+            {method === 'pointBuy' && cost !== null
+              ? `Scores (${cost} of ${POINT_BUY_BUDGET} points spent, ${pointsLeft} left)`
+              : 'Scores'}
           </caption>
           <thead>
             <tr>
@@ -339,15 +376,29 @@ export function AbilitiesStep({
                   <th scope="row">{ABILITY_LABELS[a].label}</th>
                   <td>
                     {method === 'pointBuy' ? (
-                      <Input
-                        aria-label={`${ABILITY_LABELS[a].label} score`}
-                        type="number"
-                        min={8}
-                        max={15}
-                        value={base[a]}
-                        onChange={e => setBase(a, Math.trunc(Number(e.target.value)) || 8)}
-                        className={styles.number}
-                      />
+                      <span className={styles.stepper}>
+                        <button
+                          type="button"
+                          className={styles.stepButton}
+                          aria-label={`Lower ${ABILITY_LABELS[a].label}`}
+                          disabled={!canAfford(a, base[a] - 1)}
+                          onClick={() => setBase(a, base[a] - 1)}
+                        >
+                          &minus;
+                        </button>
+                        <output className={styles.stepValue} aria-label={`${ABILITY_LABELS[a].label} score`}>
+                          {base[a]}
+                        </output>
+                        <button
+                          type="button"
+                          className={styles.stepButton}
+                          aria-label={`Raise ${ABILITY_LABELS[a].label}`}
+                          disabled={!canAfford(a, base[a] + 1)}
+                          onClick={() => setBase(a, base[a] + 1)}
+                        >
+                          +
+                        </button>
+                      </span>
                     ) : (
                       <select
                         aria-label={`${ABILITY_LABELS[a].label} score`}
@@ -424,17 +475,21 @@ export function SkillsStep({ srd, choices, onChange }: StepProps) {
   const bg = srd.backgrounds.find(b => b.id === choices.background);
   if (!cls) return <p className={styles.muted}>Choose a class first.</p>;
   const fixed = new Set<SkillKey>(bg?.skillProficiencies ?? []);
-  const toggle = (s: SkillKey, on: boolean) =>
+  const full = choices.skills.length >= cls.skillChoices.count;
+  const toggle = (s: SkillKey, on: boolean) => {
+    if (on && full) return;
     onChange({ skills: on ? [...choices.skills, s] : choices.skills.filter(x => x !== s) });
+  };
   return (
     <fieldset className={styles.checks}>
       <legend className={styles.label}>{`Choose ${cls.skillChoices.count} (${choices.skills.length} chosen)`}</legend>
+      {full && <p className={styles.muted}>You have chosen them all. Untick one to change it.</p>}
       {cls.skillChoices.from.map(s => (
         <label key={s}>
           <input
             type="checkbox"
             checked={fixed.has(s) || choices.skills.includes(s)}
-            disabled={fixed.has(s)}
+            disabled={fixed.has(s) || (full && !choices.skills.includes(s))}
             onChange={e => toggle(s, e.target.checked)}
           />{' '}
           {SKILLS[s].label}
@@ -505,7 +560,8 @@ export function SpellsStep({ srd, choices, onChange }: StepProps) {
   const list = (level: number) => srd.spells.filter(s => s.level === level && s.classes.includes(cls.name));
   const { spells } = choices;
   const set = (patch: Partial<CreationChoices['spells']>) => onChange({ spells: { ...spells, ...patch } });
-  const toggle = (key: keyof CreationChoices['spells'], name: string, on: boolean) => {
+  const toggle = (key: keyof CreationChoices['spells'], name: string, on: boolean, size: number) => {
+    if (on && spells[key].length >= size) return;
     const next = on ? [...spells[key], name] : spells[key].filter(n => n !== name);
     // a spell taken out of the spellbook cannot stay prepared
     if (key === 'spellbook' && !on) set({ spellbook: next, prepared: spells.prepared.filter(n => n !== name) });
@@ -514,12 +570,14 @@ export function SpellsStep({ srd, choices, onChange }: StepProps) {
   const group = (key: keyof CreationChoices['spells'], title: string, size: number, pool: { name: string }[]) => (
     <fieldset className={styles.checks}>
       <legend className={styles.label}>{`${title}: choose ${size} (${spells[key].length} chosen)`}</legend>
+      {spells[key].length >= size && <p className={styles.muted}>You have chosen them all. Untick one to change it.</p>}
       {pool.map(s => (
         <label key={s.name}>
           <input
             type="checkbox"
             checked={spells[key].includes(s.name)}
-            onChange={e => toggle(key, s.name, e.target.checked)}
+            disabled={spells[key].length >= size && !spells[key].includes(s.name)}
+            onChange={e => toggle(key, s.name, e.target.checked, size)}
           />{' '}
           {s.name}
         </label>

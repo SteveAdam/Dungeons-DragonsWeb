@@ -1,8 +1,7 @@
 // P2-11: the DM's "Simple long rest" (a temporary tool; the full rest rules come in Phase 6), for one character or
 // for the whole Party. It restores what the SRD 5.2.1's Long Rest gives; see simple_long_rest in 0017.
-import { BedDouble } from 'lucide-react';
 import { useState } from 'react';
-import { Button, ICON_PROPS } from '../../../components/ui';
+import { Button, GameIcon } from '../../../components/ui';
 import { friendlyMessage } from '../../../data/errors';
 import { useSimpleLongRest, useSimpleLongRestParty } from '../../../hooks/useSpells';
 import styles from './spells.module.css';
@@ -22,7 +21,7 @@ export function LongRestButton({ characterId, name }: { characterId: string; nam
           rest.mutate(undefined, { onSuccess: () => setDone(true) });
         }}
       >
-        <BedDouble {...ICON_PROPS} /> Simple long rest
+        <GameIcon name="moon" /> Simple long rest
       </Button>
       <span role="status" className={styles.muted}>
         {rest.isError ? '' : done ? `${name} has rested: ${RESTORES}.` : ''}
@@ -49,7 +48,7 @@ export function PartyLongRestButton({ campaignId }: { campaignId: string }) {
           rest.mutate(undefined, { onSuccess: n => setRested(n) });
         }}
       >
-        <BedDouble {...ICON_PROPS} /> Simple long rest for the party
+        <GameIcon name="moon" /> Simple long rest for the party
       </Button>
       <span role="status" className={styles.muted}>
         {rested === null ? '' : `${rested} ${rested === 1 ? 'character has' : 'characters have'} rested: ${RESTORES}.`}

@@ -16,6 +16,7 @@
     "db:test:mutations": "node scripts/mutation-check.mjs",
     "db:push": "supabase db push",
     "db:types": "node scripts/gen-types.mjs",
+    "db:check-hosted": "node scripts/check-hosted-schema.mjs",
     "check:tokens": "node scripts/check-tokens.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

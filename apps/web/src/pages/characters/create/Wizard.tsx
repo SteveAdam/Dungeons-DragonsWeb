@@ -136,8 +136,17 @@ export function Wizard({
               aria-current={i === step ? 'step' : undefined}
               className={i < step ? styles.done : undefined}
             >
-              <span className={styles.stepNumber}>{i + 1}</span>
-              <span className={styles.stepTitle}>{s.title}</span>
+              {i < step ? (
+                <button type="button" className={styles.stepLink} onClick={() => go(i)}>
+                  <span className={styles.stepNumber}>{i + 1}</span>
+                  <span className={styles.stepTitle}>{s.title}</span>
+                </button>
+              ) : (
+                <>
+                  <span className={styles.stepNumber}>{i + 1}</span>
+                  <span className={styles.stepTitle}>{s.title}</span>
+                </>
+              )}
             </li>
           ))}
         </ol>

@@ -14,7 +14,7 @@ import { HeaderClock } from './HeaderClock';
 import { HeaderPresence } from './PresenceList';
 import { SrdAttribution } from './SrdAttribution';
 import { ToastRegion } from './ToastRegion';
-import { DeskFrame, ICON_PROPS, IconLink, iconClasses } from './ui';
+import { DeskFrame, GameIcon, ICON_PROPS, IconLink, iconClasses } from './ui';
 
 function LiveCampaign({ campaignId }: { campaignId: string }) {
   useLiveCampaign(campaignId);
@@ -75,7 +75,12 @@ export function AppShell() {
   return (
     <>
       <DeskFrame
-        brand={<Link to="/">D&D MANAGER</Link>}
+        brand={
+          <Link to="/">
+            <GameIcon name="d20" size="1.2rem" />
+            D&D MANAGER
+          </Link>
+        }
         actions={<HeaderActions campaignId={campaignId} />}
         footer={<SrdAttribution />}
       >

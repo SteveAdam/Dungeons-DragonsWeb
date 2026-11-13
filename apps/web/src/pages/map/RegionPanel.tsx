@@ -252,6 +252,7 @@ function RegionEditor({
                 : 'Delete this region?'}
             </span>
             <Button
+              variant="danger"
               disabled={remove.isPending}
               onClick={() =>
                 remove.mutate(region.id, {

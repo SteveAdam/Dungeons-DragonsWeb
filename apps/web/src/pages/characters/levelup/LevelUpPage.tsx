@@ -6,12 +6,13 @@ import { ArrowLeft, ScrollText } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../../components/ErrorNotice';
-import { Cell, IconLink, PageGrid, Paper } from '../../../components/ui';
+import { Cell, IconLink, OrnateDivider, PageGrid, Paper } from '../../../components/ui';
 import { getHitDieRoll, type AppliedLevel } from '../../../data/levelup';
 import { listSrdClasses, listSrdSpells } from '../../../data/srd';
 import { queryKeys } from '../../../hooks/queryKeys';
 import { useCampaign } from '../../../hooks/useCampaigns';
 import { useCharacter } from '../../../hooks/useCharacters';
+import { useToasts } from '../../../state/toasts';
 import styles from '../create/create.module.css';
 import { LevelUpFlow } from './LevelUpFlow';
 
@@ -30,10 +31,12 @@ export default function LevelUpPage() {
     enabled: !!sheet,
   });
   const [applied, setApplied] = useState<AppliedLevel | null>(null);
+  const pushToast = useToasts(s => s.push);
   const back = `/campaigns/${campaignId}/characters/${characterId}`;
 
   async function onApplied(result: AppliedLevel) {
     setApplied(result);
+    pushToast(`${sheet?.name ?? 'Your character'} reached level ${result.level}.`);
     await client.invalidateQueries({ queryKey: ['characters', characterId] });
     await client.invalidateQueries({ queryKey: queryKeys.characters(campaignId) });
   }
@@ -54,8 +57,15 @@ export default function LevelUpPage() {
           <h1 id="level-up-title" className={styles.title}>
             {sheet ? `Level up ${sheet.name}` : 'Level up'}
           </h1>
+          <OrnateDivider />
           {applied && (
-            <p role="status" className={styles.saved}>
+            <p role="status" className={`${styles.saved} ${styles.levelUp}`}>
+              <svg aria-hidden="true" viewBox="0 0 40 24" className={styles.sparks}>
+                <path d="M6 14l1.500 4 4 1.500-4 1.500-1.500 4-1.500-4-4-1.500 4-1.500z" />
+                <path d="M34 12l1.500 4 4 1.500-4 1.500-1.500 4-1.500-4-4-1.500 4-1.500z" />
+                <path d="M14 4l1.200 3.200 3.200 1.200-3.200 1.200-1.200 3.200-1.200-3.200-3.200-1.200 3.200-1.200z" />
+                <path d="M26 3l1.200 3.200 3.200 1.200-3.200 1.200-1.200 3.200-1.200-3.200-3.200-1.200 3.200-1.200z" />
+              </svg>
               {`Level ${applied.level} applied: ${applied.hitPoints} hit points (+${applied.hitPointsGained}), proficiency +${applied.proficiencyBonus}.`}
             </p>
           )}

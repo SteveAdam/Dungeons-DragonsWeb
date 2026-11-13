@@ -11,7 +11,9 @@
 }
 
 .badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   padding: 0.15rem 0.6rem;
   border: 2px dashed var(--wax-red);
   border-radius: 0.25rem;
@@ -20,4 +22,25 @@
   font-family: var(--font-ui);
   font-size: 1rem;
   white-space: nowrap;
+}
+
+/* the torch flickers while DM mode is on */
+.torch {
+  transform-origin: 50% 90%;
+  animation: flicker 1s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    transform: scale(1, 1) skewX(0);
+  }
+
+  25% {
+    transform: scale(0.94, 1.08) skewX(-3deg);
+  }
+
+  55% {
+    transform: scale(1.05, 0.95) skewX(2deg);
+  }
 }

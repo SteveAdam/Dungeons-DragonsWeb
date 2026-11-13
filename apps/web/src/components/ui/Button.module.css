@@ -11,29 +11,166 @@
   font-size: 1.05rem;
   font-weight: 400;
   cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease,
+    box-shadow 0.12s ease,
+    background-color 0.12s ease;
 }
 
 .button:disabled {
   cursor: not-allowed;
+  filter: grayscale(0.85);
   opacity: 0.6;
 }
 
+/* every raised button sinks onto its own shadow when pressed */
+.primary:active:not(:disabled),
+.iron:active:not(:disabled),
+.die:active:not(:disabled) {
+  box-shadow: var(--press-inset);
+  transform: translateY(0.2rem);
+}
+
+/* PRIMARY: a wax seal, slightly uneven like pressed wax */
 .primary {
-  background: var(--wax-red);
-  box-shadow: inset 0 -2px 0 var(--ink-wash-strong);
+  padding-inline: 1.4rem;
+  border: none;
+  border-radius: 1.6rem 1.75rem 1.5rem 1.85rem / 1.75rem 1.5rem 1.85rem 1.6rem;
+  background: radial-gradient(circle at 30% 25%, var(--wax-red-light), var(--wax-red) 55%, var(--wax-red-dark));
+  box-shadow:
+    var(--press-inset),
+    0 0.2rem 0 var(--wax-red-deep),
+    0 0.45rem 0.7rem var(--shadow);
   color: var(--paper);
 }
 
 .primary:hover:not(:disabled) {
-  filter: brightness(1.12);
+  filter: brightness(1.14);
 }
 
+/* GHOST: a scrap of parchment with a dashed ink edge */
 .ghost {
+  border: 1px dashed var(--ink-faded);
+  border-radius: 0.2rem 0.55rem 0.25rem 0.6rem / 0.55rem 0.2rem 0.6rem 0.25rem;
   background: transparent;
   color: var(--ink);
-  text-underline-offset: 0.2em;
 }
 
 .ghost:hover:not(:disabled) {
+  border-color: currentColor;
   background: var(--ink-wash);
+}
+
+.ghost:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* IRON: a dark plate with a rivet in each corner */
+.iron {
+  padding-inline: 1.7rem;
+  border-color: var(--gold);
+  background:
+    radial-gradient(circle at 0.5rem 0.5rem, var(--gold) 0 0.14rem, transparent 0.17rem),
+    radial-gradient(circle at calc(100% - 0.5rem) 0.5rem, var(--gold) 0 0.14rem, transparent 0.17rem),
+    radial-gradient(circle at 0.5rem calc(100% - 0.5rem), var(--gold) 0 0.14rem, transparent 0.17rem),
+    radial-gradient(circle at calc(100% - 0.5rem) calc(100% - 0.5rem), var(--gold) 0 0.14rem, transparent 0.17rem),
+    linear-gradient(var(--iron-light), var(--iron));
+  box-shadow:
+    inset 0 1px 0 var(--highlight),
+    0 0.2rem 0 var(--iron),
+    0 0.45rem 0.7rem var(--shadow);
+  color: var(--gold-light);
+}
+
+.iron:hover:not(:disabled) {
+  filter: brightness(1.35);
+}
+
+/* RIBBON: a pennant with notched ends */
+.ribbon {
+  padding-inline: 2.2rem;
+  border: none;
+  border-radius: 0;
+  background: linear-gradient(var(--verdigris-light), var(--verdigris) 60%, var(--verdigris-dark));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.9rem) 50%, 100% 100%, 0 100%, 0.9rem 50%);
+  color: var(--paper);
+}
+
+.ribbon:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.ribbon:active:not(:disabled) {
+  transform: translateY(0.15rem);
+}
+
+/* the clip would cut the usual outline off, so the focus ring is drawn inside */
+.ribbon:focus-visible {
+  outline-offset: -0.3rem;
+}
+
+/* DIE: gilded, with a d20 that turns on hover */
+.die {
+  gap: 0.55rem;
+  border: 2px solid var(--gold-dark);
+  border-radius: 0.35rem;
+  background: linear-gradient(var(--gold-light), var(--gold) 55%, var(--gold-shade));
+  box-shadow:
+    inset 0 2px 0 var(--highlight-strong),
+    0 0.2rem 0 var(--gold-deep),
+    0 0.45rem 0.7rem var(--shadow);
+  color: var(--ink);
+}
+
+.dieIcon {
+  transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.die:hover:not(:disabled) .dieIcon,
+.die:focus-visible .dieIcon {
+  transform: rotate(60deg);
+}
+
+/* DANGER: outlined in wax, filled only when you reach for it */
+.danger {
+  border: 2px solid var(--wax-red);
+  background: transparent;
+  color: var(--wax-red);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--wax-red);
+  color: var(--paper);
+}
+
+.danger:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* RUNE: a round stone that holds one glowing icon */
+.rune {
+  width: 3rem;
+  height: 3rem;
+  flex: none;
+  padding: 0;
+  border: 2px solid var(--stone-dark);
+  border-radius: 46% 54% 50% 50% / 52% 48% 52% 48%;
+  background: radial-gradient(circle at 35% 30%, var(--stone-light), var(--stone) 70%);
+  box-shadow:
+    var(--press-inset),
+    0 0.25rem 0.5rem var(--shadow);
+  color: var(--rune);
+}
+
+.rune > svg {
+  filter: drop-shadow(0 0 0.25rem var(--rune-glow));
+}
+
+.rune:hover:not(:disabled) > svg {
+  filter: drop-shadow(0 0 0.55rem var(--rune)) brightness(1.2);
+}
+
+.rune:active:not(:disabled) {
+  transform: scale(0.93);
 }

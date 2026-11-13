@@ -3,7 +3,12 @@
   flex-direction: column;
   min-height: 100vh;
   /* a dim stone wall, lit from the top centre; "Reduce texture" leaves only the plain desk colour */
-  background: var(--wall-vignette), var(--texture-grain), var(--texture-brick), var(--desk);
+  background:
+    var(--desk-contours) repeat-y center top / 100% auto,
+    var(--wall-vignette),
+    var(--texture-grain),
+    var(--texture-brick),
+    var(--desk);
   color: var(--paper);
 }
 
@@ -15,7 +20,14 @@
   gap: 0.75rem 1.5rem;
   padding: 0.75rem 1.25rem;
   border-bottom: 3px solid var(--gold);
-  background: var(--texture-grain), var(--iron);
+  /* a row of rivets along the bottom edge */
+  background:
+    radial-gradient(circle, var(--gold-dark) 0 0.16rem, transparent 0.2rem) repeat-x 0.75rem calc(100% - 0.2rem) / 3rem
+      0.6rem,
+    var(--texture-grain),
+    var(--iron);
+  position: relative;
+  z-index: 2;
   box-shadow: 0 0.25rem 1rem var(--shadow);
 }
 
@@ -45,7 +57,70 @@
 }
 
 .content {
+  position: relative;
+  z-index: 1;
   flex: 1;
+}
+
+.props {
+  display: none;
+}
+
+/* only where the desk shows beside the page, and never when textures are reduced */
+@media (min-width: 1100px) {
+  .props {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    display: block;
+    pointer-events: none;
+  }
+
+  :global(:root[data-reduce-texture='true']) .props {
+    display: none;
+  }
+}
+
+.candleGlow {
+  position: absolute;
+  bottom: -6rem;
+  left: -10rem;
+  width: 34rem;
+  height: 34rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--candle-glow), transparent 65%);
+  animation: candle 2.4s ease-in-out infinite;
+}
+
+/* the engraving is used as a mask, so its colour comes from the palette */
+.candle {
+  position: absolute;
+  bottom: 3.5rem;
+  left: 0.5rem;
+  width: 13rem;
+  aspect-ratio: 1144 / 917;
+  background: var(--paper-aged);
+  opacity: 0.55;
+  mask: url('../../assets/stock/candle-books.svg') center / contain no-repeat;
+}
+
+.quill {
+  position: absolute;
+  top: 6rem;
+  right: 1rem;
+  width: 5.5rem;
+  opacity: 0.6;
+}
+
+@keyframes candle {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 30rem) {
@@ -62,6 +137,8 @@
 
 /* small print on the desk, under every page */
 .footer {
+  position: relative;
+  z-index: 1;
   padding: 0.75rem 1.25rem 1rem;
   border-top: 1px solid var(--rule);
   color: color-mix(in srgb, var(--paper) 70%, transparent);
@@ -72,4 +149,150 @@
 
 .footer p {
   margin: 0;
+}
+
+/* pennants hang from under the iron bar, in the two accent colours */
+.pennant {
+  position: absolute;
+  top: 3.6rem;
+  width: 2.4rem;
+  height: 3.4rem;
+  background: var(--wax-red);
+  clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 100%, 0 72%);
+  opacity: 0.85;
+}
+
+.pennantLeft {
+  left: 1.5rem;
+}
+
+.pennantRight {
+  right: 8.5rem;
+}
+
+.pennantLeftSmall,
+.pennantRightSmall {
+  width: 1.8rem;
+  height: 2.5rem;
+  background: var(--verdigris);
+}
+
+.pennantLeftSmall {
+  left: 4.4rem;
+}
+
+.pennantRightSmall {
+  right: 11.4rem;
+}
+
+/* the compass rose lies in the corner and sways a few degrees, like a needle finding north */
+.compass {
+  position: absolute;
+  right: -3rem;
+  bottom: -3rem;
+  width: 26rem;
+  animation: sway 16s ease-in-out infinite alternate;
+}
+
+@keyframes sway {
+  from {
+    transform: rotate(-5deg);
+  }
+
+  to {
+    transform: rotate(5deg);
+  }
+}
+
+/* a flame on the candle, and sparks that drift up from it */
+.flame {
+  position: absolute;
+  bottom: 12.3rem;
+  left: 1.6rem;
+  width: 1.5rem;
+  height: 2.5rem;
+  overflow: visible;
+  transform-origin: 50% 100%;
+  animation: flame 1s ease-in-out infinite;
+}
+
+.flameOuter {
+  fill: var(--ember);
+}
+
+.flameInner {
+  fill: var(--ember-light);
+}
+
+@keyframes flame {
+  0%,
+  100% {
+    transform: scale(1, 1) skewX(0);
+  }
+
+  25% {
+    transform: scale(0.93, 1.08) skewX(-3deg);
+  }
+
+  55% {
+    transform: scale(1.05, 0.95) skewX(2deg);
+  }
+}
+
+.ember {
+  position: absolute;
+  bottom: 14.7rem;
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 50%;
+  background: var(--ember-light);
+  opacity: 0;
+  animation: drift 4.5s ease-out infinite;
+}
+
+.ember1 {
+  left: 2.4rem;
+}
+
+.ember2 {
+  left: 1.8rem;
+  animation-delay: 1.5s;
+  animation-duration: 5.5s;
+}
+
+.ember3 {
+  left: 3rem;
+  animation-delay: 3s;
+}
+
+@keyframes drift {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+
+  15% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(1.2rem, -7rem);
+  }
+}
+
+/* the brand's die turns when you reach for it */
+.brand a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.brand a svg {
+  transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.brand a:hover svg,
+.brand a:focus-visible svg {
+  transform: rotate(60deg);
 }

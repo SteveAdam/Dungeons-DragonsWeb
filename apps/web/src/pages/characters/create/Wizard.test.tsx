@@ -193,6 +193,86 @@ describe('the character creation wizard (P2-9)', () => {
     expect(title()).toBe('8. Details');
   });
 
+  it('point buy never lets a point be spent that is not there', async () => {
+    const user = userEvent.setup();
+    show({
+      step: 3,
+      choices: { ...blankChoices(), name: 'Sera', species: 'elf', class: 'wizard', background: 'sage' },
+      roll: null,
+    });
+    await user.click(screen.getByRole('radio', { name: /Point buy/ }));
+    const raise = (a: string) => screen.getByRole('button', { name: `Raise ${a}` });
+    const lower = (a: string) => screen.getByRole('button', { name: `Lower ${a}` });
+    const score = (a: string) => screen.getByLabelText(`${a} score`);
+    expect(screen.getByText('Scores (0 of 27 points spent, 27 left)')).toBeInTheDocument();
+    expect(lower('Strength')).toBeDisabled(); // 8 is the floor
+    // 15 costs 9: three of them use all 27
+    for (const a of ['Strength', 'Dexterity', 'Constitution']) for (let i = 0; i < 7; i++) await user.click(raise(a));
+    expect(score('Strength')).toHaveTextContent('15');
+    expect(raise('Strength')).toBeDisabled(); // 15 is the ceiling
+    expect(screen.getByText('Scores (27 of 27 points spent, 0 left)')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '27 of 27 points spent' })).toBeInTheDocument();
+    expect(screen.getByText('All 27 points are spent. Lower a score to raise another.')).toBeInTheDocument();
+    expect(raise('Wisdom')).toBeDisabled();
+    // lowering one frees points, and only as much as it frees can be spent
+    await user.click(lower('Strength'));
+    expect(screen.getByText('Scores (25 of 27 points spent, 2 left)')).toBeInTheDocument();
+    await user.click(raise('Wisdom'));
+    await user.click(raise('Wisdom'));
+    expect(score('Wisdom')).toHaveTextContent('10');
+    expect(raise('Wisdom')).toBeDisabled();
+    // 13 to 14 costs two points: with one left it stays off
+    await user.click(lower('Wisdom'));
+    await user.click(lower('Dexterity'));
+    await user.click(lower('Dexterity'));
+    for (let i = 0; i < 4; i++) await user.click(raise('Intelligence'));
+    expect(screen.getByText('Scores (26 of 27 points spent, 1 left)')).toBeInTheDocument();
+    expect(score('Dexterity')).toHaveTextContent('13');
+    expect(raise('Dexterity')).toBeDisabled();
+    expect(raise('Charisma')).toBeEnabled();
+  });
+
+  it('the standard array swaps two abilities instead of using a score twice', async () => {
+    const user = userEvent.setup();
+    show({
+      step: 3,
+      choices: { ...blankChoices(), name: 'Sera', species: 'elf', class: 'wizard', background: 'sage' },
+      roll: null,
+    });
+    const score = (a: string) => screen.getByLabelText(`${a} score`) as HTMLSelectElement;
+    expect([score('Strength').value, score('Charisma').value]).toEqual(['15', '8']);
+    await user.selectOptions(score('Charisma'), '15');
+    expect([score('Strength').value, score('Charisma').value]).toEqual(['8', '15']);
+  });
+
+  it('skills and spells stop at their limit: the rest are greyed out until one is unticked', async () => {
+    const user = userEvent.setup();
+    show({
+      step: 4,
+      choices: { ...blankChoices(), name: 'Sera', species: 'elf', class: 'wizard', background: 'sage' },
+      roll: null,
+    });
+    expect(title()).toBe('5. Skills');
+    await user.click(screen.getByRole('checkbox', { name: 'Insight' }));
+    expect(screen.getByRole('checkbox', { name: 'Medicine' })).toBeEnabled();
+    await user.click(screen.getByRole('checkbox', { name: 'Investigation' }));
+    expect(screen.getByText('You have chosen them all. Untick one to change it.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Medicine' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Insight' })).toBeEnabled();
+    await user.click(screen.getByRole('checkbox', { name: 'Insight' }));
+    expect(screen.getByRole('checkbox', { name: 'Medicine' })).toBeEnabled();
+    await user.click(screen.getByRole('checkbox', { name: 'Medicine' }));
+    await next(user);
+    await next(user);
+    expect(title()).toBe('7. Spells');
+    const cantrips = screen.getByRole('group', { name: /^Cantrips/ });
+    for (const s of ['Fire Bolt', 'Light', 'Mage Hand'])
+      await user.click(within(cantrips).getByRole('checkbox', { name: s }));
+    expect(within(cantrips).getByRole('checkbox', { name: 'Ray of Frost' })).toBeDisabled();
+    expect(within(cantrips).getByRole('checkbox', { name: 'Light' })).toBeEnabled();
+    expect(screen.getByRole('group', { name: /^Cantrips/ })).toHaveTextContent('3 chosen');
+  });
+
   it('when the server refuses, shows its reasons on the step they belong to', async () => {
     vi.mocked(api.createCharacter).mockRejectedValue(
       new api.CreationRejected('Some choices break the rules', [

@@ -6,6 +6,18 @@
   color: var(--ink);
 }
 
+.empty {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-style: dashed;
+  border-width: 2px;
+}
+
+.emptyIcon {
+  color: var(--ink-faded);
+}
+
 .message {
   margin: 0 0 0.5rem;
   font-weight: 700;

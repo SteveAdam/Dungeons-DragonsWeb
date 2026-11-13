@@ -25,7 +25,9 @@ export function Paper({
 export function Button({
   variant = 'primary',
   ...rest
-}: { variant?: 'primary' | 'ghost' } & ButtonHTMLAttributes<HTMLButtonElement>) {
+}: {
+  variant?: 'primary' | 'ghost' | 'iron' | 'ribbon' | 'die' | 'danger' | 'rune';
+} & ButtonHTMLAttributes<HTMLButtonElement>) {
   return <button data-variant={variant} {...rest} />;
 }
 export function Tag({ children }: { children: ReactNode }) {
@@ -127,4 +129,10 @@ export function Band({ items }: { items: ReactNode[] }) {
 }
 export function Dice() {
   return null;
+}
+export function OrnateDivider() {
+  return <hr data-ornate />;
+}
+export function GameIcon({ name }: { name: string }) {
+  return <span data-game-icon={name} />;
 }

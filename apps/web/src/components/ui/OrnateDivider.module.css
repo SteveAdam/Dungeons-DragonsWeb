@@ -1,0 +1,19 @@
+.divider {
+  display: block;
+  width: 100%;
+  max-width: 36rem;
+  height: 1.6rem;
+  margin: 0.4rem auto 0.8rem;
+  fill: none;
+  stroke: var(--gold-dark);
+  stroke-width: 1.6;
+}
+
+.gem {
+  fill: var(--wax-red);
+}
+
+.dot {
+  fill: var(--gold-dark);
+  stroke: none;
+}

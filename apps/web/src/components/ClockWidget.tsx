@@ -1,14 +1,13 @@
 // P2-8: the DM's game clock. Shows the time as "Day N, hh:mm" and moves it forward with advance_clock, which logs
 // each move. Every open screen hears the new time over realtime, so effect countdowns move together.
 import { absoluteDayFromSeconds, addMonths } from '@dnd-manager/rules-engine';
-import { Clock } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
 import { friendlyMessage } from '../data/errors';
 import { useAdvanceClock, useCampaign } from '../hooks/useCampaigns';
 import { useCalendar } from '../hooks/useCalendar';
 import { calendarClock, SECONDS_PER_DAY } from '../lib/gameClock';
 import styles from './ClockWidget.module.css';
-import { Button, ICON_PROPS, Input, Paper } from './ui';
+import { Button, GameIcon, Input, Paper } from './ui';
 
 const STEPS = [
   { label: '+10 minutes', seconds: 600, reason: '10 minutes pass' },
@@ -57,7 +56,7 @@ export function ClockWidget({ campaignId }: { campaignId: string }) {
     // its own parchment, so it reads the same on the brick desk (hub) as on a sheet
     <Paper as="section" texture="flat" className={styles.clock} aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className={styles.title}>
-        <Clock {...ICON_PROPS} /> Game clock
+        <GameIcon name="hourglass" /> Game clock
       </h2>
       <p className={styles.time} aria-live="polite">
         <time>{campaign.data ? calendarClock(seconds, calendar.data) : '…'}</time>

@@ -409,7 +409,7 @@ export function CharacterSheetPage() {
                     {`${sheet.hp.current} of ${sheet.hp.max}${sheet.hp.temp ? ` (+${sheet.hp.temp} temporary)` : ''} · Hit dice ${sheet.hitDice.remaining}${sheet.hitDice.die}`}
                   </span>
                 </div>
-                <Bar label="Hit points" value={sheet.hp.current} max={sheet.hp.max} />
+                <Bar label="Hit points" value={sheet.hp.current} max={sheet.hp.max} health />
               </div>
 
               <div className={styles.targets}>
@@ -550,17 +550,42 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Bar({ label, value, max }: { label: string; value: number; max: number }) {
+/** Display words only, so the bar's colour is never the only signal. They are not game terms. */
+function healthWord(value: number, max: number) {
+  if (value <= 0) return { word: 'Down', tone: 'low' };
+  if (value * 4 <= max) return { word: 'Badly wounded', tone: 'low' };
+  if (value * 2 <= max) return { word: 'Wounded', tone: 'mid' };
+  return { word: 'Healthy', tone: 'high' };
+}
+
+function Bar({ label, value, max, health = false }: { label: string; value: number; max: number; health?: boolean }) {
+  // remember the last value, to know when this one is a drop
+  const [last, setLast] = useState(value);
+  const [dropped, setDropped] = useState(false);
+  if (value !== last) {
+    setLast(value);
+    setDropped(value < last);
+  }
+  const state = health ? healthWord(value, max) : null;
   return (
-    <div
-      role="meter"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={max}
-      aria-valuenow={value}
-      className={styles.bar}
-    >
-      <div className={styles.fill} style={{ width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%` }} />
+    <div className={styles.barRow}>
+      <div
+        key={dropped ? value : 'steady'}
+        role="meter"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-valuenow={value}
+        aria-valuetext={state ? `${value} of ${max}, ${state.word}` : undefined}
+        className={`${styles.bar} ${dropped ? styles.shaken : ''}`}
+      >
+        <div
+          className={styles.fill}
+          data-tone={state?.tone}
+          style={{ width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%` }}
+        />
+      </div>
+      {state && <span className={styles.barWord}>{state.word}</span>}
     </div>
   );
 }

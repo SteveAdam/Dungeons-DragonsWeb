@@ -233,3 +233,53 @@
     transform: none;
   }
 }
+
+/* the kept die drops and settles; a natural 20 turns bright gold and flashes */
+.landed {
+  animation: land 0.45s cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+
+.natural20 {
+  background: var(--gold-light);
+  color: var(--ink);
+  animation:
+    land 0.45s cubic-bezier(0.3, 0.7, 0.3, 1),
+    flash 1.1s ease-out 0.45s;
+}
+
+.natural20::before {
+  background: var(--gold);
+}
+
+@keyframes land {
+  0% {
+    transform: translateY(-1.2rem) rotate(-40deg) scale(0.8);
+  }
+
+  60% {
+    transform: translateY(0.2rem) rotate(6deg) scale(1.06);
+  }
+}
+
+@keyframes flash {
+  0%,
+  40% {
+    filter: brightness(1.6) drop-shadow(0 0 0.6rem var(--gold-light));
+  }
+}
+
+/* the popup opens like a scroll unrolling from its top edge */
+.card {
+  animation: unrollCard 0.28s ease-out;
+}
+
+@keyframes unrollCard {
+  from {
+    clip-path: inset(-1rem -1rem 100% -1rem);
+    opacity: 0.5;
+  }
+
+  to {
+    clip-path: inset(-1rem);
+  }
+}

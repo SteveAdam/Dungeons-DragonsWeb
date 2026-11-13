@@ -128,7 +128,8 @@ export function LevelUpFlow({ characterId, sheet, cls, spells, optionalFeats, ex
   const preview = ready ? applyLevelUp(sheet, choices, cls, roll?.die) : null;
   const previewSheet = preview ? computeSheet(preview, [], { seconds: 0 }) : null;
   const known = sheet.spells ?? { cantrips: [], prepared: [], spellbook: [] };
-  const toggleSpell = (key: keyof LevelUpChoices['spells'], name: string, on: boolean) => {
+  const toggleSpell = (key: keyof LevelUpChoices['spells'], name: string, on: boolean, size: number) => {
+    if (on && choices.spells[key].length >= size) return;
     const list = on ? [...choices.spells[key], name] : choices.spells[key].filter(n => n !== name);
     const next = { ...choices.spells, [key]: list };
     // a spell taken back out of the spellbook cannot stay prepared
@@ -138,12 +139,16 @@ export function LevelUpFlow({ characterId, sheet, cls, spells, optionalFeats, ex
   const spellGroup = (key: keyof LevelUpChoices['spells'], title: string, size: number, pool: SrdSpell[]) => (
     <fieldset className={styles.checks}>
       <legend className={styles.label}>{`${title}: choose ${size} (${choices.spells[key].length} chosen)`}</legend>
+      {choices.spells[key].length >= size && (
+        <p className={styles.muted}>You have chosen them all. Untick one to change it.</p>
+      )}
       {pool.map(s => (
         <label key={s.name}>
           <input
             type="checkbox"
             checked={choices.spells[key].includes(s.name)}
-            onChange={e => toggleSpell(key, s.name, e.target.checked)}
+            disabled={choices.spells[key].length >= size && !choices.spells[key].includes(s.name)}
+            onChange={e => toggleSpell(key, s.name, e.target.checked, size)}
           />{' '}
           {`${s.name}${s.level ? ` (level ${s.level})` : ''}`}
         </label>
@@ -165,8 +170,17 @@ export function LevelUpFlow({ characterId, sheet, cls, spells, optionalFeats, ex
               aria-current={i === step ? 'step' : undefined}
               className={i < step ? styles.done : undefined}
             >
-              <span className={styles.stepNumber}>{i + 1}</span>
-              <span className={styles.stepTitle}>{s.title}</span>
+              {i < step ? (
+                <button type="button" className={styles.stepLink} onClick={() => go(i)}>
+                  <span className={styles.stepNumber}>{i + 1}</span>
+                  <span className={styles.stepTitle}>{s.title}</span>
+                </button>
+              ) : (
+                <>
+                  <span className={styles.stepNumber}>{i + 1}</span>
+                  <span className={styles.stepTitle}>{s.title}</span>
+                </>
+              )}
             </li>
           ))}
         </ol>
@@ -207,7 +221,7 @@ export function LevelUpFlow({ characterId, sheet, cls, spells, optionalFeats, ex
               (roll ? (
                 <p>{`You rolled ${roll.die} on the ${plan.hitDie}: ${roll.die} ${signed(con)} = ${Math.max(1, roll.die + con)} hit points. The roll is in the roll log and cannot be rolled again.`}</p>
               ) : (
-                <Button onClick={() => rollDie.mutate()} disabled={rollDie.isPending}>
+                <Button variant="die" onClick={() => rollDie.mutate()} disabled={rollDie.isPending}>
                   {rollDie.isPending ? 'Rolling…' : `Roll the ${plan.hitDie}`}
                 </Button>
               ))}

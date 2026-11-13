@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from './auth/LoginPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppShell } from './components/AppShell';
+import { LoadingRunes } from './components/LoadingRunes';
 import { CampaignHubPage } from './pages/CampaignHubPage';
 import { CampaignListPage } from './pages/CampaignListPage';
 import { HomePage } from './pages/HomePage';
@@ -43,7 +44,7 @@ export function App() {
           path="/campaigns/:campaignId/library"
           element={
             <ProtectedRoute>
-              <Suspense fallback={<p className="auth-status">Unlocking the library…</p>}>
+              <Suspense fallback={<LoadingRunes>Unlocking the library…</LoadingRunes>}>
                 <LibraryPage />
               </Suspense>
             </ProtectedRoute>
@@ -61,7 +62,7 @@ export function App() {
           path="/campaigns/:campaignId/maps/:mapId"
           element={
             <ProtectedRoute>
-              <Suspense fallback={<p className="auth-status">Unrolling the map…</p>}>
+              <Suspense fallback={<LoadingRunes>Unrolling the map…</LoadingRunes>}>
                 <MapViewPage />
               </Suspense>
             </ProtectedRoute>
@@ -71,7 +72,7 @@ export function App() {
           path="/campaigns/:campaignId/characters/new"
           element={
             <ProtectedRoute>
-              <Suspense fallback={<p className="auth-status">Laying out the blank sheet…</p>}>
+              <Suspense fallback={<LoadingRunes>Laying out the blank sheet…</LoadingRunes>}>
                 <CreateCharacterPage />
               </Suspense>
             </ProtectedRoute>
@@ -81,7 +82,7 @@ export function App() {
           path="/campaigns/:campaignId/characters/:characterId/level-up"
           element={
             <ProtectedRoute>
-              <Suspense fallback={<p className="auth-status">Turning the page…</p>}>
+              <Suspense fallback={<LoadingRunes>Turning the page…</LoadingRunes>}>
                 <LevelUpPage />
               </Suspense>
             </ProtectedRoute>
@@ -91,7 +92,7 @@ export function App() {
           path="/campaigns/:campaignId/characters/:characterId/:tab?"
           element={
             <ProtectedRoute>
-              <Suspense fallback={<p className="auth-status">Unfolding the sheet…</p>}>
+              <Suspense fallback={<LoadingRunes>Unfolding the sheet…</LoadingRunes>}>
                 <CharacterSheetPage />
               </Suspense>
             </ProtectedRoute>

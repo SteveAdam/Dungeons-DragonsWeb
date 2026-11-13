@@ -90,6 +90,65 @@
   white-space: nowrap;
 }
 
+.loading {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  margin: 2rem 0;
+  color: var(--paper-aged);
+  font-style: italic;
+  text-align: center;
+}
+
+.runes {
+  width: 4.5rem;
+  height: 4.5rem;
+  fill: none;
+  stroke: var(--rune-glow);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.runeCircle {
+  stroke-width: 0.8;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: runeTurn 9s linear infinite;
+}
+
+.rune1,
+.rune2,
+.rune3 {
+  stroke-width: 2;
+  animation: runeWake 1.6s ease-in-out infinite;
+}
+
+.rune2 {
+  animation-delay: 0.25s;
+}
+
+.rune3 {
+  animation-delay: 0.5s;
+}
+
+@keyframes runeWake {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 1;
+    stroke: var(--rune);
+  }
+}
+
+@keyframes runeTurn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .toasts {
   position: fixed;
   z-index: 50;
@@ -101,9 +160,12 @@
   pointer-events: none;
 }
 
+/* a toast unrolls like a small scroll, and its seal stamps down */
 .toast {
+  transform-origin: top;
+  animation: unroll 0.3s ease-out;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.6rem 0.8rem;
@@ -113,7 +175,46 @@
   pointer-events: auto;
 }
 
+.toastSeal {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  animation: stamp 0.45s ease-in 0.15s backwards;
+}
+
+.toastSeal path:first-child {
+  fill: var(--wax-red);
+}
+
+.toastSeal path:last-child {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes unroll {
+  from {
+    opacity: 0;
+    transform: scaleY(0.2);
+  }
+}
+
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: translateY(-1.5rem) rotate(-14deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.15, 0.85);
+  }
+}
+
 .toastText {
+  flex: 1;
   margin: 0;
   overflow-wrap: anywhere;
 }

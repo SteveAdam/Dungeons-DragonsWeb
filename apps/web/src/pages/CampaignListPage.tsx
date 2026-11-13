@@ -54,7 +54,7 @@ export function CampaignListPage() {
         )}
         {campaigns.isError && <ErrorNotice error={campaigns.error} onRetry={() => campaigns.refetch()} />}
         {campaigns.isSuccess && campaigns.data.length === 0 && (
-          <EmptyState title="No campaigns yet">
+          <EmptyState title="No campaigns yet" icon="tower">
             Start your own below, or join one with the code your DM gave you.
           </EmptyState>
         )}

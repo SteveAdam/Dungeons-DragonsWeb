@@ -189,6 +189,54 @@
 .fill {
   height: 100%;
   background: var(--verdigris);
+  transition: width 0.4s ease;
+}
+
+.fill[data-tone='mid'] {
+  background: var(--gold-shade);
+}
+
+.fill[data-tone='low'] {
+  background: var(--wax-red);
+}
+
+.barRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.barRow > .bar {
+  flex: 1;
+}
+
+.barWord {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+/* damage: the bar shakes once */
+.shaken {
+  animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+  20% {
+    transform: translateX(-0.3rem);
+  }
+
+  40% {
+    transform: translateX(0.3rem);
+  }
+
+  60% {
+    transform: translateX(-0.2rem);
+  }
+
+  80% {
+    transform: translateX(0.15rem);
+  }
 }
 
 .abilitySection {
