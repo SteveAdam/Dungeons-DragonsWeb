@@ -350,3 +350,58 @@
   fill: var(--gold);
   stroke: var(--iron);
 }
+
+/* A group token: a shield in the group's colour, with the number of characters on it. */
+.token {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 44px;
+  color: var(--paper);
+  filter: drop-shadow(0 2px 2px var(--shadow));
+  transition: transform 0.12s ease;
+}
+
+.token svg {
+  position: absolute;
+  inset: 0;
+  fill: var(--token-color, var(--wax-red));
+  stroke: var(--paper);
+}
+
+.tokenCount {
+  position: relative;
+  margin-top: -3px;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sealHost:hover .token,
+.sealHost:focus-visible .token {
+  transform: scale(1.1);
+}
+
+.tokenSelected {
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 0.35rem var(--gold));
+}
+
+/* "2 inside": who is beneath a pin or region that has a map of its own */
+.inside {
+  position: absolute;
+  bottom: -1.15rem;
+  left: 50%;
+  padding: 0 0.4rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.6rem;
+  background: var(--iron);
+  color: var(--gold);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}

@@ -10,6 +10,15 @@ export interface PartyGroup {
   color: string;
   mapId: string | null;
   regionId: string | null;
+  /** P4-2: where the token stands on its map, in image pixels (both, or neither). */
+  x: number | null;
+  y: number | null;
+  /** How many characters are in the group: a player is told this for groups whose members they cannot read. */
+  memberCount: number;
+  /** The names of the map and region it is in, as far as the viewer may read them. */
+  mapName: string | null;
+  regionName: string | null;
+  /** Only the viewer's own group (or every group, for a DM) lists its members. */
   characterIds: string[];
 }
 
@@ -26,6 +35,11 @@ interface GroupRow {
   color: string;
   map_id: string | null;
   region_id: string | null;
+  x: number | null;
+  y: number | null;
+  group_member_count: number | null;
+  maps: { name: string } | null;
+  regions: { name: string } | null;
   party_group_members: { character_id: string }[] | null;
 }
 
@@ -39,7 +53,9 @@ const passOnRefusal = (error: unknown): never => {
 export async function listGroups(campaignId: string): Promise<PartyGroup[]> {
   const { data, error } = await supabase
     .from('party_groups')
-    .select('id, name, color, map_id, region_id, party_group_members(character_id)')
+    .select(
+      'id, name, color, map_id, region_id, x, y, group_member_count, maps(name), regions(name), party_group_members(character_id)',
+    )
     .eq('campaign_id', campaignId)
     .order('created_at', { ascending: true });
   if (error) throw toDataError(error);
@@ -49,6 +65,11 @@ export async function listGroups(campaignId: string): Promise<PartyGroup[]> {
     color: r.color,
     mapId: r.map_id,
     regionId: r.region_id,
+    x: r.x,
+    y: r.y,
+    memberCount: r.group_member_count ?? (r.party_group_members ?? []).length,
+    mapName: r.maps?.name ?? null,
+    regionName: r.regions?.name ?? null,
     characterIds: (r.party_group_members ?? []).map(m => m.character_id),
   }));
 }

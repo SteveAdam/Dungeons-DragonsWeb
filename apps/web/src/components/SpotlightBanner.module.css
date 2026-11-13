@@ -1,0 +1,11 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.5rem 1.25rem;
+  border-bottom: 2px solid var(--gold-dark);
+  background: var(--wax-red);
+  color: var(--paper);
+  font-family: var(--font-ui);
+}

@@ -12,6 +12,7 @@ import { DisplaySettingsControls } from './DisplaySettingsControls';
 import { DmModeIndicator } from './DmModeIndicator';
 import { HeaderClock } from './HeaderClock';
 import { HeaderPresence } from './PresenceList';
+import { SpotlightBanner } from './SpotlightBanner';
 import { SrdAttribution } from './SrdAttribution';
 import { ToastRegion } from './ToastRegion';
 import { DeskFrame, GameIcon, ICON_PROPS, IconLink, iconClasses } from './ui';
@@ -84,6 +85,7 @@ export function AppShell() {
         actions={<HeaderActions campaignId={campaignId} />}
         footer={<SrdAttribution />}
       >
+        {session && campaignId && <SpotlightBanner campaignId={campaignId} />}
         <Outlet />
       </DeskFrame>
       {session && campaignId && <LiveCampaign campaignId={campaignId} />}

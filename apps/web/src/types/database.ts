@@ -71,6 +71,32 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"campaign_spotlight": {
+                  Row: {
+                    "campaign_id": string,"group_id": string | null,"summary": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"group_id"?: string | null,"summary"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"group_id"?: string | null,"summary"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "campaign_spotlight_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: true
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaign_spotlight_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "party_groups"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"campaigns": {
                   Row: {
                     "created_at": string,"game_seconds": number,"id": string,"name": string,"next_session_at": string | null,"owner_id": string,"rules_edition": string,"settings": NonNullable<Json>
@@ -733,14 +759,14 @@ isOneToOne: false
                   ]
                 },"party_groups": {
                   Row: {
-                    "campaign_id": string,"color": string,"created_at": string,"id": string,"map_id": string | null,"name": string,"region_id": string | null
+                    "campaign_id": string,"color": string,"created_at": string,"id": string,"map_id": string | null,"name": string,"region_id": string | null,"x": number | null,"y": number | null,"group_member_count": number | null
                   }
-                  ComputedFields: never
+                  ComputedFields: "group_member_count"
                   Insert: {
-                    "campaign_id": string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string | null,"name": string,"region_id"?: string | null
+                    "campaign_id": string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string | null,"name": string,"region_id"?: string | null,"x"?: number | null,"y"?: number | null
                   }
                   Update: {
-                    "campaign_id"?: string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string | null,"name"?: string,"region_id"?: string | null
+                    "campaign_id"?: string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string | null,"name"?: string,"region_id"?: string | null,"x"?: number | null,"y"?: number | null
                   }
                   Relationships: [
                     {
@@ -1520,8 +1546,24 @@ isOneToOne: false
 "get_here":
 { Args: { "p_character": string }; Returns: Json
                            },
+"get_spotlight":
+{ Args: { "p_campaign": string }; Returns: {
+              "group_id": string,"group_name": string,"mine": boolean,"place": string,"summary": string
+            }[]
+                           },
 "group_campaign":
 { Args: { "g": string }; Returns: string
+                           },
+"group_entrance_counts":
+{ Args: { "p_map": string }; Returns: {
+              "entrance_id": string,"kind": string,"members": number
+            }[]
+                           },
+"group_member_count":
+{ Args: { "g": Omit<Database["public"]['Tables']["party_groups"]['Row'], Database["public"]['Tables']["party_groups"]['ComputedFields']> }; Returns: number
+                           },
+"group_positions_shared":
+{ Args: { "c": string }; Returns: boolean
                            },
 "in_group":
 { Args: { "g": string }; Returns: boolean
@@ -1890,6 +1932,9 @@ isOneToOne: false
       } },
 "set_prepared_spells":
 { Args: { "p_character": string,"p_prepared": (string)[] }; Returns: Json
+                           },
+"set_spotlight":
+{ Args: { "p_campaign": string,"p_group": string,"p_summary"?: string }; Returns: undefined
                            },
 "shares_campaign":
 { Args: { "other": string }; Returns: boolean

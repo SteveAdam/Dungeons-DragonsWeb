@@ -15,6 +15,8 @@ export interface Campaign {
   prepareAfterRestOnly?: boolean;
   /** P3-2: when day is, for the day/night rule of spawn rules (campaigns.settings; default 6 to 18). */
   daylight?: DaylightHours;
+  /** P4-2: players also see the other groups' tokens, names and places (campaigns.settings.shareGroupPositions). */
+  shareGroupPositions?: boolean;
   createdAt: string;
 }
 
@@ -50,6 +52,7 @@ const toCampaign = (r: CampaignRow): Campaign => ({
   optionalFeats: (r.settings as { optionalFeats?: unknown } | null)?.optionalFeats === true,
   prepareAfterRestOnly: (r.settings as { prepareAfterRestOnly?: unknown } | null)?.prepareAfterRestOnly !== false,
   daylight: daylightFrom(r.settings),
+  shareGroupPositions: (r.settings as { shareGroupPositions?: unknown } | null)?.shareGroupPositions === true,
   createdAt: r.created_at,
 });
 
@@ -139,7 +142,15 @@ export const setOptionalFeats = (campaignId: string, on: boolean) => setCampaign
 export const setPrepareAfterRestOnly = (campaignId: string, on: boolean) =>
   setCampaignRule(campaignId, 'prepareAfterRestOnly', on);
 
-async function setCampaignRule(campaignId: string, key: 'optionalFeats' | 'prepareAfterRestOnly', on: boolean) {
+/** DM only (P4-2): whether players also see where the other groups are. */
+export const setShareGroupPositions = (campaignId: string, on: boolean) =>
+  setCampaignRule(campaignId, 'shareGroupPositions', on);
+
+async function setCampaignRule(
+  campaignId: string,
+  key: 'optionalFeats' | 'prepareAfterRestOnly' | 'shareGroupPositions',
+  on: boolean,
+) {
   const { data, error } = await supabase.from('campaigns').select('settings').eq('id', campaignId).maybeSingle();
   if (error) throw toDataError(error);
   const settings = { ...((data?.settings as Record<string, unknown> | null) ?? {}), [key]: on };

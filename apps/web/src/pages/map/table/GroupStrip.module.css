@@ -1,0 +1,39 @@
+.strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* each card is its own bit of parchment on the dark desk, so its ink text sits on paper */
+.card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gold-dark);
+  border-left: 0.35rem solid var(--group-color);
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.members {
+  color: var(--ink-faded);
+  font-family: var(--font-body);
+  font-weight: 400;
+}
+
+.where {
+  margin: 0;
+  color: var(--ink-faded);
+  font-style: italic;
+}

@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T84) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T88) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(697);
+select plan(745);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1686,6 +1686,127 @@ reset role;
 
 select tests.act_as_anon();
 select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', '{}') $$, '42501', null, 'T84: nor a signed-out visitor');
+reset role;
+
+-- P4-2 FIXTURE: two maps nested beneath the visible pin of the visible map, a pin on the first with the second beneath
+-- it, and one group in each. Group A (Brannoc and Ivo) is on the deepest map, group B (Kael) on the first one.
+reset role;
+insert into maps (id, campaign_id, parent_pin_id, name, image_path, width, height, visible_to_players) values
+  (tests.u('p42:sub'), tests.u('campaign'), tests.u('pin:control'), 'Vault level', tests.u('campaign') || '/p42a.png', 100, 100, true);
+insert into pins (id, map_id, title, x, y, visible_to_players) values (tests.u('p42:pin'), tests.u('p42:sub'), 'Stairs down', 10, 10, true);
+insert into maps (id, campaign_id, parent_pin_id, name, image_path, width, height, visible_to_players) values
+  (tests.u('p42:deep'), tests.u('campaign'), tests.u('p42:pin'), 'Deep vault', tests.u('campaign') || '/p42b.png', 100, 100, true);
+insert into pins (id, map_id, title, x, y, visible_to_players) values (tests.u('p42:hiddenpin'), tests.u('map:visible'), 'Secret door', 60, 60, false);
+insert into maps (id, campaign_id, parent_pin_id, name, image_path, width, height, visible_to_players) values
+  (tests.u('p42:ghostmap'), tests.u('campaign'), tests.u('p42:hiddenpin'), 'Behind the door', tests.u('campaign') || '/p42c.png', 100, 100, true);
+insert into party_groups (id, campaign_id, name) values (tests.u('p42:foreign'), tests.u('campaign:solo'), 'Elsewhere');
+
+-- T85: a token has a place on its map; going to another map takes it away; only the DM moves groups
+select tests.act_as('dm');
+select lives_ok(format($$ update party_groups set map_id = %L, region_id = null, x = 5, y = 6 where id = %L $$, tests.u('p42:deep'), (select id from here_groups where label = 'a')), 'T85: the DM puts group A on the deepest map, at a spot');
+select lives_ok(format($$ update party_groups set map_id = %L, region_id = null where id = %L $$, tests.u('p42:sub'), (select id from here_groups where label = 'b')), 'T85: and group B on the first');
+select is((select x || ',' || y from party_groups where id = (select id from here_groups where label = 'a')), '5,6', 'T85: the spot is kept');
+select lives_ok(format($$ update party_groups set x = 40, y = 50 where id = %L $$, (select id from here_groups where label = 'a')), 'T85: the DM drags the token');
+select is((select x || ',' || y from party_groups where id = (select id from here_groups where label = 'a')), '40,50', 'T85: the new spot is saved');
+select throws_ok(format($$ update party_groups set x = 40, y = null where id = %L $$, (select id from here_groups where label = 'a')), '23514', null, 'T85: a spot has both numbers or neither');
+select throws_ok(format($$ update party_groups set x = -1, y = 5 where id = %L $$, (select id from here_groups where label = 'a')), '23514', null, 'T85: and lies on the map');
+select lives_ok(format($$ update party_groups set map_id = %L, region_id = null where id = %L $$, tests.u('p42:sub'), (select id from here_groups where label = 'a')), 'T85: the DM sends group A to another map');
+select is((select x is null and y is null from party_groups where id = (select id from here_groups where label = 'a')), true, 'T85: its old spot does not follow it');
+select lives_ok(format($$ update party_groups set map_id = %L, region_id = null, x = 7, y = 8 where id = %L $$, tests.u('p42:deep'), (select id from here_groups where label = 'a')), 'T85: unless the same change gives it a new one');
+select is((select x || ',' || y from party_groups where id = (select id from here_groups where label = 'a')), '7,8', 'T85: which is kept');
+reset role;
+
+select tests.act_as('player');
+select is_empty(format($$ update party_groups set x = 1, y = 1 where id = %L returning id $$, (select id from here_groups where label = 'a')), 'T85: a player cannot move their own group');
+select is_empty(format($$ update party_groups set map_id = %L where id = %L returning id $$, tests.u('map:visible'), (select id from here_groups where label = 'a')), 'T85: nor send it to another map');
+reset role;
+
+-- T86: a player reads only their own group, unless the DM shares group positions
+select tests.act_as('player');
+select is((select string_agg(name, ',') from party_groups where campaign_id = tests.u('campaign') and name in ('Group A', 'Group B')), 'Group A', 'T86: a player reads one group');
+reset role;
+select tests.act_as('roller');
+select is((select string_agg(name, ',') from party_groups where campaign_id = tests.u('campaign') and name in ('Group A', 'Group B')), 'Group B', 'T86: and another player reads theirs');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ update campaigns set settings = settings || '{"shareGroupPositions": true}' where id = tests.u('campaign') $$, 'T86: the DM shares group positions');
+reset role;
+select tests.act_as('player');
+select is((select string_agg(name, ',' order by name) from party_groups where campaign_id = tests.u('campaign') and name in ('Group A', 'Group B')), 'Group A,Group B', 'T86: a player now reads both groups');
+select is((select group_member_count(g) from party_groups g where id = (select id from here_groups where label = 'b')), 1, 'T86: with the other group''s member count');
+select is((select count(*)::int from party_group_members where group_id = (select id from here_groups where label = 'b')), 0, 'T86: but still not who is in it');
+select is((select count(*)::int from content_discoveries where group_id = (select id from here_groups where label = 'b')), 0, 'T86: nor what it has found');
+select is_empty($$ update campaigns set settings = settings || '{"shareGroupPositions": false}' where id = tests.u('campaign') returning id $$, 'T86: a player cannot change the setting');
+reset role;
+select tests.act_as('outsider');
+select is((select count(*)::int from party_groups where campaign_id = tests.u('campaign')), 0, 'T86: someone outside the campaign reads none, shared or not');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ update campaigns set settings = settings || '{"shareGroupPositions": false}' where id = tests.u('campaign') $$, 'T86: the DM stops sharing');
+reset role;
+select tests.act_as('player');
+select is((select string_agg(name, ',') from party_groups where campaign_id = tests.u('campaign') and name in ('Group A', 'Group B')), 'Group A', 'T86: and a player reads one group again');
+reset role;
+
+-- T87: the spotlight: set by the DM, read by members through get_spotlight, never straight from the table
+select tests.act_as('player');
+select throws_ok(format($$ select set_spotlight(%L, %L, 'Mine') $$, tests.u('campaign'), (select id from here_groups where label = 'a')), '42501', 'Only the DM can do that', 'T87: a player cannot give anyone the spotlight');
+reset role;
+select tests.act_as('dm');
+select lives_ok(format($$ select set_spotlight(%L, %L, 'Picking the vault lock') $$, tests.u('campaign'), (select id from here_groups where label = 'b')), 'T87: the DM spotlights group B');
+select throws_ok(format($$ select set_spotlight(%L, %L, '') $$, tests.u('campaign'), tests.u('p42:foreign')), '22023', null, 'T87: but only a group of this campaign');
+select throws_ok(format($$ select set_spotlight(%L, %L, %L) $$, tests.u('campaign'), (select id from here_groups where label = 'b'), repeat('x', 201)), '22023', null, 'T87: with a line of up to 200 characters');
+select is((select count(*)::int from campaign_spotlight where campaign_id = tests.u('campaign')), 1, 'T87: the DM reads the spotlight row');
+reset role;
+select tests.act_as('player');
+select is((select group_name || ' / ' || place || ' / ' || summary || ' / ' || mine::text from get_spotlight(tests.u('campaign'))), 'Group B / Vault level / Picking the vault lock / false', 'T87: group A is told who has the spotlight, where, and the DM''s line');
+select is((select count(*)::int from campaign_spotlight), 0, 'T87: but cannot read the table');
+reset role;
+select tests.act_as('roller');
+select is((select mine from get_spotlight(tests.u('campaign'))), true, 'T87: the spotlighted group knows it is theirs');
+reset role;
+select tests.act_as('outsider');
+select throws_ok(format($$ select * from get_spotlight(%L) $$, tests.u('campaign')), '42501', null, 'T87: someone outside the campaign is not told');
+reset role;
+select tests.act_as('dm');
+select lives_ok(format($$ select set_spotlight(%L, null) $$, tests.u('campaign')), 'T87: the DM takes the spotlight away');
+select is((select count(*)::int from get_spotlight(tests.u('campaign'))), 0, 'T87: and nobody has it');
+reset role;
+
+-- T88: how many are beneath each entrance. A is 2 characters two maps down, B is 1 character one map down.
+select tests.act_as('dm');
+select is((select members from group_entrance_counts(tests.u('map:visible')) where entrance_id = tests.u('pin:control')), 3, 'T88: the DM sees 3 beneath the pin, counting every map below it');
+select is((select members from group_entrance_counts(tests.u('p42:sub')) where entrance_id = tests.u('p42:pin')), 2, 'T88: and 2 beneath the pin one level down');
+select is((select count(*)::int from group_entrance_counts(tests.u('p42:deep'))), 0, 'T88: nothing is beneath the deepest map');
+reset role;
+select tests.act_as('player');
+select is((select members from group_entrance_counts(tests.u('map:visible')) where entrance_id = tests.u('pin:control')), 2, 'T88: a player counts only their own group');
+reset role;
+select tests.act_as('roller');
+select is((select members from group_entrance_counts(tests.u('map:visible')) where entrance_id = tests.u('pin:control')), 1, 'T88: and another player only theirs');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ update campaigns set settings = settings || '{"shareGroupPositions": true}' where id = tests.u('campaign') $$, 'T88: the DM shares positions');
+reset role;
+select tests.act_as('player');
+select is((select members from group_entrance_counts(tests.u('map:visible')) where entrance_id = tests.u('pin:control')), 3, 'T88: and a player now counts every group');
+select is((select count(*)::int from group_entrance_counts(tests.u('map:hidden'))), 0, 'T88: nothing is told about a hidden map');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ update campaigns set settings = settings || '{"shareGroupPositions": false}' where id = tests.u('campaign') $$, 'T88: the DM stops sharing');
+reset role;
+-- a group beneath the hidden pin: the DM counts it, a player is not told
+select tests.act_as('dm');
+select create_group(tests.u('campaign'), 'Ghosts') as gg \gset
+select assign_character(tests.u('char:wren'), :'gg');
+select lives_ok(format($$ update party_groups set map_id = %L where id = %L $$, tests.u('p42:ghostmap'), :'gg'), 'T88: a group goes to the map beneath the hidden pin');
+select is((select members from group_entrance_counts(tests.u('map:visible')) where entrance_id = tests.u('p42:hiddenpin')), 1, 'T88: the DM counts it');
+reset role;
+select tests.act_as('player');
+select is((select count(*)::int from group_entrance_counts(tests.u('map:visible')) where entrance_id = tests.u('p42:hiddenpin')), 0, 'T88: a player is not told about an entrance they cannot see');
+reset role;
+select tests.act_as('outsider');
+select throws_ok(format($$ select * from group_entrance_counts(%L) $$, tests.u('map:visible')), '42501', null, 'T88: someone outside the campaign is refused');
 reset role;
 
 select * from finish();

@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T84) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T88) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -713,8 +713,8 @@ end $f$;`,
   {
     name: 'every member reads every party group (P3-3)',
     why: 'a player would see where the other groups are and who is in them',
-    sql: `drop policy "read own groups" on party_groups;
-create policy "read own groups" on party_groups for select to authenticated using (is_member(campaign_id));`,
+    sql: `drop policy "read visible groups" on party_groups;
+create policy "read visible groups" on party_groups for select to authenticated using (is_member(campaign_id));`,
     fails: ['T74'],
   },
   {
@@ -937,6 +937,49 @@ create policy "publish presence only" on realtime.messages for insert to authent
     sql: `create or replace function send_realtime_event(p_campaign uuid, p_channel text, p_event text, p_payload jsonb, p_target uuid default null) returns jsonb language plpgsql volatile security definer set search_path = public as $$ declare dm boolean := is_dm(p_campaign); begin if p_event not in ('reveal','ping','toast','message','handout') or jsonb_typeof(p_payload) <> 'object' or octet_length(p_payload::text) > 16384 or p_channel not in ('campaign','dm','user') or (p_channel = 'user' and p_target is null) then raise exception 'bad' using errcode = '22023'; end if; if not dm and (p_channel = 'dm' or (p_channel = 'campaign' and p_event <> 'ping') or (p_channel = 'user' and (p_target <> auth.uid() or p_event <> 'message'))) and is_member(p_campaign) then raise exception 'no' using errcode = '42501'; end if; return jsonb_build_object('sender', auth.uid(), 'senderRole', case when dm then 'dm' else 'player' end, 'data', p_payload); end $$;`,
     fails: ['T84'],
   },
+  {
+    name: 'every member reads every group (P4-2)',
+    why: 'a player could see where the other groups are while positions are not shared',
+    sql: `drop policy "read visible groups" on party_groups;
+create policy "read visible groups" on party_groups for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T86'],
+  },
+  {
+    name: 'group positions shared whatever the setting says (P4-2)',
+    why: 'the DM switch would do nothing',
+    sql: `create or replace function group_positions_shared(c uuid) returns boolean language sql stable security definer set search_path = public as $$ select true $$;`,
+    fails: ['T86', 'T88'],
+  },
+  {
+    name: 'a group keeps its old spot on another map (P4-2)',
+    why: 'a token would be drawn at a spot that belongs to a different map',
+    sql: `drop trigger party_groups_clear_position_trg on party_groups;`,
+    fails: ['T85'],
+  },
+  {
+    name: 'members read the spotlight table directly (P4-2)',
+    why: 'a player could read which group has the spotlight without the banner rules',
+    sql: `create policy "members read the spotlight" on campaign_spotlight for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T87'],
+  },
+  {
+    name: 'anyone can give the spotlight (P4-2)',
+    why: 'a player could put their own group in the spotlight',
+    sql: `create or replace function set_spotlight(p_campaign uuid, p_group uuid, p_summary text default '') returns void language plpgsql security definer set search_path = public as $$ begin insert into campaign_spotlight (campaign_id, group_id, summary) values (p_campaign, p_group, coalesce(p_summary, '')) on conflict (campaign_id) do update set group_id = excluded.group_id, summary = excluded.summary; end $$;`,
+    fails: ['T87'],
+  },
+  {
+    name: 'the entrance counts include entrances a player cannot see (P4-2)',
+    why: 'a player would be told there is a group behind a hidden door',
+    sql: `create or replace function group_entrance_counts(p_map uuid) returns table (kind text, entrance_id uuid, members integer) language plpgsql stable security definer set search_path = public as $$ declare c uuid := map_campaign(p_map); begin if c is null or auth.uid() is null or not is_member(c) then raise exception 'Only a member can do that' using errcode = '42501'; end if; return query with recursive chain (gid, mid, depth, ekind, eid, emap) as (select g.id, g.map_id, 0, null::text, null::uuid, null::uuid from party_groups g where g.campaign_id = c and g.map_id is not null union all select ch.gid, e.map_id, ch.depth + 1, e.kind, e.id, e.map_id from chain ch join maps m on m.id = ch.mid cross join lateral (select 'pin'::text as kind, pn.id, pn.map_id from pins pn where pn.id = m.parent_pin_id union all select 'region'::text, rg.id, rg.map_id from regions rg where rg.id = m.parent_region_id) e where ch.depth < 20) select ch.ekind, ch.eid, sum((select count(*) from party_group_members pm where pm.group_id = ch.gid))::integer from chain ch where ch.emap = p_map and ch.ekind is not null and (is_dm(c) or in_group(ch.gid) or group_positions_shared(c)) group by ch.ekind, ch.eid; end $$;`,
+    fails: ['T88'],
+  },
+  {
+    name: 'the entrance counts stop at the first level (P4-2)',
+    why: 'a group two maps down would not be counted on the top map',
+    sql: `create or replace function group_entrance_counts(p_map uuid) returns table (kind text, entrance_id uuid, members integer) language plpgsql stable security definer set search_path = public as $$ declare c uuid := map_campaign(p_map); begin if c is null or auth.uid() is null or not is_member(c) then raise exception 'Only a member can do that' using errcode = '42501'; end if; if not is_dm(c) and not map_is_revealed(p_map) then return; end if; return query select e.kind, e.id, sum((select count(*) from party_group_members pm where pm.group_id = g.id))::integer from party_groups g join maps m on m.id = g.map_id cross join lateral (select 'pin'::text as kind, pn.id, pn.map_id, pn.visible_to_players as visible from pins pn where pn.id = m.parent_pin_id union all select 'region'::text, rg.id, rg.map_id, rg.visible_to_players from regions rg where rg.id = m.parent_region_id) e where g.campaign_id = c and e.map_id = p_map and (is_dm(c) or e.visible) and (is_dm(c) or in_group(g.id) or group_positions_shared(c)) group by e.kind, e.id; end $$;`,
+    fails: ['T88'],
+  },
 ];
 
 function runFile(path) {
@@ -967,9 +1010,13 @@ function main() {
     return 2;
   }
   console.log('baseline: suite passes\n');
+  // MUTATION_ONLY="(P4-2)" runs only the mutations whose name contains that text
+  const only = process.env.MUTATION_ONLY;
+  const chosen = only ? MUTATIONS.filter(m => m.name.includes(only)) : MUTATIONS;
+  if (only) console.log(`only the ${chosen.length} mutations whose name contains "${only}"\n`);
 
   let bad = 0;
-  MUTATIONS.forEach((m, i) => {
+  chosen.forEach((m, i) => {
     const file = `${TMP_DIR}/m${String(i + 1).padStart(2, '0')}.test.sql`;
     writeFileSync(
       file,
@@ -994,7 +1041,7 @@ function main() {
       );
   });
 
-  console.log(`\n${MUTATIONS.length - bad} of ${MUTATIONS.length} mutations caught`);
+  console.log(`\n${chosen.length - bad} of ${chosen.length} mutations caught`);
   return bad ? 1 : 0;
 }
 

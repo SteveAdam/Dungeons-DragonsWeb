@@ -1,3 +1,4 @@
+import { aGroup } from '../../../test/groupFixtures';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -30,7 +31,7 @@ function renderPanel() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(groupsApi.listGroups).mockResolvedValue([
-    { id: 'g1', name: 'The Lanterns', color: '#8E2A22', mapId: null, regionId: null, characterIds: ['ch-a'] },
+    aGroup({ id: 'g1', name: 'The Lanterns', characterIds: ['ch-a'] }),
   ]);
   vi.mocked(groupsApi.listDiscoveries).mockResolvedValue([
     { groupId: 'g1', contentId: 'e1', name: 'Orsa the hedge witch', state: 'noticed' },

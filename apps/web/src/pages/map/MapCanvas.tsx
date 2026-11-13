@@ -4,7 +4,7 @@
 import 'leaflet/dist/leaflet.css';
 import { TERRAIN_INFO, WEATHER_INFO, type Weather, type WeatherCondition } from '@dnd-manager/rules-engine';
 import L from 'leaflet';
-import { Layers } from 'lucide-react';
+import { Layers, Shield } from 'lucide-react';
 import { createElement, useEffect, useMemo, useRef, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
@@ -22,6 +22,8 @@ import {
 import { DEFAULT_PIN_COLOR, PIN_COLOR_PATTERN, PIN_SIZE, type Pin } from '../../data/pins';
 import { MIN_REGION_RADIUS, type Region, type RegionChanges } from '../../data/regions';
 import type { SpawnPin } from '../../data/spawnPins';
+import { entranceKey } from '../../data/groupTokens';
+import { nudgePoint, safeGroupColor } from '../../lib/groupTokens';
 import {
   clampToImage,
   containZoom,
@@ -37,6 +39,17 @@ import { PIN_TYPE_ICONS, PIN_TYPE_LABELS } from './pinIcons';
 import { WEATHER_ICONS } from './regionIcons';
 import { CONDITION_ICONS, CONDITION_LABELS } from '../../lib/weatherText';
 import { SPAWN_PIN_ICONS, SPAWN_PIN_LABELS } from './spawnIcons';
+
+/** A party group's token as the canvas draws it (P4-2). */
+export interface GroupTokenView {
+  id: string;
+  name: string;
+  color: string;
+  /** How many characters are in the group. */
+  count: number;
+  x: number;
+  y: number;
+}
 
 export interface MapCanvasProps {
   imageUrl: string;
@@ -92,6 +105,15 @@ export interface MapCanvasProps {
   onDrawZone: (circle: RegionCircle) => void;
   onChangeZone: (zoneId: string, changes: { x?: number; y?: number; radius?: number }) => void;
   onSelectZone: () => void;
+  /** P4-2: the group tokens on this map, and who may move them (the DM, at the table). */
+  groupTokens?: GroupTokenView[];
+  selectedGroupId?: string | null;
+  onSelectGroup?: (groupId: string) => void;
+  canMoveGroups?: boolean;
+  /** `final` is true when the token was dropped (save now), false for an arrow-key step (more may follow). */
+  onMoveGroup?: (groupId: string, point: ImagePoint, final: boolean) => void;
+  /** P4-2: how many characters are beneath each pin or region that has a map of its own (keys from entranceKey). */
+  entranceCounts?: ReadonlyMap<string, number>;
 }
 
 export interface CanvasWeatherZone {
@@ -132,6 +154,26 @@ const iconMarkup = Object.fromEntries(
     renderToStaticMarkup(createElement(Icon, { size: '58%', strokeWidth: 2, 'aria-hidden': true })),
   ]),
 ) as Record<Pin['type'], string>;
+/** The shield of a group token, filled with the group's colour by the stylesheet. */
+const shieldMarkup = renderToStaticMarkup(createElement(Shield, { size: '100%', strokeWidth: 2, 'aria-hidden': true }));
+
+/** A group token: a shield in the group's colour with the number of characters on it. */
+function groupIcon(token: GroupTokenView, selected: boolean): L.DivIcon {
+  // the colour and the count go into an HTML string, so both are re-checked here
+  const color = safeGroupColor(token.color);
+  const count = Math.max(0, Math.round(Number(token.count)) || 0);
+  return L.divIcon({
+    className: styles.sealHost,
+    html: `<span class="${[styles.token, selected ? styles.tokenSelected : ''].filter(Boolean).join(' ')}" style="--token-color:${color}">${shieldMarkup}<span class="${styles.tokenCount}">${count}</span></span>`,
+    iconSize: [38, 44],
+    iconAnchor: [19, 40],
+    tooltipAnchor: [0, 4],
+  });
+}
+
+const insideBadge = (inside: number) =>
+  inside > 0 ? `<span class="${styles.inside}">${Math.round(inside)} inside</span>` : '';
+
 const layersMarkup = renderToStaticMarkup(
   createElement(Layers, { size: '100%', strokeWidth: 2.5, 'aria-hidden': true }),
 );
@@ -166,7 +208,7 @@ export interface RegionCircle {
 }
 
 // Only fixed markup goes into these icons: the region's name is shown by a React tooltip, never as HTML.
-function weatherIcon(region: Region, selected: boolean, hasSubMap: boolean): L.DivIcon {
+function weatherIcon(region: Region, selected: boolean, hasSubMap: boolean, inside: number): L.DivIcon {
   const classes = [
     styles.weather,
     region.visibleToPlayers ? '' : styles.sealHidden,
@@ -176,7 +218,7 @@ function weatherIcon(region: Region, selected: boolean, hasSubMap: boolean): L.D
     .join(' ');
   return L.divIcon({
     className: styles.sealHost,
-    html: `<span class="${classes}">${weatherMarkup[region.weather]}${hasSubMap ? `<span class="${styles.badge}">${layersMarkup}</span>` : ''}</span>`,
+    html: `<span class="${classes}">${weatherMarkup[region.weather]}${hasSubMap ? `<span class="${styles.badge}">${layersMarkup}</span>` : ''}${insideBadge(inside)}</span>`,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
     tooltipAnchor: [0, 17],
@@ -195,7 +237,7 @@ function edgePoint(region: RegionCircle, size: ImageSize): ImagePoint {
   return { x: right <= size.width ? right : region.cx - region.radius, y: region.cy };
 }
 
-function sealIcon(pin: Pin, selected: boolean, hasSubMap: boolean): L.DivIcon {
+function sealIcon(pin: Pin, selected: boolean, hasSubMap: boolean, inside: number): L.DivIcon {
   // Both values go into an HTML string, so they are re-checked here even though the database enforces them.
   const size = Math.min(Math.max(Math.round(Number(pin.size)) || 32, PIN_SIZE.min), PIN_SIZE.max);
   const color = PIN_COLOR_PATTERN.test(pin.color) ? pin.color : DEFAULT_PIN_COLOR;
@@ -206,7 +248,7 @@ function sealIcon(pin: Pin, selected: boolean, hasSubMap: boolean): L.DivIcon {
   return L.divIcon({
     className: styles.sealHost,
     // the pin's own colour is data chosen by the DM, so it is passed in as a custom property
-    html: `<span class="${classes}" style="--seal-color:${color};--seal-size:${size}px">${iconMarkup[pin.type]}${badge}</span>`,
+    html: `<span class="${classes}" style="--seal-color:${color};--seal-size:${size}px">${iconMarkup[pin.type]}${badge}${insideBadge(inside)}</span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     tooltipAnchor: [0, size / 2],
@@ -282,6 +324,7 @@ function RegionShape({
   busy,
   editable,
   hasSubMap,
+  inside,
   onSelect,
   onEnter,
   onChange,
@@ -294,6 +337,8 @@ function RegionShape({
   editable: boolean;
   /** The region has a detail map beneath it: a layers badge, and a double-click enters the map. */
   hasSubMap: boolean;
+  /** How many characters are beneath it (P4-2). */
+  inside: number;
   onSelect: () => void;
   onEnter: () => void;
   onChange: (changes: Pick<RegionChanges, 'cx' | 'cy' | 'radius'>) => void;
@@ -306,6 +351,7 @@ function RegionShape({
     `${region.name} (${TERRAIN_INFO[region.terrain].label}, ${WEATHER_INFO[region.weather].label.toLowerCase()}`,
     region.visibleToPlayers ? '' : ', hidden from players',
     hasSubMap ? ', has a map beneath: double-click to enter' : '',
+    inside > 0 ? `, ${inside} inside` : '',
     ')',
   ].join('');
   const className = [
@@ -336,7 +382,7 @@ function RegionShape({
       <Marker
         key={`${region.id}:${name}`}
         position={centre}
-        icon={weatherIcon(region, selected, hasSubMap)}
+        icon={weatherIcon(region, selected, hasSubMap, inside)}
         title={name}
         keyboard
         draggable={editable && !busy}
@@ -576,6 +622,9 @@ function PanTo({ size, focus }: { size: ImageSize; focus: MapCanvasProps['focus'
   return null;
 }
 
+const NO_TOKENS: GroupTokenView[] = [];
+const NO_COUNTS: ReadonlyMap<string, number> = new Map();
+
 export function MapCanvas({
   imageUrl,
   size,
@@ -615,6 +664,12 @@ export function MapCanvas({
   onMoveSpawnPin,
   spawnMode,
   onPlaceSpawnPin,
+  groupTokens = NO_TOKENS,
+  selectedGroupId = null,
+  onSelectGroup,
+  canMoveGroups = false,
+  onMoveGroup,
+  entranceCounts = NO_COUNTS,
 }: MapCanvasProps) {
   const busy = addMode || drawMode || measuring || spawnMode || zoneDrawMode;
   const bounds = useMemo(() => imageBounds(size), [size]);
@@ -649,6 +704,7 @@ export function MapCanvas({
           busy={busy}
           editable={canEditRegions}
           hasSubMap={subMapRegionIds.has(region.id)}
+          inside={entranceCounts.get(entranceKey('region', region.id)) ?? 0}
           onSelect={() => onSelectRegion(region.id)}
           onEnter={() => onEnterRegionMap(region.id)}
           onChange={changes => onChangeRegion(region.id, changes)}
@@ -696,10 +752,12 @@ export function MapCanvas({
       })}
       {pins.map(pin => {
         const hasSubMap = subMapPinIds.has(pin.id);
+        const inside = entranceCounts.get(entranceKey('pin', pin.id)) ?? 0;
         const name = [
           `${pin.title} (${PIN_TYPE_LABELS[pin.type]}`,
           pin.visibleToPlayers ? '' : ', hidden from players',
           hasSubMap ? ', has a map beneath: double-click to enter' : '',
+          inside > 0 ? `, ${inside} inside` : '',
           ')',
         ].join('');
         return (
@@ -708,7 +766,7 @@ export function MapCanvas({
             // says rebuilds the marker
             key={`${pin.id}:${name}`}
             position={toLatLng(pin, size)}
-            icon={sealIcon(pin, pin.id === selectedPinId, hasSubMap)}
+            icon={sealIcon(pin, pin.id === selectedPinId, hasSubMap, inside)}
             title={name}
             keyboard
             draggable={canMovePins && !busy}
@@ -731,6 +789,45 @@ export function MapCanvas({
           >
             <Tooltip direction="bottom" permanent className={styles.label}>
               {pin.title}
+            </Tooltip>
+          </Marker>
+        );
+      })}
+      {groupTokens.map(token => {
+        const name = `Group ${token.name}, ${token.count} ${token.count === 1 ? 'member' : 'members'}${canMoveGroups ? '. Arrow keys move it, Shift for bigger steps' : ''}`;
+        return (
+          <Marker
+            key={`${token.id}:${name}:${token.color}`}
+            position={toLatLng({ x: token.x, y: token.y }, size)}
+            icon={groupIcon(token, token.id === selectedGroupId)}
+            title={name}
+            keyboard
+            zIndexOffset={1000}
+            draggable={canMoveGroups && !busy}
+            eventHandlers={{
+              click: () => onSelectGroup?.(token.id),
+              keydown: (event: L.LeafletKeyboardEvent) => {
+                const e = event.originalEvent;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectGroup?.(token.id);
+                  return;
+                }
+                if (!canMoveGroups || busy) return;
+                // Leaflet does not move a marker for arrow keys: the token goes a step, and the page saves it
+                const next = nudgePoint({ x: token.x, y: token.y }, e.key, size, e.shiftKey);
+                if (!next) return;
+                e.preventDefault();
+                onMoveGroup?.(token.id, next, false);
+              },
+              dragend: (event: L.DragEndEvent) => {
+                const point = clampToImage(toImagePoint((event.target as L.Marker).getLatLng(), size), size);
+                onMoveGroup?.(token.id, point, true);
+              },
+            }}
+          >
+            <Tooltip direction="bottom" permanent className={styles.label}>
+              {token.name}
             </Tooltip>
           </Marker>
         );

@@ -34,6 +34,10 @@ vi.mock('../data/characters', async importOriginal => ({
   ...(await importOriginal<typeof import('../data/characters')>()),
   listCharacters: vi.fn(async () => []),
 }));
+vi.mock('../data/groupTokens', async importOriginal => ({
+  ...(await importOriginal<typeof import('../data/groupTokens')>()),
+  getSpotlight: vi.fn(async () => null),
+}));
 vi.mock('../data/partyGroups', async importOriginal => ({
   ...(await importOriginal<typeof import('../data/partyGroups')>()),
   listGroups: vi.fn(async () => []),

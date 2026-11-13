@@ -53,4 +53,14 @@ export function useLiveCampaign(campaignId: string) {
   );
 
   useRealtimeEvent('toast', payload => pushToast(payload.message));
+  // a group moved, or the DM changed who can see the groups: read the groups again (what a player may read is the
+  // database's decision, so the event itself carries nothing a player must trust)
+  useRealtimeEvent('group_moved', () => {
+    void client.invalidateQueries({ queryKey: queryKeys.partyGroups(campaignId) });
+    void client.invalidateQueries({ queryKey: ['entrance-counts'] });
+    void client.invalidateQueries({ queryKey: ['here'] });
+  });
+  useRealtimeEvent('spotlight', () => {
+    void client.invalidateQueries({ queryKey: queryKeys.spotlight(campaignId) });
+  });
 }

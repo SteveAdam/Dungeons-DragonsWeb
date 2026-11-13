@@ -10,20 +10,32 @@ import {
   PawPrint,
   Ruler,
   Settings2,
+  Shield,
   Swords,
   Thermometer,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { Button, Cell, ICON_PROPS, iconClasses, IconLink, PageGrid, Tag, Toggle } from '../../components/ui';
 import { friendlyMessage } from '../../data/errors';
 import type { MapTrailStep } from '../../data/maps';
+import type { PartyGroup } from '../../data/partyGroups';
+import type { MemberVitals } from '../../data/groupTokens';
 import type { Pin } from '../../data/pins';
 import type { RegionContent } from '../../data/regionContent';
 import type { Region } from '../../data/regions';
 import type { SpawnPin } from '../../data/spawnPins';
 import { useCampaign } from '../../hooks/useCampaigns';
+import {
+  useEntranceCounts,
+  useMemberVitals,
+  usePlaceGroup,
+  useSetSpotlight,
+  useShareGroupPositions,
+  useSpotlight,
+} from '../../hooks/useGroupMap';
+import { useCreateGroup, usePartyGroups } from '../../hooks/useHere';
 import { useDmMode } from '../../hooks/useDmMode';
 import {
   useCreatePin,
@@ -38,11 +50,13 @@ import {
 import { useCreateSpawnPin, useRegionContent, useSpawnPins, useUpdateSpawnPin } from '../../hooks/useRegionContent';
 import { useCreateRegion, useRegions, useUpdateRegion } from '../../hooks/useRegions';
 import type { ImagePoint } from '../../lib/mapCoordinates';
+import { nextGroup, regionAt, tokenPoint } from '../../lib/groupTokens';
 import { gridCellPx } from '../../lib/mapGeometry';
 import { useShowDmIndicator } from '../../state/dmIndicator';
+import { useMapMode } from '../../state/mapMode';
 import { Compass } from './Compass';
 import { LayersMenu, type LayerState } from './LayersMenu';
-import { MapCanvas, type RegionCircle } from './MapCanvas';
+import { MapCanvas, type GroupTokenView, type RegionCircle } from './MapCanvas';
 import { MapSettingsPanel } from './MapSettingsPanel';
 import toolStyles from './MapTools.module.css';
 import { WeatherPanel } from './WeatherPanel';
@@ -55,6 +69,9 @@ import { PinPanel } from './PinPanel';
 import { PinSearch } from './PinSearch';
 import { RegionPanel } from './RegionPanel';
 import { SpawnPinPanel } from './SpawnPinPanel';
+import { GroupStrip } from './table/GroupStrip';
+import { GroupTracker } from './table/GroupTracker';
+import { ModeSwitch } from './table/ModeSwitch';
 
 const NO_SUB_MAPS: ReadonlySet<string> = new Set();
 const NO_TRAIL: MapTrailStep[] = [];
@@ -64,6 +81,8 @@ const NO_PINS: Pin[] = [];
 type Selection = { kind: 'pin' | 'region' | 'spawn'; id: string } | { kind: 'settings' } | { kind: 'weather' };
 const NO_SPAWN_PINS: SpawnPin[] = [];
 const NO_CONTENT: RegionContent[] = [];
+const NO_GROUPS: PartyGroup[] = [];
+const NO_VITALS: MemberVitals[] = [];
 
 /**
  * Map view, prep mode (P0-8). Everything hidden is requested only while a DM has DM mode on, so a player and a
@@ -82,6 +101,10 @@ function MapView() {
   const campaign = useCampaign(campaignId);
   const { isDm, dmMode, setDmMode } = useDmMode(campaignId);
   useShowDmIndicator(dmMode);
+  // P4-2: the DM runs the game in table mode (no editing tools or panels, the tracker beside the map) and prepares in
+  // prep mode. Everyone else already has the table view.
+  const [mode, setMode] = useMapMode(campaignId);
+  const table = dmMode && mode === 'table';
 
   const map = useMap(mapId, dmMode);
   const pins = usePins(mapId, dmMode);
@@ -119,6 +142,25 @@ function MapView() {
       })),
     [mapZones, today, calendar.data, zoneDays.data],
   );
+  // P4-2: group tokens. What a player may read of the groups is the database's decision (their own, or all when shared).
+  const groups = usePartyGroups(campaignId, !!campaignId);
+  const groupList = groups.data ?? NO_GROUPS;
+  const vitals = useMemberVitals(campaignId, dmMode);
+  const entranceCounts = useEntranceCounts(mapId);
+  const spotlight = useSpotlight(campaignId, dmMode);
+  const placeGroup = usePlaceGroup(campaignId);
+  const setSpotlight = useSetSpotlight(campaignId);
+  const share = useShareGroupPositions(campaignId, groupList);
+  const createGroup = useCreateGroup(campaignId);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [showTokens, setShowTokens] = useState(true);
+  // a token being dragged or nudged is drawn where it is going, until the move is saved
+  const [moving, setMoving] = useState<Record<string, ImagePoint>>({});
+  const nudgeTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const timers = nudgeTimers.current;
+    return () => timers.forEach(t => clearTimeout(t));
+  }, []);
   const steps = trail.data ?? NO_TRAIL;
   const up = steps.length > 0 ? steps[steps.length - 1] : null;
   // the maps that cannot go beneath a pin or region on this map: this one and every map above it
@@ -132,16 +174,18 @@ function MapView() {
   const [route, setRoute] = useState<ImagePoint[]>([]);
   const [focus, setFocus] = useState<{ x: number; y: number; key: number } | null>(null);
   const selected =
-    layers.pins && selection?.kind === 'pin' ? (pins.data?.find(p => p.id === selection.id) ?? null) : null;
+    !table && layers.pins && selection?.kind === 'pin' ? (pins.data?.find(p => p.id === selection.id) ?? null) : null;
   const selectedRegion =
-    layers.regions && selection?.kind === 'region' ? (regions.data?.find(r => r.id === selection.id) ?? null) : null;
-  const placing = tool === 'pin' && dmMode && layers.pins;
-  const drawing = tool === 'region' && dmMode && layers.regions;
+    !table && layers.regions && selection?.kind === 'region'
+      ? (regions.data?.find(r => r.id === selection.id) ?? null)
+      : null;
+  const placing = tool === 'pin' && dmMode && !table && layers.pins;
+  const drawing = tool === 'region' && dmMode && !table && layers.regions;
   const measuring = tool === 'measure';
-  const spawning = tool === 'spawn' && dmMode;
-  const drawingZone = tool === 'weather' && dmMode;
+  const spawning = tool === 'spawn' && dmMode && !table;
+  const drawingZone = tool === 'weather' && dmMode && !table;
   const selectedSpawn =
-    dmMode && selection?.kind === 'spawn' ? (spawnPins.data?.find(p => p.id === selection.id) ?? null) : null;
+    dmMode && !table && selection?.kind === 'spawn' ? (spawnPins.data?.find(p => p.id === selection.id) ?? null) : null;
   const subMapPinIds = useMemo(() => (subMaps.data ? new Set(subMaps.data.byPin.keys()) : NO_SUB_MAPS), [subMaps.data]);
   const subMapRegionIds = useMemo(
     () => (subMaps.data ? new Set(subMaps.data.byRegion.keys()) : NO_SUB_MAPS),
@@ -172,6 +216,47 @@ function MapView() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [tool]);
+
+  const regionList = regions.data ?? NO_REGIONS;
+  // saves a group's spot: entering a different map or region moves the group first, so what it notices is revealed
+  const commitToken = (group: PartyGroup, point: ImagePoint) => {
+    const regionId = regionAt(point, regionList)?.id ?? null;
+    const move = group.mapId !== mapId || group.regionId !== regionId ? { mapId, regionId } : null;
+    placeGroup.mutate(
+      { group, point, move },
+      {
+        onSettled: () =>
+          setMoving(m => {
+            const { [group.id]: _done, ...rest } = m;
+            void _done;
+            return rest;
+          }),
+      },
+    );
+  };
+  const moveToken = (groupId: string, point: ImagePoint, now: boolean) => {
+    const group = groupList.find(g => g.id === groupId);
+    if (!group) return;
+    setMoving(m => ({ ...m, [groupId]: point }));
+    clearTimeout(nudgeTimers.current.get(groupId));
+    if (now) return commitToken(group, point);
+    // arrow keys come in a run: save when they stop
+    nudgeTimers.current.set(
+      groupId,
+      setTimeout(() => commitToken(group, point), 500),
+    );
+  };
+  const tokensHere = groupList.filter(g => g.mapId === mapId);
+  const groupTokens: GroupTokenView[] = showTokens
+    ? tokensHere.map((g, i) => ({
+        id: g.id,
+        name: g.name,
+        color: g.color,
+        count: g.memberCount,
+        ...(moving[g.id] ??
+          tokenPoint(g, regionList, { width: map.data?.width ?? 0, height: map.data?.height ?? 0 }, i)),
+      }))
+    : [];
 
   const campaignName = campaign.data?.name ?? 'Campaign';
   const breadcrumb = (
@@ -225,7 +310,10 @@ function MapView() {
     subMaps.error ??
     spawnPins.error ??
     createSpawnPin.error ??
-    updateSpawnPin.error;
+    updateSpawnPin.error ??
+    placeGroup.error ??
+    setSpotlight.error ??
+    createGroup.error;
   return (
     <PageGrid className={styles.mapGrid}>
       {/* the red band: where you are in the layers, and the way up */}
@@ -241,12 +329,22 @@ function MapView() {
             Up one level
           </IconLink>
         )}
+        {isDm && dmMode && (
+          <ModeSwitch
+            mode={mode}
+            onChange={next => {
+              setMode(next);
+              setTool(null);
+              setSelection(null);
+            }}
+          />
+        )}
         {isDm && <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />}
       </Cell>
 
       {/* the tool rail: DM tools, then the view tools; a row of its own on narrower screens */}
       <Cell span={2} spanMd={6} className={styles.rail}>
-        {dmMode && (
+        {dmMode && !table && (
           <div role="toolbar" aria-label="Map tools" className={styles.tools}>
             <Button
               variant={placing ? 'primary' : 'ghost'}
@@ -338,17 +436,41 @@ function MapView() {
             <Ruler {...ICON_PROPS} className={iconClasses.icon} />
             {measuring ? 'Stop measuring' : 'Measure'}
           </Button>
-          <LayersMenu
-            layers={layers}
-            onChange={next => {
-              setLayers(next);
-              if (!next.regions && tool === 'region') setTool(null);
-              if (!next.pins && tool === 'pin') setTool(null);
-            }}
-            gridAvailable={cell !== null}
-            regions={regions.data ?? NO_REGIONS}
-          />
-          {layers.pins && (pins.data?.length ?? 0) > 0 && (
+          {table && (
+            <>
+              <Button
+                variant="ghost"
+                className={iconClasses.host}
+                disabled
+                title="Fog of war arrives in the next update"
+              >
+                <EyeOff {...ICON_PROPS} className={iconClasses.icon} />
+                Reveal fog
+              </Button>
+              <Button
+                variant={showTokens ? 'primary' : 'ghost'}
+                aria-pressed={showTokens}
+                className={iconClasses.host}
+                onClick={() => setShowTokens(v => !v)}
+              >
+                <Shield {...ICON_PROPS} className={iconClasses.icon} />
+                Group tokens
+              </Button>
+            </>
+          )}
+          {!table && (
+            <LayersMenu
+              layers={layers}
+              onChange={next => {
+                setLayers(next);
+                if (!next.regions && tool === 'region') setTool(null);
+                if (!next.pins && tool === 'pin') setTool(null);
+              }}
+              gridAvailable={cell !== null}
+              regions={regions.data ?? NO_REGIONS}
+            />
+          )}
+          {!table && layers.pins && (pins.data?.length ?? 0) > 0 && (
             <PinSearch
               pins={pins.data ?? NO_PINS}
               onPick={pin => {
@@ -420,9 +542,9 @@ function MapView() {
                     },
                   )
                 }
-                canEditRegions={dmMode}
+                canEditRegions={dmMode && !table}
                 onChangeRegion={(regionId, changes) => updateRegion.mutate({ regionId, changes })}
-                canMovePins={dmMode}
+                canMovePins={dmMode && !table}
                 onMovePin={(pinId, point) => updatePin.mutate({ pinId, changes: point })}
                 onPlace={point =>
                   createPin.mutate(
@@ -440,12 +562,21 @@ function MapView() {
                 onMeasurePoint={point => setRoute(r => [...r, point])}
                 gridCellPx={layers.grid ? cell : null}
                 focus={focus}
-                spawnPins={dmMode ? (spawnPins.data ?? NO_SPAWN_PINS) : NO_SPAWN_PINS}
+                spawnPins={dmMode && !table ? (spawnPins.data ?? NO_SPAWN_PINS) : NO_SPAWN_PINS}
                 selectedSpawnPinId={selectedSpawn?.id ?? null}
                 onSelectSpawnPin={id => setSelection({ kind: 'spawn', id })}
                 onMoveSpawnPin={(id, point) => updateSpawnPin.mutate({ id, changes: point })}
+                groupTokens={groupTokens}
+                selectedGroupId={selectedGroupId}
+                onSelectGroup={setSelectedGroupId}
+                canMoveGroups={table}
+                onMoveGroup={(id, point, final) => {
+                  setSelectedGroupId(id);
+                  moveToken(id, point, final);
+                }}
+                entranceCounts={entranceCounts.data}
                 weatherZones={canvasZones}
-                canEditZones={dmMode}
+                canEditZones={dmMode && !table}
                 zoneDrawMode={drawingZone}
                 onDrawZone={circle => {
                   setZoneDraft(circle);
@@ -477,6 +608,30 @@ function MapView() {
             {layers.compass && image.data && <Compass northDegrees={current.tools.northDegrees} />}
           </section>
 
+          {table && (
+            <GroupTracker
+              groups={groupList}
+              vitals={vitals.data ?? NO_VITALS}
+              mapId={mapId}
+              regions={regionList}
+              selectedGroupId={selectedGroupId}
+              spotlight={spotlight.data ?? null}
+              sharePositions={campaign.data?.shareGroupPositions === true}
+              busy={placeGroup.isPending || setSpotlight.isPending || createGroup.isPending || share.isPending}
+              onSelect={setSelectedGroupId}
+              onJump={target => navigate(`/campaigns/${campaignId}/maps/${target}`)}
+              onBringHere={group => commitToken(group, { x: current.width / 2, y: current.height / 2 })}
+              onMoveToRegion={(group, regionId) => {
+                const region = regionList.find(r => r.id === regionId);
+                if (!region) return;
+                const move = group.mapId !== mapId || group.regionId !== regionId ? { mapId, regionId } : null;
+                placeGroup.mutate({ group, point: { x: region.cx, y: region.cy }, move });
+              }}
+              onSpotlight={(groupId, summary) => setSpotlight.mutate({ groupId, summary })}
+              onNewGroup={() => createGroup.mutate(nextGroup(groupList))}
+              onShare={on => share.mutate(on)}
+            />
+          )}
           {selected && (
             <PinPanel
               pin={selected}
@@ -511,7 +666,7 @@ function MapView() {
               onClose={() => setSelection(null)}
             />
           )}
-          {selection?.kind === 'weather' && dmMode && (
+          {selection?.kind === 'weather' && dmMode && !table && (
             <WeatherPanel
               campaignId={campaignId}
               map={current}
@@ -523,10 +678,18 @@ function MapView() {
               }}
             />
           )}
-          {selection?.kind === 'settings' && dmMode && (
+          {selection?.kind === 'settings' && dmMode && !table && (
             <MapSettingsPanel map={current} onClose={() => setSelection(null)} />
           )}
         </div>
+        {table && (
+          <GroupStrip
+            groups={groupList}
+            vitals={vitals.data ?? NO_VITALS}
+            mapId={mapId}
+            onJump={target => navigate(`/campaigns/${campaignId}/maps/${target}`)}
+          />
+        )}
       </Cell>
     </PageGrid>
   );

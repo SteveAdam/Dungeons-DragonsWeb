@@ -35,6 +35,7 @@ describe('listCampaigns', () => {
         optionalFeats: false,
         prepareAfterRestOnly: true,
         daylight: { start: 6, end: 18 },
+        shareGroupPositions: false,
         createdAt: '2026-10-18T10:00:00Z',
       },
       {
@@ -46,6 +47,7 @@ describe('listCampaigns', () => {
         optionalFeats: true,
         prepareAfterRestOnly: true,
         daylight: { start: 6, end: 18 },
+        shareGroupPositions: false,
         createdAt: '2026-10-18T10:00:00Z',
       },
     ]);

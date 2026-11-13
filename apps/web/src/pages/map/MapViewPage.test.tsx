@@ -19,6 +19,9 @@ import type { SpawnPin } from '../../data/spawnPins';
 import * as weatherApi from '../../data/weather';
 import * as calendarApi from '../../data/calendar';
 import * as spawnApi from '../../data/spawnPins';
+import * as groupsApi from '../../data/partyGroups';
+import * as tokensApi from '../../data/groupTokens';
+import { aGroup } from '../../test/groupFixtures';
 import { useDmModeStore } from '../../state/dmModeStore';
 import type { MapCanvasProps } from './MapCanvas';
 import { MapViewPage } from './MapViewPage';
@@ -55,6 +58,11 @@ vi.mock('./MapCanvas', () => ({
     onSelectSpawnPin,
     spawnMode,
     onPlaceSpawnPin,
+    groupTokens = [],
+    onSelectGroup,
+    canMoveGroups,
+    onMoveGroup,
+    entranceCounts,
   }: MapCanvasProps) => (
     <div
       data-testid="map"
@@ -100,6 +108,26 @@ vi.mock('./MapCanvas', () => ({
         </span>
       ))}
       <button onClick={() => onPlace({ x: 120, y: 80 })}>map click</button>
+      {groupTokens.map(t => (
+        <span key={t.id}>
+          <button
+            data-pos={`${t.x},${t.y}`}
+            onClick={() => onSelectGroup?.(t.id)}
+          >{`token: ${t.name} (${t.count})`}</button>
+          {canMoveGroups && (
+            <>
+              <button onClick={() => onMoveGroup?.(t.id, { x: t.x + 10, y: t.y }, false)}>{`nudge: ${t.name}`}</button>
+              <button
+                onClick={() => onMoveGroup?.(t.id, { x: 100, y: 100 }, true)}
+              >{`drop on the sands: ${t.name}`}</button>
+              <button
+                onClick={() => onMoveGroup?.(t.id, { x: 900, y: 700 }, true)}
+              >{`drop in the open: ${t.name}`}</button>
+            </>
+          )}
+        </span>
+      ))}
+      {entranceCounts && [...entranceCounts].map(([key, n]) => <span key={key}>{`${key} has ${n} inside`}</span>)}
     </div>
   ),
 }));
@@ -133,6 +161,23 @@ vi.mock('../../data/weather', async importOriginal => ({
   createWeatherZone: vi.fn(),
 }));
 vi.mock('../../data/calendar');
+vi.mock('../../data/partyGroups', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/partyGroups')>()),
+  listGroups: vi.fn(async () => []),
+  createGroup: vi.fn(),
+}));
+vi.mock('../../data/groupTokens', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/groupTokens')>()),
+  getSpotlight: vi.fn(async () => null),
+  listEntranceCounts: vi.fn(async () => new Map()),
+  listMemberVitals: vi.fn(async () => []),
+  placeGroup: vi.fn(async () => []),
+  setSpotlight: vi.fn(),
+}));
+vi.mock('../../data/characters', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/characters')>()),
+  listCharacters: vi.fn(async () => []),
+}));
 vi.mock('../../data/maps');
 vi.mock('../../data/campaigns');
 vi.mock('../../data/members');
@@ -1060,5 +1105,203 @@ describe('weather zones (P3-8)', () => {
     renderMap();
     expect(await screen.findByText(/^zone: Glass Sands \(/)).not.toHaveTextContent('editable');
     expect(screen.queryByRole('button', { name: 'Weather' })).not.toBeInTheDocument();
+  });
+});
+
+describe('table mode and group tokens (P4-2)', () => {
+  const vanguard = aGroup({ id: 'g1', name: 'Vanguard', mapId: 'm1', x: 900, y: 700, characterIds: ['c1', 'c2'] });
+  const rearguard = aGroup({ id: 'g2', name: 'Rearguard', mapId: 'm2', mapName: 'The vault', characterIds: ['c3'] });
+  const goTable = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('button', { name: 'Table' }));
+    return screen.findByRole('complementary', { name: 'Party groups' });
+  };
+
+  it('gives the DM a Prep and Table switch, and the table has no editing tools or panels', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([vanguard, rearguard]);
+    renderMap();
+    expect(await screen.findByRole('toolbar', { name: 'Map tools' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Prep' })).toHaveAttribute('aria-pressed', 'true');
+
+    await goTable(user);
+    expect(screen.getByRole('button', { name: 'Table' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('toolbar', { name: 'Map tools' })).not.toBeInTheDocument();
+    // a minimal toolbar: reveal fog (not built yet), the group tokens, measure
+    const view = screen.getByRole('toolbar', { name: 'View' });
+    expect(within(view).getByRole('button', { name: 'Reveal fog' })).toBeDisabled();
+    expect(within(view).getByRole('button', { name: 'Group tokens' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(view).getByRole('button', { name: 'Measure' })).toBeInTheDocument();
+    expect(within(view).queryByRole('button', { name: /Layers/ })).not.toBeInTheDocument();
+    // clicking a pin opens no panel at the table
+    await user.click(screen.getByRole('button', { name: 'pin: The Drowned Rat' }));
+    expect(screen.queryByRole('complementary', { name: 'Pin: The Drowned Rat' })).not.toBeInTheDocument();
+    // the strip under the map
+    expect(screen.getByRole('list', { name: 'Where the groups are' })).toBeInTheDocument();
+  });
+
+  it('remembers the mode for the campaign', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    const first = renderMap();
+    await goTable(user);
+    first.unmount();
+    renderMap();
+    expect(await screen.findByRole('complementary', { name: 'Party groups' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Table' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('prep mode puts the tools back', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    renderMap();
+    await goTable(user);
+    await user.click(screen.getByRole('button', { name: 'Prep' }));
+    expect(await screen.findByRole('toolbar', { name: 'Map tools' })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Party groups' })).not.toBeInTheDocument();
+  });
+
+  it('draws a token for each group on this map only, with its member count', async () => {
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([vanguard, rearguard]);
+    renderMap();
+    const token = await screen.findByRole('button', { name: 'token: Vanguard (2)' });
+    expect(token).toHaveAttribute('data-pos', '900,700');
+    expect(screen.queryByRole('button', { name: /token: Rearguard/ })).not.toBeInTheDocument();
+  });
+
+  it('shows a player the tokens the database gave them, and no DM switch, tracker or hit point request', async () => {
+    signInAs('player');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([vanguard]);
+    renderMap();
+    expect(await screen.findByRole('button', { name: 'token: Vanguard (2)' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Table' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Party groups' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /nudge:/ })).not.toBeInTheDocument();
+    expect(tokensApi.listMemberVitals).not.toHaveBeenCalled();
+  });
+
+  it('shows how many are inside an entrance on this map', async () => {
+    signInAs('player');
+    vi.mocked(tokensApi.listEntranceCounts).mockResolvedValue(new Map([['pin:p1', 3]]));
+    renderMap();
+    expect(await screen.findByText('pin:p1 has 3 inside')).toBeInTheDocument();
+  });
+
+  it('saves an arrow-key step once the keys stop, without moving the group when it stays where it is', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([vanguard]);
+    renderMap();
+    await goTable(user);
+    await user.click(screen.getByRole('button', { name: 'nudge: Vanguard' }));
+    // drawn where it is going, at once
+    expect(screen.getByRole('button', { name: 'token: Vanguard (2)' })).toHaveAttribute('data-pos', '910,700');
+    expect(tokensApi.placeGroup).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(tokensApi.placeGroup).toHaveBeenCalledWith({
+        campaignId: 'c1',
+        groupId: 'g1',
+        point: { x: 910, y: 700 },
+        move: null,
+      }),
+    );
+  });
+
+  it('moves the group into the region a dropped token lands in, so what it notices is revealed', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([vanguard]);
+    renderMap();
+    await goTable(user);
+    await user.click(screen.getByRole('button', { name: 'drop on the sands: Vanguard' }));
+    await waitFor(() =>
+      expect(tokensApi.placeGroup).toHaveBeenCalledWith({
+        campaignId: 'c1',
+        groupId: 'g1',
+        point: { x: 100, y: 100 },
+        move: { mapId: 'm1', regionId: 'r1' },
+      }),
+    );
+  });
+
+  it('takes a group out of its region when its token is dropped in the open', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([aGroup({ ...vanguard, regionId: 'r1' })]);
+    renderMap();
+    await goTable(user);
+    await user.click(screen.getByRole('button', { name: 'drop in the open: Vanguard' }));
+    await waitFor(() =>
+      expect(tokensApi.placeGroup).toHaveBeenCalledWith(
+        expect.objectContaining({ groupId: 'g1', move: { mapId: 'm1', regionId: null } }),
+      ),
+    );
+  });
+
+  it('brings a group from another map to this one, from the tracker', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([rearguard]);
+    renderMap();
+    const tracker = await goTable(user);
+    await user.click(within(tracker).getByRole('button', { name: 'Bring Rearguard here' }));
+    await waitFor(() =>
+      expect(tokensApi.placeGroup).toHaveBeenCalledWith({
+        campaignId: 'c1',
+        groupId: 'g2',
+        point: { x: 1000, y: 750 },
+        move: { mapId: 'm1', regionId: null },
+      }),
+    );
+  });
+
+  it('moves a group to a region from the tracker menu', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([vanguard]);
+    renderMap();
+    const tracker = await goTable(user);
+    await user.selectOptions(within(tracker).getByLabelText('Move Vanguard to a region'), 'The Glass Sands');
+    await waitFor(() =>
+      expect(tokensApi.placeGroup).toHaveBeenCalledWith({
+        campaignId: 'c1',
+        groupId: 'g1',
+        point: { x: 100, y: 100 },
+        move: { mapId: 'm1', regionId: 'r1' },
+      }),
+    );
+  });
+
+  it('jumps to the map of a group that is elsewhere', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([rearguard]);
+    renderMap();
+    const tracker = await goTable(user);
+    expect(within(tracker).getByRole('button', { name: 'Jump to the map of Rearguard' })).toBeEnabled();
+  });
+
+  it('gives a group the spotlight, and makes a new group with the next name', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([vanguard]);
+    renderMap();
+    const tracker = await goTable(user);
+    await user.click(within(tracker).getByRole('button', { name: 'Spotlight' }));
+    await waitFor(() => expect(tokensApi.setSpotlight).toHaveBeenCalledWith('c1', 'g1', ''));
+    await user.click(within(tracker).getByRole('button', { name: '+ New group' }));
+    await waitFor(() => expect(groupsApi.createGroup).toHaveBeenCalledWith('c1', 'Group 2', '#3D6A5D'));
+  });
+
+  it('hides the tokens when the DM turns them off', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([vanguard]);
+    renderMap();
+    await goTable(user);
+    expect(screen.getByRole('button', { name: 'token: Vanguard (2)' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Group tokens' }));
+    expect(screen.queryByRole('button', { name: 'token: Vanguard (2)' })).not.toBeInTheDocument();
   });
 });
