@@ -13,6 +13,7 @@ import {
   ImageOverlay,
   MapContainer,
   Marker,
+  Pane,
   Polyline,
   SVGOverlay,
   Tooltip,
@@ -23,7 +24,9 @@ import { DEFAULT_PIN_COLOR, PIN_COLOR_PATTERN, PIN_SIZE, type Pin } from '../../
 import { MIN_REGION_RADIUS, type Region, type RegionChanges } from '../../data/regions';
 import type { SpawnPin } from '../../data/spawnPins';
 import { entranceKey } from '../../data/groupTokens';
+import type { FogPoint, FogStroke } from '../../lib/fog';
 import { nudgePoint, safeGroupColor } from '../../lib/groupTokens';
+import { BrushLayer, FogLayer } from './fog/FogLayer';
 import {
   clampToImage,
   containZoom,
@@ -114,6 +117,11 @@ export interface MapCanvasProps {
   onMoveGroup?: (groupId: string, point: ImagePoint, final: boolean) => void;
   /** P4-2: how many characters are beneath each pin or region that has a map of its own (keys from entranceKey). */
   entranceCounts?: ReadonlyMap<string, number>;
+  /** P4-3: the fog to draw (cosmetic only), see-through for the DM. */
+  fog?: { strokes: readonly FogStroke[]; dm: boolean } | null;
+  /** P4-3: the DM's brush, when one is in hand; each stroke is reported as it grows and when it ends. */
+  brush?: { radius: number } | null;
+  onBrushStroke?: (points: FogPoint[], done: boolean) => void;
 }
 
 export interface CanvasWeatherZone {
@@ -670,8 +678,11 @@ export function MapCanvas({
   canMoveGroups = false,
   onMoveGroup,
   entranceCounts = NO_COUNTS,
+  fog = null,
+  brush = null,
+  onBrushStroke,
 }: MapCanvasProps) {
-  const busy = addMode || drawMode || measuring || spawnMode || zoneDrawMode;
+  const busy = addMode || drawMode || measuring || spawnMode || zoneDrawMode || !!brush;
   const bounds = useMemo(() => imageBounds(size), [size]);
   return (
     <MapContainer
@@ -723,6 +734,13 @@ export function MapCanvas({
           onChange={changes => onChangeZone(zone.id, changes)}
         />
       ))}
+      {/* the fog lies over the image and its regions, under the pins and tokens (which stay reachable) */}
+      {fog && (
+        <Pane name="fog" style={{ zIndex: 450, pointerEvents: 'none' }}>
+          <FogLayer size={size} strokes={fog.strokes} dm={fog.dm} />
+        </Pane>
+      )}
+      {brush && onBrushStroke && <BrushLayer size={size} radius={brush.radius} onStroke={onBrushStroke} />}
       {spawnPins.map(sp => {
         const name = `Spawn pin: ${sp.label || SPAWN_PIN_LABELS[sp.kind]} (${SPAWN_PIN_LABELS[sp.kind]}, DM only)`;
         return (

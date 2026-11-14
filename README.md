@@ -598,6 +598,21 @@ reason)`, which writes to `game_clock_events` (append-only for every role). A di
   it after changing this: `pnpm exec supabase functions deploy roll`.
 - This layer is separate from the manual weather on a region, which still shows on that region.
 
+## Table mode and group tokens (P4-2)
+
+On a map, the DM switches between **Prep** (the editing tools) and **Table** (running the game). The choice is remembered per campaign in the browser. Table mode shows each party group as a shield token with its member count, the split-party tracker (hit points, where each group is, jump to its map, spotlight) and a strip of group cards under the map. A pin or region with a map beneath it shows "N inside". Players see only their own group's token unless the DM turns on **Players see where other groups are** (`campaigns.settings.shareGroupPositions`).
+
+## Fog of war (P4-3)
+
+> **Fog is cosmetic.** It hides parts of the map on screen, but a determined player could still open the map image itself (the browser has to download it to draw the map). Do not treat fog as a way to keep secrets: keep real secrets off the map, or on a map the players cannot see at all.
+
+- Fog is off on a map until the DM turns it on (Map settings, or **Fog of war** in the map tools). Then players start with the whole map hidden.
+- The DM paints with a reveal brush and a hide brush (R and H; [ and ] change the size, which is in map pixels so it scales with zoom), reveals or hides everything, and undoes the last 20 strokes (Ctrl+Z), which draws the opposite stroke.
+- **Shared** fog is one fog for the whole party; **per group** gives each party group its own fog. Switching keeps the other mode's strokes.
+- Strokes are saved in `fog_strokes` in drawing order. "Reveal all" and "Hide all" write one marker row instead of deleting history. Players see a stroke grow while the DM draws it, then the saved stroke replaces it.
+- A fog with more than 2,000 strokes offers **Simplify fog**: the fog is rendered at one-pixel detail and rebuilt as "hide everything" followed by a few long reveal strokes that sweep each revealed area row by row (see `simplifyFog` in `apps/web/src/lib/fog.ts`). The revealed area stays the same within one pixel, which the tests check.
+- Screen readers are told how much is revealed ("Fog: about 35 percent revealed"). The fog never covers pins or takes keyboard focus.
+
 ## End-to-end tests (P2-12, P3-9)
 
 `e2e/` is a Playwright test of the whole of Phase 2 with three browser contexts, a DM and two players, against

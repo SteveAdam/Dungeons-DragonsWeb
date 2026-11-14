@@ -2,7 +2,7 @@
 // Mutation check for the row level security suite: proves the tests fail when a protection is removed.
 //
 // For each mutation it copies supabase/tests/database/rls.test.sql, injects broken SQL at the line marked
-// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T88) fail.
+// "@mutation-point", runs that copy, and checks that the tests guarding that protection (T1 to T89) fail.
 // Other tests may fail too: removing a write protection lets earlier tests change data, which breaks later ones.
 // The broken SQL runs inside the test's own transaction, which is rolled back, so your real policies are
 // never touched and there is nothing to restore.
@@ -979,6 +979,45 @@ create policy "read visible groups" on party_groups for select to authenticated 
     why: 'a group two maps down would not be counted on the top map',
     sql: `create or replace function group_entrance_counts(p_map uuid) returns table (kind text, entrance_id uuid, members integer) language plpgsql stable security definer set search_path = public as $$ declare c uuid := map_campaign(p_map); begin if c is null or auth.uid() is null or not is_member(c) then raise exception 'Only a member can do that' using errcode = '42501'; end if; if not is_dm(c) and not map_is_revealed(p_map) then return; end if; return query select e.kind, e.id, sum((select count(*) from party_group_members pm where pm.group_id = g.id))::integer from party_groups g join maps m on m.id = g.map_id cross join lateral (select 'pin'::text as kind, pn.id, pn.map_id, pn.visible_to_players as visible from pins pn where pn.id = m.parent_pin_id union all select 'region'::text, rg.id, rg.map_id, rg.visible_to_players from regions rg where rg.id = m.parent_region_id) e where g.campaign_id = c and e.map_id = p_map and (is_dm(c) or e.visible) and (is_dm(c) or in_group(g.id) or group_positions_shared(c)) group by e.kind, e.id; end $$;`,
     fails: ['T88'],
+  },
+  {
+    name: 'every member reads every fog (P4-3)',
+    why: 'a player would see the fog the DM drew for another group',
+    sql: `drop policy "read fog" on fog_strokes;
+create policy "read fog" on fog_strokes for select to authenticated using (is_member(map_campaign(map_id)));`,
+    fails: ['T89'],
+  },
+  {
+    name: 'fog of hidden maps readable (P4-3)',
+    why: 'a player would read the fog of a map they cannot see',
+    sql: `drop policy "read fog" on fog_strokes;
+create policy "read fog" on fog_strokes for select to authenticated using (is_dm(map_campaign(map_id)) or (is_member(map_campaign(map_id)) and (group_id is null or in_group(group_id))));`,
+    fails: ['T89'],
+  },
+  {
+    name: 'players can draw fog (P4-3)',
+    why: 'a player could reveal the whole map for themselves',
+    sql: `drop policy "dm writes fog" on fog_strokes;
+create policy "dm writes fog" on fog_strokes for all to authenticated using (is_member(map_campaign(map_id))) with check (is_member(map_campaign(map_id)));`,
+    fails: ['T89'],
+  },
+  {
+    name: 'clear_fog open to players (P4-3)',
+    why: 'a player could reveal the whole map',
+    sql: `create or replace function clear_fog(p_map uuid, p_group uuid, p_mode text) returns bigint language plpgsql security definer set search_path = public as $$ declare s bigint; begin if p_mode is null or p_mode not in ('reveal', 'hide') then raise exception 'Reveal or hide' using errcode = '22023'; end if; insert into fog_strokes (map_id, group_id, mode) values (p_map, p_group, p_mode || '_all') returning seq into s; return s; end $$;`,
+    fails: ['T89'],
+  },
+  {
+    name: 'simplify_fog wipes every fog of the map (P4-3)',
+    why: 'simplifying one group would erase the other groups and the shared fog',
+    sql: `create or replace function simplify_fog(p_map uuid, p_group uuid, p_strokes jsonb) returns integer language plpgsql security definer set search_path = public as $$ declare n integer; begin if not is_dm(map_campaign(p_map)) then raise exception 'Only the DM can do that' using errcode = '42501'; end if; if p_strokes is null or jsonb_typeof(p_strokes) <> 'array' or jsonb_array_length(p_strokes) = 0 then raise exception 'empty' using errcode = '22023'; end if; delete from fog_strokes where map_id = p_map; insert into fog_strokes (map_id, group_id, mode, radius, points) select p_map, p_group, s.value ->> 'mode', coalesce((s.value ->> 'radius')::int, 0), coalesce(s.value -> 'points', '[]'::jsonb) from jsonb_array_elements(p_strokes) with ordinality as s(value, n) order by s.n; get diagnostics n = row_count; return n; end $$;`,
+    fails: ['T89'],
+  },
+  {
+    name: 'fog stroke shape not checked (P4-3)',
+    why: 'malformed points would reach every client that draws the fog',
+    sql: `alter table fog_strokes drop constraint fog_strokes_shape;`,
+    fails: ['T89'],
   },
 ];
 

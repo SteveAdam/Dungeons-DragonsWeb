@@ -1,0 +1,75 @@
+/* P4-3: the fog never takes clicks or focus: pins and regions underneath stay reachable */
+.layer {
+  pointer-events: none;
+}
+
+/* players: the desk itself, so a hidden area looks like the table beyond the map */
+.fogPlayer {
+  fill: var(--desk);
+}
+
+/* the DM sees through it, to know what lies beneath */
+.fogDm {
+  fill: var(--desk);
+  opacity: 0.55;
+}
+
+.brushing,
+.brushing :global(.leaflet-interactive) {
+  cursor: crosshair;
+}
+
+/* the tools above the map */
+.bar {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.size {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-ui);
+}
+
+.label {
+  font-family: var(--font-ui);
+}
+
+.select {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.help {
+  margin: 0;
+  color: var(--ink-faded);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.keys {
+  margin: 0;
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+}
+
+.off {
+  margin: 0;
+}

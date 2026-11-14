@@ -6,6 +6,12 @@
   gap: 0.6rem;
 }
 
+/* the view tools sit on the dark desk: quiet buttons are drawn in paper and gold, not ink */
+.viewBar > button[data-variant='ghost'] {
+  border-color: var(--gold);
+  color: var(--paper);
+}
+
 /* Layers: a fold-out list of switches and the legend. */
 .layers {
   position: relative;

@@ -70,6 +70,7 @@ describe('getMap', () => {
       height: 3000,
       visibleToPlayers: true,
       fogMode: 'shared',
+      fogEnabled: false,
       parentPinId: null,
       createdAt: '2026-10-18T10:00:00Z',
       tools: { scaleWidth: null, scaleUnit: 'mi', northDegrees: 0, gridSize: null },

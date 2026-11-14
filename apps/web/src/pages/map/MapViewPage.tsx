@@ -35,6 +35,16 @@ import {
   useShareGroupPositions,
   useSpotlight,
 } from '../../hooks/useGroupMap';
+import {
+  useAddFogStroke,
+  useClearFog,
+  useFogBroadcast,
+  useFogStrokes,
+  useLiveFog,
+  useReplaceFog,
+  useSetMapFog,
+  type FogEvent,
+} from '../../hooks/useFog';
 import { useCreateGroup, usePartyGroups } from '../../hooks/useHere';
 import { useDmMode } from '../../hooks/useDmMode';
 import {
@@ -50,6 +60,18 @@ import {
 import { useCreateSpawnPin, useRegionContent, useSpawnPins, useUpdateSpawnPin } from '../../hooks/useRegionContent';
 import { useCreateRegion, useRegions, useUpdateRegion } from '../../hooks/useRegions';
 import type { ImagePoint } from '../../lib/mapCoordinates';
+import {
+  fitPoints,
+  fogSummary,
+  MAX_STROKE_POINTS,
+  oppositeStroke,
+  renderFog,
+  revealedFraction,
+  simplifyFog,
+  summaryCell,
+  type FogPoint,
+  type FogStroke,
+} from '../../lib/fog';
 import { nextGroup, regionAt, tokenPoint } from '../../lib/groupTokens';
 import { gridCellPx } from '../../lib/mapGeometry';
 import { useShowDmIndicator } from '../../state/dmIndicator';
@@ -69,6 +91,7 @@ import { PinPanel } from './PinPanel';
 import { PinSearch } from './PinSearch';
 import { RegionPanel } from './RegionPanel';
 import { SpawnPinPanel } from './SpawnPinPanel';
+import { BRUSH_MAX, BRUSH_MIN, FogToolbar } from './fog/FogToolbar';
 import { GroupStrip } from './table/GroupStrip';
 import { GroupTracker } from './table/GroupTracker';
 import { ModeSwitch } from './table/ModeSwitch';
@@ -83,6 +106,9 @@ const NO_SPAWN_PINS: SpawnPin[] = [];
 const NO_CONTENT: RegionContent[] = [];
 const NO_GROUPS: PartyGroup[] = [];
 const NO_VITALS: MemberVitals[] = [];
+const NO_STROKES: FogStroke[] = [];
+const UNDO_DEPTH = 20;
+const newKey = () => crypto.randomUUID();
 
 /**
  * Map view, prep mode (P0-8). Everything hidden is requested only while a DM has DM mode on, so a player and a
@@ -153,6 +179,21 @@ function MapView() {
   const share = useShareGroupPositions(campaignId, groupList);
   const createGroup = useCreateGroup(campaignId);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const fogStrokes = useFogStrokes(mapId, map.data?.fogEnabled === true || dmMode);
+  const liveFog = useLiveFog(mapId);
+  const fogBroadcast = useFogBroadcast(campaignId, map.data, groups.data ?? NO_GROUPS);
+  const addStroke = useAddFogStroke(mapId);
+  const clearFogM = useClearFog(mapId);
+  const replaceFogM = useReplaceFog(mapId);
+  const setMapFog = useSetMapFog();
+  const [fogTools, setFogTools] = useState(false);
+  const [brushMode, setBrushMode] = useState<'reveal' | 'hide' | null>(null);
+  const [brushRadius, setBrushRadius] = useState(60);
+  const [fogGroupChoice, setFogGroupChoice] = useState<string | null>(null);
+  const [draftStroke, setDraftStroke] = useState<FogStroke | null>(null);
+  const [undoStack, setUndoStack] = useState<FogStroke[]>([]);
+  const strokeKey = useRef('');
+  const lastSent = useRef(0);
   const [showTokens, setShowTokens] = useState(true);
   // a token being dragged or nudged is drawn where it is going, until the move is saved
   const [moving, setMoving] = useState<Record<string, ImagePoint>>({});
@@ -246,6 +287,128 @@ function MapView() {
       setTimeout(() => commitToken(group, point), 500),
     );
   };
+  // P4-3: fog of war (cosmetic). Players read their fog (shared, or their group's) and see it opaque; the DM sees the
+  // fog being drawn (shared, or the chosen group's) see-through.
+  const fogOn = map.data?.fogEnabled === true;
+  const perGroup = map.data?.fogMode === 'per_group';
+  const fogGroupId = perGroup ? (fogGroupChoice ?? selectedGroupId ?? groupList[0]?.id ?? null) : null;
+  const shownStrokes = useMemo(() => {
+    const saved = (fogStrokes.data ?? []).filter(s =>
+      dmMode ? s.groupId === fogGroupId : perGroup ? s.groupId !== null : s.groupId === null,
+    );
+    const live = dmMode ? [] : [...liveFog.values()].filter(s => (perGroup ? s.groupId !== null : s.groupId === null));
+    return [...saved, ...live, ...(draftStroke ? [draftStroke] : [])];
+  }, [fogStrokes.data, liveFog, draftStroke, dmMode, perGroup, fogGroupId]);
+  const fogText = useMemo(() => {
+    if (!fogOn || !map.data) return null;
+    const { width, height } = map.data;
+    return fogSummary(revealedFraction(renderFog(shownStrokes, width, height, summaryCell(width, height))));
+  }, [fogOn, map.data, shownStrokes]);
+  const editingStrokes = dmMode ? (fogStrokes.data ?? []).filter(s => s.groupId === fogGroupId) : NO_STROKES;
+  const brushing = dmMode && fogTools && fogOn && brushMode !== null && !(perGroup && !fogGroupId);
+  const fogEvent = (kind: FogEvent['kind'], stroke: FogStroke, key: string): FogEvent => ({
+    mapId,
+    groupId: fogGroupId,
+    kind,
+    strokeKey: key,
+    mode: stroke.mode,
+    radius: Math.round(stroke.radius),
+    points: stroke.points.length > 500 ? [] : stroke.points.map(p => [p[0], p[1]] as [number, number]),
+  });
+  const fogReload = () => fogBroadcast(fogEvent('reload', { mode: 'hide_all', radius: 0, points: [] }, newKey()));
+  const saveStroke = (stroke: FogStroke, key: string, undoable: boolean) =>
+    addStroke.mutate(
+      { groupId: fogGroupId, stroke },
+      {
+        onSuccess: () => {
+          if (undoable) setUndoStack(u => [...u, stroke].slice(-UNDO_DEPTH));
+          fogBroadcast(stroke.points.length > 500 ? fogEvent('reload', stroke, key) : fogEvent('final', stroke, key));
+        },
+        onSettled: () => setDraftStroke(null),
+      },
+    );
+  const onBrushStroke = (points: FogPoint[], done: boolean) => {
+    if (!brushMode) return;
+    if (!strokeKey.current) strokeKey.current = newKey();
+    if (!done) {
+      const live: FogStroke = { mode: brushMode, radius: brushRadius, points };
+      setDraftStroke(live);
+      const now = Date.now();
+      // others see the stroke grow a few times a second, never more
+      if (now - lastSent.current > 150) {
+        lastSent.current = now;
+        fogBroadcast(
+          fogEvent('partial', { ...live, points: fitPoints(points, 500, brushRadius / 8) }, strokeKey.current),
+        );
+      }
+      return;
+    }
+    const key = strokeKey.current;
+    strokeKey.current = '';
+    const stroke: FogStroke = {
+      mode: brushMode,
+      radius: brushRadius,
+      points: fitPoints(points, MAX_STROKE_POINTS, Math.max(0.5, brushRadius / 8)),
+    };
+    setDraftStroke(stroke);
+    saveStroke(stroke, key, true);
+  };
+  const undoFog = () => {
+    const last = undoStack[undoStack.length - 1];
+    if (!last || addStroke.isPending) return;
+    setUndoStack(u => u.slice(0, -1));
+    saveStroke(oppositeStroke(last), newKey(), false);
+  };
+  const undoRef = useRef(undoFog);
+  useEffect(() => {
+    undoRef.current = undoFog;
+  });
+  const clearAll = (mode: 'reveal' | 'hide') =>
+    clearFogM.mutate(
+      { groupId: fogGroupId, mode },
+      {
+        onSuccess: () => {
+          setUndoStack([]);
+          fogReload();
+        },
+      },
+    );
+  const simplifyNow = () => {
+    if (!map.data) return;
+    const simpler = simplifyFog(editingStrokes, map.data.width, map.data.height);
+    replaceFogM.mutate(
+      { groupId: fogGroupId, strokes: simpler },
+      {
+        onSuccess: () => {
+          setUndoStack([]);
+          fogReload();
+        },
+      },
+    );
+  };
+  // fog keys: R reveal brush, H hide brush, [ and ] size, Ctrl+Z undo, Esc put the brush down
+  useEffect(() => {
+    if (!fogTools || !dmMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undoRef.current();
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === 'r') setBrushMode(m => (m === 'reveal' ? null : 'reveal'));
+      else if (key === 'h') setBrushMode(m => (m === 'hide' ? null : 'hide'));
+      else if (e.key === '[') setBrushRadius(r => Math.max(BRUSH_MIN, Math.round(r / 1.25)));
+      else if (e.key === ']') setBrushRadius(r => Math.min(BRUSH_MAX, Math.round(r * 1.25)));
+      else if (e.key === 'Escape') setBrushMode(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fogTools, dmMode]);
+
   const tokensHere = groupList.filter(g => g.mapId === mapId);
   const groupTokens: GroupTokenView[] = showTokens
     ? tokensHere.map((g, i) => ({
@@ -313,7 +476,11 @@ function MapView() {
     updateSpawnPin.error ??
     placeGroup.error ??
     setSpotlight.error ??
-    createGroup.error;
+    createGroup.error ??
+    addStroke.error ??
+    clearFogM.error ??
+    replaceFogM.error ??
+    setMapFog.error;
   return (
     <PageGrid className={styles.mapGrid}>
       {/* the red band: where you are in the layers, and the way up */}
@@ -398,6 +565,19 @@ function MapView() {
               Weather
             </Button>
             <Button
+              variant={fogTools ? 'primary' : 'ghost'}
+              aria-pressed={fogTools}
+              className={iconClasses.host}
+              onClick={() => {
+                setFogTools(v => !v);
+                setBrushMode(null);
+                setTool(null);
+              }}
+            >
+              <EyeOff {...ICON_PROPS} className={iconClasses.icon} />
+              Fog of war
+            </Button>
+            <Button
               variant={selection?.kind === 'settings' ? 'primary' : 'ghost'}
               aria-pressed={selection?.kind === 'settings'}
               className={iconClasses.host}
@@ -439,10 +619,13 @@ function MapView() {
           {table && (
             <>
               <Button
-                variant="ghost"
+                variant={fogTools ? 'primary' : 'ghost'}
+                aria-pressed={fogTools}
                 className={iconClasses.host}
-                disabled
-                title="Fog of war arrives in the next update"
+                onClick={() => {
+                  setFogTools(v => !v);
+                  setBrushMode(null);
+                }}
               >
                 <EyeOff {...ICON_PROPS} className={iconClasses.icon} />
                 Reveal fog
@@ -493,6 +676,44 @@ function MapView() {
             onUndo={() => setRoute(r => r.slice(0, -1))}
             onClear={() => setRoute([])}
           />
+        )}
+
+        {dmMode && fogTools && (
+          <FogToolbar
+            enabled={fogOn}
+            perGroup={perGroup}
+            brush={brushMode}
+            radius={brushRadius}
+            strokeCount={editingStrokes.length}
+            canUndo={undoStack.length > 0}
+            groups={groupList}
+            groupId={fogGroupId}
+            busy={addStroke.isPending || clearFogM.isPending || replaceFogM.isPending || setMapFog.isPending}
+            onBrush={mode => {
+              setBrushMode(mode);
+              setTool(null);
+            }}
+            onRadius={setBrushRadius}
+            onRevealAll={() => clearAll('reveal')}
+            onHideAll={() => clearAll('hide')}
+            onUndo={undoFog}
+            onSimplify={simplifyNow}
+            onGroup={g => {
+              setFogGroupChoice(g);
+              setUndoStack([]);
+            }}
+            onTurnOn={() =>
+              setMapFog.mutate(
+                { mapId, enabled: true, mode: map.data?.fogMode ?? 'shared' },
+                { onSuccess: () => fogReload() },
+              )
+            }
+          />
+        )}
+        {fogText && (
+          <p className="visually-hidden" aria-live="polite">
+            {fogText}
+          </p>
         )}
 
         {actionError && (
@@ -575,6 +796,9 @@ function MapView() {
                   moveToken(id, point, final);
                 }}
                 entranceCounts={entranceCounts.data}
+                fog={fogOn ? { strokes: shownStrokes, dm: dmMode } : null}
+                brush={brushing ? { radius: brushRadius } : null}
+                onBrushStroke={onBrushStroke}
                 weatherZones={canvasZones}
                 canEditZones={dmMode && !table}
                 zoneDrawMode={drawingZone}
@@ -679,7 +903,7 @@ function MapView() {
             />
           )}
           {selection?.kind === 'settings' && dmMode && !table && (
-            <MapSettingsPanel map={current} onClose={() => setSelection(null)} />
+            <MapSettingsPanel map={current} onClose={() => setSelection(null)} onFogChanged={fogReload} />
           )}
         </div>
         {table && (

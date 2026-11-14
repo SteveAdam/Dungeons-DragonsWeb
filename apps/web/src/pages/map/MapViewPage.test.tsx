@@ -21,8 +21,10 @@ import * as calendarApi from '../../data/calendar';
 import * as spawnApi from '../../data/spawnPins';
 import * as groupsApi from '../../data/partyGroups';
 import * as tokensApi from '../../data/groupTokens';
+import * as fogApi from '../../data/fog';
 import { aGroup } from '../../test/groupFixtures';
 import { useDmModeStore } from '../../state/dmModeStore';
+import { useMapModeStore } from '../../state/mapMode';
 import type { MapCanvasProps } from './MapCanvas';
 import { MapViewPage } from './MapViewPage';
 
@@ -63,6 +65,9 @@ vi.mock('./MapCanvas', () => ({
     canMoveGroups,
     onMoveGroup,
     entranceCounts,
+    fog,
+    brush,
+    onBrushStroke,
   }: MapCanvasProps) => (
     <div
       data-testid="map"
@@ -128,6 +133,24 @@ vi.mock('./MapCanvas', () => ({
         </span>
       ))}
       {entranceCounts && [...entranceCounts].map(([key, n]) => <span key={key}>{`${key} has ${n} inside`}</span>)}
+      {fog && (
+        <span data-testid="fog">{`fog: ${fog.strokes.map(st => `${st.mode}@${st.points.length}`).join(' ') || 'all hidden'} (${fog.dm ? 'dm' : 'player'})`}</span>
+      )}
+      {brush && onBrushStroke && (
+        <button
+          onClick={() => {
+            onBrushStroke([[10, 10]], false);
+            onBrushStroke(
+              [
+                [10, 10],
+                [20, 20],
+                [30, 30],
+              ],
+              true,
+            );
+          }}
+        >{`brush (${brush.radius})`}</button>
+      )}
     </div>
   ),
 }));
@@ -174,6 +197,18 @@ vi.mock('../../data/groupTokens', async importOriginal => ({
   placeGroup: vi.fn(async () => []),
   setSpotlight: vi.fn(),
 }));
+vi.mock('../../data/fog', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../data/fog')>()),
+  listFogStrokes: vi.fn(async () => []),
+  addFogStroke: vi.fn(async (_map: string, groupId: string | null, stroke: object) => ({
+    ...stroke,
+    id: 'saved',
+    groupId,
+    seq: 99,
+  })),
+  clearFog: vi.fn(),
+  replaceFog: vi.fn(),
+}));
 vi.mock('../../data/characters', async importOriginal => ({
   ...(await importOriginal<typeof import('../../data/characters')>()),
   listCharacters: vi.fn(async () => []),
@@ -191,6 +226,7 @@ const map: CampaignMap = {
   height: 1500,
   visibleToPlayers: true,
   fogMode: 'shared',
+  fogEnabled: false,
   parentPinId: null,
   parentRegionId: null,
   createdAt: '',
@@ -286,6 +322,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   useDmModeStore.setState({ dmMode: true });
+  useMapModeStore.setState({ modes: {} });
 });
 
 describe('map view as a player (acceptance 2)', () => {
@@ -1129,7 +1166,7 @@ describe('table mode and group tokens (P4-2)', () => {
     expect(screen.queryByRole('toolbar', { name: 'Map tools' })).not.toBeInTheDocument();
     // a minimal toolbar: reveal fog (not built yet), the group tokens, measure
     const view = screen.getByRole('toolbar', { name: 'View' });
-    expect(within(view).getByRole('button', { name: 'Reveal fog' })).toBeDisabled();
+    expect(within(view).getByRole('button', { name: 'Reveal fog' })).toHaveAttribute('aria-pressed', 'false');
     expect(within(view).getByRole('button', { name: 'Group tokens' })).toHaveAttribute('aria-pressed', 'true');
     expect(within(view).getByRole('button', { name: 'Measure' })).toBeInTheDocument();
     expect(within(view).queryByRole('button', { name: /Layers/ })).not.toBeInTheDocument();
@@ -1303,5 +1340,177 @@ describe('table mode and group tokens (P4-2)', () => {
     expect(screen.getByRole('button', { name: 'token: Vanguard (2)' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Group tokens' }));
     expect(screen.queryByRole('button', { name: 'token: Vanguard (2)' })).not.toBeInTheDocument();
+  });
+});
+
+describe('fog of war (P4-3)', () => {
+  beforeEach(() => {
+    vi.mocked(fogApi.listFogStrokes).mockResolvedValue([]);
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([]);
+  });
+
+  const fogMap = (over: Partial<CampaignMap> = {}) => ({ ...map, fogEnabled: true, ...over });
+  const saved = (over: Partial<fogApi.SavedFogStroke>): fogApi.SavedFogStroke => ({
+    id: 's',
+    groupId: null,
+    seq: 1,
+    mode: 'reveal',
+    radius: 20,
+    points: [[5, 5]],
+    ...over,
+  });
+  const openFog = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('button', { name: 'Fog of war' }));
+    return screen.findByRole('region', { name: 'Fog of war' });
+  };
+
+  it('lays no fog on a map where it is off', async () => {
+    signInAs('player');
+    renderMap();
+    await screen.findByTestId('map');
+    expect(screen.queryByTestId('fog')).not.toBeInTheDocument();
+    expect(fogApi.listFogStrokes).not.toHaveBeenCalled();
+  });
+
+  it('shows a player the shared fog, opaque, and says how much is revealed', async () => {
+    signInAs('player');
+    vi.mocked(mapsApi.getMap).mockResolvedValue(fogMap());
+    vi.mocked(fogApi.listFogStrokes).mockResolvedValue([
+      saved({ id: 'a', groupId: null, points: [[100, 100]], radius: 200 }),
+      saved({ id: 'b', groupId: 'g9', points: [[9, 9]] }),
+    ]);
+    renderMap();
+    expect(await screen.findByText('fog: reveal@1 (player)')).toBeInTheDocument();
+    expect(screen.getByText(/^Fog: about \d+ percent revealed$/)).toHaveClass('visually-hidden');
+  });
+
+  it("in per-group mode shows a player their group's fog, not the shared one", async () => {
+    signInAs('player');
+    vi.mocked(mapsApi.getMap).mockResolvedValue(fogMap({ fogMode: 'per_group' }));
+    vi.mocked(fogApi.listFogStrokes).mockResolvedValue([
+      saved({ id: 'a', groupId: null, mode: 'reveal', points: [[1, 1]] }),
+      saved({
+        id: 'b',
+        groupId: 'g1',
+        mode: 'hide',
+        points: [
+          [2, 2],
+          [3, 3],
+        ],
+      }),
+    ]);
+    renderMap();
+    expect(await screen.findByText('fog: hide@2 (player)')).toBeInTheDocument();
+  });
+
+  it('shows the DM the fog see-through, and offers to turn fog on where it is off', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(mapsApi.setMapFog).mockResolvedValue(fogMap());
+    renderMap();
+    const tools = await openFog(user);
+    expect(within(tools).getByText(/Fog is cosmetic/)).toBeInTheDocument();
+    await user.click(within(tools).getByRole('button', { name: /Turn on fog/ }));
+    await waitFor(() => expect(mapsApi.setMapFog).toHaveBeenCalledWith('m1', { enabled: true, mode: 'shared' }));
+  });
+
+  it('brushes a reveal stroke and saves it simplified, then undoes it with the opposite stroke', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(mapsApi.getMap).mockResolvedValue(fogMap());
+    renderMap();
+    expect(await screen.findByText('fog: all hidden (dm)')).toBeInTheDocument();
+    const tools = await openFog(user);
+    await user.click(within(tools).getByRole('button', { name: 'Reveal brush' }));
+    await user.click(screen.getByRole('button', { name: 'brush (60)' }));
+    await waitFor(() =>
+      expect(fogApi.addFogStroke).toHaveBeenCalledWith('m1', null, {
+        mode: 'reveal',
+        radius: 60,
+        // the three points lie on one line, so only the ends are kept
+        points: [
+          [10, 10],
+          [30, 30],
+        ],
+      }),
+    );
+    await waitFor(() => expect(screen.getByText('fog: reveal@2 (dm)')).toBeInTheDocument());
+    await user.click(within(tools).getByRole('button', { name: 'Undo' }));
+    await waitFor(() =>
+      expect(fogApi.addFogStroke).toHaveBeenLastCalledWith('m1', null, expect.objectContaining({ mode: 'hide' })),
+    );
+    expect(within(tools).getByRole('button', { name: 'Undo' })).toBeDisabled();
+  });
+
+  it('reveals or hides the whole map as one marker', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(mapsApi.getMap).mockResolvedValue(fogMap());
+    renderMap();
+    const tools = await openFog(user);
+    await user.click(within(tools).getByRole('button', { name: 'Reveal all' }));
+    await waitFor(() => expect(fogApi.clearFog).toHaveBeenCalledWith('m1', null, 'reveal'));
+    await user.click(within(tools).getByRole('button', { name: 'Hide all' }));
+    await waitFor(() => expect(fogApi.clearFog).toHaveBeenLastCalledWith('m1', null, 'hide'));
+  });
+
+  it('takes the keyboard shortcuts', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(mapsApi.getMap).mockResolvedValue(fogMap());
+    renderMap();
+    const tools = await openFog(user);
+    await user.keyboard('h');
+    expect(within(tools).getByRole('button', { name: 'Hide brush' })).toHaveAttribute('aria-pressed', 'true');
+    await user.keyboard(']');
+    expect(screen.getByRole('button', { name: 'brush (75)' })).toBeInTheDocument();
+    await user.keyboard('[[');
+    expect(screen.getByRole('button', { name: 'brush (60)' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(within(tools).getByRole('button', { name: 'Hide brush' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('button', { name: /^brush/ })).not.toBeInTheDocument();
+  });
+
+  it("in per-group mode draws on the chosen group's fog", async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(mapsApi.getMap).mockResolvedValue(fogMap({ fogMode: 'per_group' }));
+    vi.mocked(groupsApi.listGroups).mockResolvedValue([
+      aGroup({ id: 'g1', name: 'Vanguard' }),
+      aGroup({ id: 'g2', name: 'Rearguard' }),
+    ]);
+    renderMap();
+    const tools = await openFog(user);
+    await user.selectOptions(await within(tools).findByLabelText('Drawing the fog of'), 'Rearguard');
+    await user.click(within(tools).getByRole('button', { name: 'Reveal brush' }));
+    await user.click(screen.getByRole('button', { name: 'brush (60)' }));
+    await waitFor(() => expect(fogApi.addFogStroke).toHaveBeenCalledWith('m1', 'g2', expect.anything()));
+  });
+
+  it('turns fog on and picks per-group mode from the map settings, which say fog is cosmetic', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(mapsApi.setMapFog).mockResolvedValue(fogMap());
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'Map settings' }));
+    const panel = screen.getByRole('complementary', { name: 'Map settings' });
+    expect(within(panel).getByText(/Fog is cosmetic/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Switching keeps the other mode's fog/)).toBeInTheDocument();
+    await user.click(within(panel).getByRole('switch', { name: /Fog on this map/ }));
+    await waitFor(() => expect(mapsApi.setMapFog).toHaveBeenCalledWith('m1', { enabled: true, mode: 'shared' }));
+    await user.click(within(panel).getByRole('radio', { name: /Per group/ }));
+    await waitFor(() =>
+      expect(mapsApi.setMapFog).toHaveBeenLastCalledWith('m1', expect.objectContaining({ mode: 'per_group' })),
+    );
+  });
+
+  it('opens the fog tools from the table toolbar too', async () => {
+    const user = userEvent.setup();
+    signInAs('dm');
+    vi.mocked(mapsApi.getMap).mockResolvedValue(fogMap());
+    renderMap();
+    await user.click(await screen.findByRole('button', { name: 'Table' }));
+    await user.click(screen.getByRole('button', { name: 'Reveal fog' }));
+    expect(screen.getByRole('region', { name: 'Fog of war' })).toBeInTheDocument();
   });
 });

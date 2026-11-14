@@ -23,12 +23,12 @@ const payloads = {
     .object({
       mapId: id,
       groupId: id.nullable(),
-      mode: z.enum(['reveal', 'cover']),
-      radius: z.number().positive(),
-      points: z
-        .array(z.tuple([coord, coord]))
-        .min(1)
-        .max(500),
+      // partial: the DM is still drawing it; final: it is saved; reload: read the whole fog again
+      kind: z.enum(['partial', 'final', 'reload']),
+      strokeKey: id,
+      mode: z.enum(['reveal', 'hide', 'reveal_all', 'hide_all']),
+      radius: z.number().int().min(0).max(4000),
+      points: z.array(z.tuple([coord, coord])).max(500),
     })
     .strict(),
   group_moved: z

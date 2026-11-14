@@ -15,7 +15,18 @@ const VALID: RealtimeEvent[] = [
   { type: 'spotlight', payload: { groupId: ID, summary: 'In the vault' } },
   { type: 'turn', payload: { name: 'Sera', round: 2 } },
   { type: 'toast', payload: { message: 'Hello' } },
-  { type: 'fog_stroke', payload: { mapId: ID, groupId: null, mode: 'reveal', radius: 20, points: [[1, 2]] } },
+  {
+    type: 'fog_stroke',
+    payload: {
+      mapId: ID,
+      groupId: null,
+      kind: 'partial',
+      strokeKey: ID2,
+      mode: 'reveal',
+      radius: 20,
+      points: [[1, 2]],
+    },
+  },
   { type: 'group_moved', payload: { groupId: ID, mapId: ID2, regionId: null, x: 5, y: null } },
 ];
 
@@ -29,7 +40,10 @@ const INVALID: [string, unknown][] = [
   ['an infinite coordinate', { type: 'ping', payload: { mapId: ID, x: Infinity, y: 2, colour: 'g', name: 'A' } }],
   [
     'an empty stroke',
-    { type: 'fog_stroke', payload: { mapId: ID, groupId: null, mode: 'cover', radius: 1, points: [] } },
+    {
+      type: 'fog_stroke',
+      payload: { mapId: ID, groupId: null, kind: 'final', strokeKey: ID, mode: 'cover', radius: 1, points: [] },
+    },
   ],
 ];
 

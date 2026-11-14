@@ -10,7 +10,8 @@ interface MapModeState {
 
 export const MAP_MODE_KEY = 'dm-manager:map-mode';
 
-const useMapModes = create<MapModeState>()(
+/** The store itself; tests reset it between cases. */
+export const useMapModeStore = create<MapModeState>()(
   persist(
     set => ({
       modes: {},
@@ -22,7 +23,7 @@ const useMapModes = create<MapModeState>()(
 
 /** Prep (editing) or table (running the game) for the map views of one campaign, remembered in this browser. */
 export function useMapMode(campaignId: string): [MapMode, (mode: MapMode) => void] {
-  const mode = useMapModes(s => s.modes[campaignId] ?? 'prep');
-  const setMode = useMapModes(s => s.setMode);
+  const mode = useMapModeStore(s => s.modes[campaignId] ?? 'prep');
+  const setMode = useMapModeStore(s => s.setMode);
   return [mode, (next: MapMode) => setMode(campaignId, next)];
 }

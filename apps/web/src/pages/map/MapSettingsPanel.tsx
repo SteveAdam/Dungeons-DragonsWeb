@@ -1,15 +1,77 @@
 import { Save, X } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
-import { Button, ICON_PROPS, iconClasses, Input, Paper } from '../../components/ui';
+import { Button, ICON_PROPS, iconClasses, Input, Paper, Toggle } from '../../components/ui';
 import { friendlyMessage } from '../../data/errors';
 import type { CampaignMap, MapTools } from '../../data/maps';
+import { useSetMapFog } from '../../hooks/useFog';
 import { useSetMapTools } from '../../hooks/useMapView';
+import { COSMETIC_NOTE } from './fog/FogToolbar';
 import styles from './MapView.module.css';
 
 const UNIT_WORD = { mi: 'miles', ft: 'feet' } as const;
 
 /** DM only: the map's scale, which way is north, and the grid. */
-export function MapSettingsPanel({ map, onClose }: { map: CampaignMap; onClose: () => void }) {
+/** P4-3: fog of war on or off, and shared or per group. Saved as soon as it changes. */
+function FogSettings({ map, onChanged }: { map: CampaignMap; onChanged?: () => void }) {
+  const id = useId();
+  const save = useSetMapFog();
+  const change = (enabled: boolean, mode: CampaignMap['fogMode']) =>
+    save.mutate({ mapId: map.id, enabled, mode }, { onSuccess: () => onChanged?.() });
+  return (
+    <fieldset className={styles.position} aria-describedby={`${id}-note`}>
+      <legend>Fog of war</legend>
+      <Toggle
+        checked={map.fogEnabled}
+        disabled={save.isPending}
+        onChange={on => change(on, map.fogMode)}
+        label="Fog on this map"
+      />
+      <p className={styles.hint}>When fog is on, players start with the whole map hidden until you reveal it.</p>
+      <div role="radiogroup" aria-label="Fog mode" className={styles.field}>
+        <label>
+          <input
+            type="radio"
+            name={`${id}-mode`}
+            checked={map.fogMode === 'shared'}
+            disabled={save.isPending}
+            onChange={() => change(map.fogEnabled, 'shared')}
+          />{' '}
+          Shared: one fog for the whole party, everyone sees the same revealed areas
+        </label>
+        <label>
+          <input
+            type="radio"
+            name={`${id}-mode`}
+            checked={map.fogMode === 'per_group'}
+            disabled={save.isPending}
+            onChange={() => change(map.fogEnabled, 'per_group')}
+          />{' '}
+          Per group: each party group has its own fog, so split groups explore separately
+        </label>
+      </div>
+      <p className={styles.hint}>Switching keeps the other mode's fog as it was, so you can switch back.</p>
+      <p id={`${id}-note`} className={styles.hint}>
+        {COSMETIC_NOTE}
+      </p>
+      {save.isError && (
+        <p role="alert" className={styles.error}>
+          {friendlyMessage(save.error)}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
+export function MapSettingsPanel({
+  map,
+  onClose,
+  onFogChanged,
+}: {
+  map: CampaignMap;
+  onClose: () => void;
+  /** Called after the fog settings change, so players can be told to look again. */
+  onFogChanged?: () => void;
+}) {
   const id = useId();
   const save = useSetMapTools();
   const [draft, setDraft] = useState({
@@ -43,6 +105,7 @@ export function MapSettingsPanel({ map, onClose }: { map: CampaignMap; onClose: 
           <X {...ICON_PROPS} />
         </Button>
       </header>
+      <FogSettings map={map} onChanged={onFogChanged} />
       <form onSubmit={onSubmit} className={styles.form} aria-label="Map settings" noValidate>
         <fieldset className={styles.position}>
           <legend>Scale: how far the map's full width spans</legend>

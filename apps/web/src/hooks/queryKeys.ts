@@ -14,6 +14,7 @@ export const queryKeys = {
   regionContent: (regionIds: string[]) => ['region-content', regionIds.join(',')] as const,
   contentNotes: (contentId: string) => ['region-content', 'notes', contentId] as const,
   spawnPins: (mapId: string) => ['maps', mapId, 'spawn-pins'] as const,
+  fog: (mapId: string) => ['maps', mapId, 'fog'] as const,
   here: (characterId: string) => ['here', characterId] as const,
   partyGroups: (campaignId: string) => ['campaigns', campaignId, 'party-groups'] as const,
   spotlight: (campaignId: string) => ['campaigns', campaignId, 'spotlight'] as const,

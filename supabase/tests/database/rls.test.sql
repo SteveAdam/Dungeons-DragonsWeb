@@ -1,12 +1,12 @@
 -- =====================================================================
 -- Row level security tests (P0-6). Run with: pnpm db:test
 -- Everything happens inside one transaction that is rolled back at the end.
--- Test ids (T1 to T88) match the ticket and are used by scripts/mutation-check.mjs.
+-- Test ids (T1 to T89) match the ticket and are used by scripts/mutation-check.mjs.
 -- =====================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(745);
+select plan(779);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1807,6 +1807,58 @@ select is((select count(*)::int from group_entrance_counts(tests.u('map:visible'
 reset role;
 select tests.act_as('outsider');
 select throws_ok(format($$ select * from group_entrance_counts(%L) $$, tests.u('map:visible')), '42501', null, 'T88: someone outside the campaign is refused');
+reset role;
+
+-- T89: fog of war (P4-3). The DM draws a shared stroke and one for each group on the visible map, and one on a hidden map.
+select is((select fog_enabled from maps where id = tests.u('map:visible')), false, 'T89: fog is off on a map until the DM turns it on');
+select tests.act_as('player');
+select is_empty($$ update maps set fog_enabled = true where id = tests.u('map:visible') returning id $$, 'T89: a player cannot turn fog on or off');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ insert into fog_strokes (id, map_id, mode, radius, points) values (tests.u('fog:shared'), tests.u('map:visible'), 'reveal', 20, '[[10,10],[40,40]]') $$, 'T89: the DM draws on the shared fog');
+select lives_ok(format($$ insert into fog_strokes (id, map_id, group_id, mode, radius, points) values (%L, %L, %L, 'reveal', 20, '[[50,50]]') $$, tests.u('fog:a'), tests.u('map:visible'), (select id from here_groups where label = 'a')), 'T89: and on group A''s fog');
+select lives_ok(format($$ insert into fog_strokes (id, map_id, group_id, mode, radius, points) values (%L, %L, %L, 'reveal', 20, '[[60,60]]') $$, tests.u('fog:b'), tests.u('map:visible'), (select id from here_groups where label = 'b')), 'T89: and on group B''s');
+select lives_ok($$ insert into fog_strokes (map_id, mode, radius, points) values (tests.u('map:hidden'), 'reveal', 20, '[[1,1]]') $$, 'T89: and on a hidden map');
+select throws_ok($$ insert into fog_strokes (map_id, mode, radius, points) values (tests.u('map:visible'), 'reveal', 20, '[[1,2,3]]') $$, '23514', null, 'T89: a point is an x and a y');
+select throws_ok($$ insert into fog_strokes (map_id, mode, radius, points) values (tests.u('map:visible'), 'reveal', 20, '[["a","b"]]') $$, '23514', null, 'T89: of numbers');
+select throws_ok($$ insert into fog_strokes (map_id, mode, radius, points) values (tests.u('map:visible'), 'reveal', 20, '[[-5,2]]') $$, '23514', null, 'T89: on the image');
+select throws_ok($$ insert into fog_strokes (map_id, mode, radius, points) values (tests.u('map:visible'), 'reveal', 0, '[[1,2]]') $$, '23514', null, 'T89: a brush stroke has a size');
+select throws_ok($$ insert into fog_strokes (map_id, mode, radius, points) values (tests.u('map:visible'), 'hide_all', 0, '[[1,2]]') $$, '23514', null, 'T89: a whole-map marker has no points');
+select throws_ok($$ insert into fog_strokes (map_id, mode, radius, points) values (tests.u('map:visible'), 'smudge', 5, '[[1,2]]') $$, '23514', null, 'T89: only reveal and hide');
+select throws_ok(format($$ insert into fog_strokes (map_id, group_id, mode, radius, points) values (%L, %L, 'reveal', 5, '[[1,2]]') $$, tests.u('map:visible'), tests.u('p42:foreign')), '22023', null, 'T89: a group of another campaign has no fog here');
+select is((select count(*)::int from fog_strokes where map_id = tests.u('map:visible')), 3, 'T89: the DM reads every fog of the map');
+select ok((select clear_fog(tests.u('map:visible'), null, 'hide')) > (select max(seq) from fog_strokes where id in (tests.u('fog:shared'), tests.u('fog:a'), tests.u('fog:b'))), 'T89: hiding everything is a marker after the strokes');
+select is((select mode from fog_strokes where map_id = tests.u('map:visible') and group_id is null order by seq desc limit 1), 'hide_all', 'T89: written as one row, the history kept');
+select is((select count(*)::int from fog_strokes where map_id = tests.u('map:visible') and group_id is null), 2, 'T89: nothing was deleted');
+select throws_ok($$ select clear_fog(tests.u('map:visible'), null, 'smudge') $$, '22023', null, 'T89: clearing is reveal or hide');
+reset role;
+
+select tests.act_as('player');
+select is((select string_agg(id::text, ',' order by seq) from fog_strokes where id in (tests.u('fog:shared'), tests.u('fog:a'), tests.u('fog:b'))), tests.u('fog:shared') || ',' || tests.u('fog:a'), 'T89: a player reads the shared fog and their own group''s, not another group''s');
+select is((select count(*)::int from fog_strokes where map_id = tests.u('map:hidden')), 0, 'T89: nor the fog of a map they cannot read');
+select throws_ok($$ insert into fog_strokes (map_id, mode, radius, points) values (tests.u('map:visible'), 'reveal', 500, '[[1,1]]') $$, '42501', null, 'T89: a player cannot draw fog');
+select is_empty($$ update fog_strokes set mode = 'reveal' where id = tests.u('fog:shared') returning id $$, 'T89: nor change a stroke');
+select is_empty($$ delete from fog_strokes where id = tests.u('fog:shared') returning id $$, 'T89: nor remove one');
+select throws_ok($$ select clear_fog(tests.u('map:visible'), null, 'reveal') $$, '42501', 'Only the DM can do that', 'T89: nor reveal the whole map');
+select throws_ok($$ select simplify_fog(tests.u('map:visible'), null, '[{"mode":"reveal_all"}]') $$, '42501', 'Only the DM can do that', 'T89: nor rewrite the history');
+reset role;
+
+select tests.act_as('roller');
+select is((select string_agg(id::text, ',' order by seq) from fog_strokes where id in (tests.u('fog:shared'), tests.u('fog:a'), tests.u('fog:b'))), tests.u('fog:shared') || ',' || tests.u('fog:b'), 'T89: the other player reads the shared fog and group B''s');
+reset role;
+
+select tests.act_as('outsider');
+select is((select count(*)::int from fog_strokes where map_id = tests.u('map:visible')), 0, 'T89: someone outside the campaign reads no fog');
+reset role;
+
+select tests.act_as('dm');
+select is((select simplify_fog(tests.u('map:visible'), (select id from here_groups where label = 'a'), '[{"mode":"hide_all"},{"mode":"reveal","radius":3,"points":[[5,5],[9,9]]}]')), 2, 'T89: the DM replaces group A''s history with a shorter one');
+select is((select string_agg(mode, ',' order by seq) from fog_strokes where map_id = tests.u('map:visible') and group_id = (select id from here_groups where label = 'a')), 'hide_all,reveal', 'T89: in the given order');
+select is((select count(*)::int from fog_strokes where id = tests.u('fog:b')), 1, 'T89: group B''s fog is untouched');
+select is((select count(*)::int from fog_strokes where map_id = tests.u('map:visible') and group_id is null), 2, 'T89: and so is the shared fog');
+select throws_ok(format($$ select simplify_fog(%L, %L, '[{"mode":"reveal","radius":0,"points":[[1,1]]}]') $$, tests.u('map:visible'), (select id from here_groups where label = 'a')), '23514', null, 'T89: the new strokes are checked like any other');
+select is((select count(*)::int from fog_strokes where map_id = tests.u('map:visible') and group_id = (select id from here_groups where label = 'a')), 2, 'T89: and a refused rewrite changes nothing');
+select throws_ok(format($$ select simplify_fog(%L, null, '[]') $$, tests.u('map:visible')), '22023', null, 'T89: a fog keeps at least one stroke');
 reset role;
 
 select * from finish();

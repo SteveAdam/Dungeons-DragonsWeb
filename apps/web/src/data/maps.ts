@@ -14,6 +14,8 @@ export interface CampaignMap extends MapSummary {
   width: number;
   height: number;
   fogMode: 'shared' | 'per_group';
+  /** P4-3: fog of war is on for this map (off until the DM turns it on). */
+  fogEnabled: boolean;
   /** The pin this map hangs beneath (a detail map), or null. A map has at most one parent: a pin or a region. */
   parentPinId: string | null;
   /** The region this map hangs beneath, or null. */
@@ -41,6 +43,7 @@ interface MapRow {
   height: number;
   visible_to_players: boolean;
   fog_mode: string;
+  fog_enabled: boolean;
   parent_pin_id: string | null;
   parent_region_id: string | null;
   created_at: string;
@@ -52,7 +55,7 @@ interface MapRow {
 
 const SUMMARY_COLUMNS = 'id, name, image_path, visible_to_players, created_at';
 const MAP_COLUMNS =
-  'id, campaign_id, name, image_path, width, height, visible_to_players, fog_mode, parent_pin_id, parent_region_id, created_at, scale_width, scale_unit, north_degrees, grid_size';
+  'id, campaign_id, name, image_path, width, height, visible_to_players, fog_mode, fog_enabled, parent_pin_id, parent_region_id, created_at, scale_width, scale_unit, north_degrees, grid_size';
 
 const toSummary = (
   r: Pick<MapRow, 'id' | 'name' | 'image_path' | 'visible_to_players' | 'created_at'>,
@@ -70,6 +73,7 @@ const toMap = (r: MapRow): CampaignMap => ({
   width: r.width,
   height: r.height,
   fogMode: r.fog_mode === 'per_group' ? 'per_group' : 'shared',
+  fogEnabled: r.fog_enabled === true,
   parentPinId: r.parent_pin_id,
   parentRegionId: r.parent_region_id,
   tools: {
@@ -151,6 +155,22 @@ export async function setMapVisible(mapId: string, visible: boolean): Promise<Ca
   const { data, error } = await supabase
     .from('maps')
     .update({ visible_to_players: visible })
+    .eq('id', mapId)
+    .select(MAP_COLUMNS)
+    .maybeSingle();
+  if (error) throw toDataError(error);
+  if (!data) throw new DataError('forbidden');
+  return toMap(data as MapRow);
+}
+
+/** DMs only (P4-3): turns fog of war on or off for a map, and whether it is shared or kept per party group. */
+export async function setMapFog(
+  mapId: string,
+  fog: { enabled: boolean; mode: CampaignMap['fogMode'] },
+): Promise<CampaignMap> {
+  const { data, error } = await supabase
+    .from('maps')
+    .update({ fog_enabled: fog.enabled, fog_mode: fog.mode })
     .eq('id', mapId)
     .select(MAP_COLUMNS)
     .maybeSingle();

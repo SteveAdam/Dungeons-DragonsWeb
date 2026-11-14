@@ -425,6 +425,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"fog_strokes": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"group_id": string | null,"id": string,"map_id": string,"mode": string,"points": NonNullable<Json>,"radius": number,"seq": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"group_id"?: string | null,"id"?: string,"map_id": string,"mode": string,"points"?: NonNullable<Json>,"radius"?: number,"seq"?: never
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"group_id"?: string | null,"id"?: string,"map_id"?: string,"mode"?: string,"points"?: NonNullable<Json>,"radius"?: number,"seq"?: never
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fog_strokes_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "party_groups"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fog_strokes_map_id_fkey"
+      columns: ["map_id"]
+isOneToOne: false
+      referencedRelation: "maps"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"folders": {
                   Row: {
                     "campaign_id": string,"created_at": string,"id": string,"name": string,"parent_id": string | null
@@ -617,14 +643,14 @@ isOneToOne: false
                   ]
                 },"maps": {
                   Row: {
-                    "campaign_id": string,"created_at": string,"fog_mode": string,"grid_size": number | null,"height": number,"id": string,"image_path": string,"name": string,"north_degrees": number,"parent_pin_id": string | null,"parent_region_id": string | null,"scale_unit": string,"scale_width": number | null,"visible_to_players": boolean,"width": number
+                    "campaign_id": string,"created_at": string,"fog_enabled": boolean,"fog_mode": string,"grid_size": number | null,"height": number,"id": string,"image_path": string,"name": string,"north_degrees": number,"parent_pin_id": string | null,"parent_region_id": string | null,"scale_unit": string,"scale_width": number | null,"visible_to_players": boolean,"width": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "campaign_id": string,"created_at"?: string,"fog_mode"?: string,"grid_size"?: number | null,"height": number,"id"?: string,"image_path": string,"name": string,"north_degrees"?: number,"parent_pin_id"?: string | null,"parent_region_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width": number
+                    "campaign_id": string,"created_at"?: string,"fog_enabled"?: boolean,"fog_mode"?: string,"grid_size"?: number | null,"height": number,"id"?: string,"image_path": string,"name": string,"north_degrees"?: number,"parent_pin_id"?: string | null,"parent_region_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width": number
                   }
                   Update: {
-                    "campaign_id"?: string,"created_at"?: string,"fog_mode"?: string,"grid_size"?: number | null,"height"?: number,"id"?: string,"image_path"?: string,"name"?: string,"north_degrees"?: number,"parent_pin_id"?: string | null,"parent_region_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width"?: number
+                    "campaign_id"?: string,"created_at"?: string,"fog_enabled"?: boolean,"fog_mode"?: string,"grid_size"?: number | null,"height"?: number,"id"?: string,"image_path"?: string,"name"?: string,"north_degrees"?: number,"parent_pin_id"?: string | null,"parent_region_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width"?: number
                   }
                   Relationships: [
                     {
@@ -1395,6 +1421,9 @@ isOneToOne: false
 "class_slots":
 { Args: { "p_class": string,"p_level": number }; Returns: (number)[]
                            },
+"clear_fog":
+{ Args: { "p_group": string,"p_map": string,"p_mode": string }; Returns: number
+                           },
 "coins_of":
 { Args: { "p_coins": Json }; Returns: {
               "cp": number,"gp": number,"pp": number,"sp": number
@@ -1533,6 +1562,9 @@ isOneToOne: false
       } },
 "evaluate_spawn":
 { Args: { "daytime": boolean,"rule": Json }; Returns: number
+                           },
+"fog_points_valid":
+{ Args: { "max_points": number,"p": Json }; Returns: boolean
                            },
 "folder_campaign":
 { Args: { "object_name": string }; Returns: string
@@ -1957,6 +1989,9 @@ isOneToOne: false
       } },
 "simple_long_rest_party":
 { Args: { "p_campaign": string }; Returns: number
+                           },
+"simplify_fog":
+{ Args: { "p_group": string,"p_map": string,"p_strokes": Json }; Returns: number
                            },
 "spawn_rule_ok":
 { Args: { "r": Json }; Returns: boolean
