@@ -40,4 +40,22 @@ export default async function globalSetup() {
   }
   const root = fileURLToPath(new URL('..', import.meta.url));
   execSync('pnpm srd:import', { cwd: root, stdio: 'inherit' });
+
+  // the import changes nothing in the schema, but the API may still be reloading its schema cache from an earlier
+  // change: wait for it, so the first test does not meet 503s
+  await waitForApi(stack);
+}
+
+/** Waits until the API has (re)loaded its schema and answers steadily: three good answers in a row. */
+async function waitForApi(stack: ReturnType<typeof localStack>) {
+  let good = 0;
+  for (let i = 0; i < 90 && good < 3; i++) {
+    const r = await fetch(`${stack.url}/rest/v1/campaigns?select=id&limit=1`, {
+      headers: { apikey: stack.anonKey },
+    }).catch(() => null);
+    await r?.text();
+    good = r?.ok ? good + 1 : 0;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  if (good < 3) throw new Error('The API would not settle (its schema cache did not load).');
 }

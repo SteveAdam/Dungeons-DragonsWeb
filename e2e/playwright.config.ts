@@ -13,7 +13,8 @@ export default defineConfig({
   // one scenario, with three people in it: run it alone
   workers: 1,
   fullyParallel: false,
-  timeout: 5 * 60_000,
+  // each test is a whole scenario with three people (Phase 2 runs 3 to 5 minutes on an 8 GB machine)
+  timeout: 8 * 60_000,
   expect: { timeout: 15_000 },
   retries: 0,
   reporter: [['list'], ['html', { open: 'never' }]],

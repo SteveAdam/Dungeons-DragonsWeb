@@ -40,18 +40,27 @@ export async function signUp(p: Person) {
 
 /** A REST call to the local stack as a signed-in person. */
 export async function rest(token: string, path: string, init: RequestInit = {}) {
-  const r = await fetch(`${stack.url}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: stack.anonKey,
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...(init.headers ?? {}),
-    },
-  });
-  const text = await r.text();
-  return { status: r.status, body: text ? JSON.parse(text) : null };
+  // while the API reloads its schema cache (local Realtime restarting causes one now and then) it refuses every request
+  // with 503 PGRST002 before running it: wait and send it again, as the app does (apps/web/src/lib/retryFetch.ts)
+  for (let attempt = 0; ; attempt++) {
+    const r = await fetch(`${stack.url}/rest/v1/${path}`, {
+      ...init,
+      headers: {
+        apikey: stack.anonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+        ...(init.headers ?? {}),
+      },
+    });
+    const text = await r.text();
+    const body = text ? JSON.parse(text) : null;
+    if (r.status === 503 && body?.code === 'PGRST002' && attempt < 15) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      continue;
+    }
+    return { status: r.status, body };
+  }
 }
 
 export const rpc = (token: string, fn: string, args: object) =>

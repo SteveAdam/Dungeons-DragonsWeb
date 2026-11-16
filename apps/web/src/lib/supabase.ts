@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database';
 import { reconnectDelayMs } from './realtime/backoff';
+import { createRetryFetch } from './retryFetch';
 
 // Values come from apps/web/.env (copy .env.example). Without them the app talks to the local
 // stack from `pnpm db:start`, so a fresh checkout still starts. The publishable key (sb_publishable_…)
@@ -17,4 +18,6 @@ if (env.DEV && !key && env.MODE !== 'test') {
 /** The one Supabase client. Only src/data, src/lib and src/auth may import it (enforced by ESLint). */
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   realtime: { reconnectAfterMs: reconnectDelayMs },
+  // a request refused while the API reloads its schema is sent again (see retryFetch.ts)
+  global: { fetch: createRetryFetch() },
 });
