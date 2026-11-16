@@ -613,6 +613,42 @@ On a map, the DM switches between **Prep** (the editing tools) and **Table** (ru
 - A fog with more than 2,000 strokes offers **Simplify fog**: the fog is rendered at one-pixel detail and rebuilt as "hide everything" followed by a few long reveal strokes that sweep each revealed area row by row (see `simplifyFog` in `apps/web/src/lib/fog.ts`). The revealed area stays the same within one pixel, which the tests check.
 - Screen readers are told how much is revealed ("Fog: about 35 percent revealed"). The fog never covers pins or takes keyboard focus.
 
+## Pings and handouts (P4-4)
+
+**Pings** are live events only; nothing is stored.
+
+- Anyone at the table can ping a spot on the map they are viewing: pick **Ping** and click, or press and hold still anywhere on the map. Everyone viewing that map sees a ripple in the sender's colour with their name for three seconds. Nobody on another map or screen sees it.
+- One ping every two seconds per person. The sender's app holds back faster pings, and every receiver drops a person's pings that arrive faster than that.
+- Colours come from a palette of eight (`--ping-1` to `--ping-8` in `tokens.css`), given out in the order people joined the campaign. A receiver works out the sender's name and colour from the member list. It never trusts what the payload claims.
+- **Player pings** is a table rule on the campaign page (on by default; the DM can always ping). In the map's **Pings** menu the DM can mute one player for the session: 12 hours, or until unmuted (`ping_mutes`). The database refuses a muted player's pings, and pings while player pings are off (`can_ping`, checked in `send_realtime_event`).
+- Screen readers hear "Ana pinged near Port Vellum" through a polite live region. The nearest pin on screen is named if one is within a tenth of the map's longer side. With reduced motion the ripple stands still, and the same words are written over the map.
+
+**Handouts** are images or texts the DM shows to players.
+
+- The DM's library is the **Handouts** tab of the campaign hub, in DM mode. A handout is either an image (PNG, JPG or WebP, at most 10 MB, with an optional caption) or a text of up to 8,000 characters.
+- **Show to…** offers everyone, one party group, or chosen players. `show_handout` writes one share row per player and tells each of them on their own channel. Showing a handout again marks it new again, and the DM can take it back from one player.
+- The player gets a parchment note wherever they are in the campaign. It arrives live, and the player's screen also checks on load and every 20 seconds, so a handout shown while they were away, or whose live event was lost, still appears. "Later" is remembered in that browser until the handout is shown again.
+- **Read it** opens the handout, with zoom for images. **Later** keeps it in **Handouts** on their own character's Pack tab, marked new until opened.
+- Text is plain text with its line breaks kept. It is never rendered as HTML.
+- A player reads a handout only while a share row for them exists, and its image the same way. Images live in the private `handouts` bucket, which itself refuses other file types and files over 10 MB. `src/lib/storage/handoutImages.ts` is the only code that touches it.
+- The DM's list shows who has each handout and whether they opened it. It is not live: it updates when the list is next read.
+
+## Private messages, whispers and the pause button (P4-5)
+
+**Messages** run only between the DM and one player. Each player has one thread with the DM, and nothing goes player to player.
+
+- Players have **Message the DM** in the header, with a dot when something is unread. The DM's **Messages** opens an inbox: every player, their last message and how many are unread. Opening a thread marks it read.
+- A message is plain text of up to 2,000 characters, shown with its line breaks and never as HTML. Ctrl+Enter sends.
+- Messages are never edited or deleted (triggers refuse both, even to the database owner). Each person can send at most 20 a minute.
+- A **whisper** is a DM's message set apart in italic, with a dashed rule, and labelled "A whisper:". The DM can also keep it in the player's **private notes** (`player_notes`). They show on that player's Notes tab, and only that player ever reads them, not even the DM who saved them.
+- Each new message is announced on the player's own channel and the DMs' channel. The announcement carries no text: the thread is read again. A toast says something arrived unless that thread is already open.
+
+**Pause and X-card**
+
+- Every player has **Pause** and **Anonymous X-card** in the header. One press asks for a pause, with no confirmation step. Each person can ask at most once every five minutes.
+- The DM sees "Pause requested by Ana", or "Pause requested: an anonymous X-card", with a **Resume** button. Everyone else sees "The table is paused". A pause blocks nothing: it is a signal and a banner.
+- An anonymous request is stored with no user. Its live event has no sender (the nil id), and only the DMs' channel ever carries a name, and only for an open request. The five-minute rate table (`safety_rate`) has no read access for anyone, the DM included.
+
 ## End-to-end tests (P2-12, P3-9)
 
 `e2e/` is a Playwright test of the whole of Phase 2 with three browser contexts, a DM and two players, against

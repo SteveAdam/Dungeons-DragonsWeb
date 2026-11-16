@@ -1,0 +1,158 @@
+/* P4-4: the DM's handouts library, on the hub's parchment panel. */
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.intro {
+  margin: 0;
+  color: var(--ink-faded);
+}
+
+.list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.handout {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--rule);
+  background: var(--ink-wash);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.name {
+  flex: 1 1 12rem;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+}
+
+.kind {
+  color: var(--ink-faded);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.audience {
+  margin: 0;
+  color: var(--ink-faded);
+  font-size: 0.95rem;
+}
+
+.shares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.share {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.25rem 0.1rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.form {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.formTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.label {
+  margin: 0;
+  padding: 0;
+  color: var(--ink-faded);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.textarea,
+.select {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.textarea {
+  min-height: 9rem;
+  resize: vertical;
+  font-family: var(--font-body);
+  line-height: 1.45;
+}
+
+.count {
+  justify-self: end;
+  color: var(--ink-faded);
+  font-size: 0.85rem;
+}
+
+.alert {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.done {
+  margin: 0;
+  color: var(--verdigris);
+  font-weight: 700;
+}

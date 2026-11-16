@@ -17,6 +17,8 @@ export interface Campaign {
   daylight?: DaylightHours;
   /** P4-2: players also see the other groups' tokens, names and places (campaigns.settings.shareGroupPositions). */
   shareGroupPositions?: boolean;
+  /** P4-4: players may ping the map (campaigns.settings.pingsEnabled; on unless false). */
+  pingsEnabled?: boolean;
   createdAt: string;
 }
 
@@ -53,6 +55,7 @@ const toCampaign = (r: CampaignRow): Campaign => ({
   prepareAfterRestOnly: (r.settings as { prepareAfterRestOnly?: unknown } | null)?.prepareAfterRestOnly !== false,
   daylight: daylightFrom(r.settings),
   shareGroupPositions: (r.settings as { shareGroupPositions?: unknown } | null)?.shareGroupPositions === true,
+  pingsEnabled: (r.settings as { pingsEnabled?: unknown } | null)?.pingsEnabled !== false,
   createdAt: r.created_at,
 });
 
@@ -142,13 +145,16 @@ export const setOptionalFeats = (campaignId: string, on: boolean) => setCampaign
 export const setPrepareAfterRestOnly = (campaignId: string, on: boolean) =>
   setCampaignRule(campaignId, 'prepareAfterRestOnly', on);
 
+/** DM only (P4-4): whether players may ping the map (the DM always can). */
+export const setPingsEnabled = (campaignId: string, on: boolean) => setCampaignRule(campaignId, 'pingsEnabled', on);
+
 /** DM only (P4-2): whether players also see where the other groups are. */
 export const setShareGroupPositions = (campaignId: string, on: boolean) =>
   setCampaignRule(campaignId, 'shareGroupPositions', on);
 
 async function setCampaignRule(
   campaignId: string,
-  key: 'optionalFeats' | 'prepareAfterRestOnly' | 'shareGroupPositions',
+  key: 'optionalFeats' | 'prepareAfterRestOnly' | 'shareGroupPositions' | 'pingsEnabled',
   on: boolean,
 ) {
   const { data, error } = await supabase.from('campaigns').select('settings').eq('id', campaignId).maybeSingle();

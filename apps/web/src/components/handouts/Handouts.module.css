@@ -1,0 +1,175 @@
+/* P4-4: handouts. The popup and the viewer are parchment cards over a dim desk; text is shown as written, line breaks
+   and all (never as HTML). */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: var(--scrim);
+}
+
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 46;
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  transform: translate(-50%, -50%);
+}
+
+.wide {
+  width: min(60rem, calc(100vw - 2rem));
+}
+
+.sheet {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--ink);
+  box-shadow: var(--paper-drop);
+  color: var(--ink);
+}
+
+.kicker {
+  margin: 0;
+  color: var(--ink-faded);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  line-height: 1.15;
+}
+
+/* plain text, line breaks kept */
+.text {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.preview {
+  max-height: 9rem;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, var(--ink) 60%, transparent);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.thumb {
+  display: block;
+  max-width: 100%;
+  max-height: 12rem;
+  margin: 0 auto;
+  border: 1px solid var(--rule);
+  object-fit: contain;
+}
+
+/* the zoomable image: scrolls inside the card once it is larger than the card */
+.stage {
+  max-height: min(70vh, 48rem);
+  overflow: auto;
+  border: 1px solid var(--rule);
+  background: var(--ink-wash);
+}
+
+.stage img {
+  display: block;
+  width: calc(100% * var(--zoom, 1));
+  max-width: none;
+  height: auto;
+}
+
+.zoomBar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+}
+
+.list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--rule);
+  background: var(--ink-wash);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--ink-wash-strong);
+}
+
+.itemTitle {
+  flex: 1;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+}
+
+/* the "new" marker: a small wax seal with the word, so it never relies on colour alone */
+.new {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--wax-red);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-faded);
+}
+
+.caption {
+  margin: 0;
+  color: var(--ink-faded);
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 40rem) {
+  .dialog {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 90vh;
+    transform: none;
+  }
+}

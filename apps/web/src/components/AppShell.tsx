@@ -10,6 +10,11 @@ import { AudioSlot } from './AudioSlot';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { DisplaySettingsControls } from './DisplaySettingsControls';
 import { DmModeIndicator } from './DmModeIndicator';
+import { HandoutPopup } from './handouts/HandoutPopup';
+import { MessagePanel } from './messages/MessagePanel';
+import { MessagesButton } from './messages/MessagesButton';
+import { PauseBanner } from './safety/PauseBanner';
+import { SafetyControls } from './safety/SafetyControls';
 import { HeaderClock } from './HeaderClock';
 import { HeaderPresence } from './PresenceList';
 import { SpotlightBanner } from './SpotlightBanner';
@@ -39,6 +44,8 @@ function HeaderActions({ campaignId }: { campaignId: string | undefined }) {
   return (
     <nav aria-label="Main" className={styles.nav}>
       {session && campaignId && <HeaderClock campaignId={campaignId} />}
+      {session && campaignId && <MessagesButton campaignId={campaignId} />}
+      {session && campaignId && <SafetyControls campaignId={campaignId} />}
       <DmModeIndicator />
       <LiveStatus />
       <IconLink to="/campaigns" icon={Swords}>
@@ -85,10 +92,13 @@ export function AppShell() {
         actions={<HeaderActions campaignId={campaignId} />}
         footer={<SrdAttribution />}
       >
+        {session && campaignId && <PauseBanner campaignId={campaignId} />}
         {session && campaignId && <SpotlightBanner campaignId={campaignId} />}
         <Outlet />
       </DeskFrame>
       {session && campaignId && <LiveCampaign campaignId={campaignId} />}
+      {session && campaignId && <HandoutPopup campaignId={campaignId} />}
+      {session && campaignId && <MessagePanel campaignId={campaignId} />}
       <ToastRegion />
       <AudioSlot />
     </>

@@ -324,3 +324,46 @@
   width: 100%;
   min-width: 0;
 }
+
+/* P4-5: a player's private notes (saved whispers), set apart with a dashed wax-red rule like a whisper */
+.privateNotes {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--wax-red);
+  border-radius: 0.25rem;
+}
+
+.privateTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+}
+
+.privateHint {
+  margin: 0;
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+}
+
+.privateList {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.privateNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.privateText {
+  flex: 1;
+  margin: 0;
+  font-style: italic;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

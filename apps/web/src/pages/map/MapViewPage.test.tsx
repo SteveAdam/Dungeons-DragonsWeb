@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DmModeIndicator } from '../../components/DmModeIndicator';
 import * as campaignsApi from '../../data/campaigns';
 import { DataError } from '../../data/errors';
@@ -22,6 +22,10 @@ import * as spawnApi from '../../data/spawnPins';
 import * as groupsApi from '../../data/partyGroups';
 import * as tokensApi from '../../data/groupTokens';
 import * as fogApi from '../../data/fog';
+import * as pingsApi from '../../data/pings';
+import { AuthContext, type AuthState } from '../../auth/authContext';
+import { openCampaignRealtime, setRealtimeTransport } from '../../lib/realtime';
+import { createFakeCampaign, type FakeCampaign } from '../../test/fakeRealtime';
 import { aGroup } from '../../test/groupFixtures';
 import { useDmModeStore } from '../../state/dmModeStore';
 import { useMapModeStore } from '../../state/mapMode';
@@ -68,6 +72,9 @@ vi.mock('./MapCanvas', () => ({
     fog,
     brush,
     onBrushStroke,
+    pings = [],
+    pingMode,
+    onPing,
   }: MapCanvasProps) => (
     <div
       data-testid="map"
@@ -76,7 +83,12 @@ vi.mock('./MapCanvas', () => ({
       data-drawing={String(drawMode)}
       data-grid={String(gridCellPx)}
       data-spawning={String(spawnMode)}
+      data-pinging={String(!!pingMode)}
     >
+      {onPing && <button onClick={() => onPing({ x: 120, y: 80 })}>ping the map</button>}
+      {pings.map(p => (
+        <span key={p.key}>{`ripple: ${p.name} (${p.colour}) at ${p.x},${p.y}`}</span>
+      ))}
       {spawnPins.map(sp => (
         <button key={sp.id} onClick={() => onSelectSpawnPin(sp.id)}>{`spawn: ${sp.label}`}</button>
       ))}
@@ -216,6 +228,7 @@ vi.mock('../../data/characters', async importOriginal => ({
 vi.mock('../../data/maps');
 vi.mock('../../data/campaigns');
 vi.mock('../../data/members');
+vi.mock('../../data/pings');
 
 const map: CampaignMap = {
   id: 'm1',
@@ -252,8 +265,21 @@ const pin = (over: Partial<Pin>): Pin => ({
 const tavern = pin({ id: 'p1', title: 'The Drowned Rat', description: 'A harbour tavern', tags: ['inn'] });
 const lair = pin({ id: 'p2', title: 'Smugglers’ cave', visibleToPlayers: false, type: 'faction' });
 
+// people, as UUIDs because live events carry their ids
+const ME = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const ANA = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const DEE = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+let me = ME;
+
 function signInAs(role: 'dm' | 'player') {
+  me = role === 'dm' ? DEE : ME;
   vi.mocked(membersApi.getMyRole).mockResolvedValue(role);
+  vi.mocked(membersApi.listMembers).mockResolvedValue([
+    { userId: DEE, role: 'dm', joinedAt: '2026-01-01T00:00:00Z', displayName: 'Dee', avatarUrl: null },
+    { userId: ME, role: 'player', joinedAt: '2026-01-02T00:00:00Z', displayName: 'Pat', avatarUrl: null },
+    { userId: ANA, role: 'player', joinedAt: '2026-01-03T00:00:00Z', displayName: 'Ana', avatarUrl: null },
+  ]);
+  vi.mocked(pingsApi.listPingMutes).mockResolvedValue([]);
   vi.mocked(campaignsApi.getCampaign).mockResolvedValue({
     id: 'c1',
     name: 'The Sunken Crown',
@@ -304,16 +330,21 @@ const wraithwood = region({
   visibleToPlayers: false,
 });
 
-function renderMap() {
+const sessionOf = (id: string) =>
+  ({ user: { id, email: 'someone@example.test' } }) as NonNullable<AuthState['session']>;
+
+function renderMap(mapId = 'm1') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/campaigns/c1/maps/m1']}>
-        <DmModeIndicator />
-        <Routes>
-          <Route path="/campaigns/:campaignId/maps/:mapId" element={<MapViewPage />} />
-        </Routes>
-      </MemoryRouter>
+      <AuthContext.Provider value={{ session: sessionOf(me), loading: false, signOut: async () => {} }}>
+        <MemoryRouter initialEntries={[`/campaigns/c1/maps/${mapId}`]}>
+          <DmModeIndicator />
+          <Routes>
+            <Route path="/campaigns/:campaignId/maps/:mapId" element={<MapViewPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
     </QueryClientProvider>,
   );
 }
@@ -653,11 +684,13 @@ describe('layered maps (P3-1)', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/campaigns/c1/maps/m-hut']}>
-          <Routes>
-            <Route path="/campaigns/:campaignId/maps/:mapId" element={<MapViewPage />} />
-          </Routes>
-        </MemoryRouter>
+        <AuthContext.Provider value={{ session: sessionOf(me), loading: false, signOut: async () => {} }}>
+          <MemoryRouter initialEntries={['/campaigns/c1/maps/m-hut']}>
+            <Routes>
+              <Route path="/campaigns/:campaignId/maps/:mapId" element={<MapViewPage />} />
+            </Routes>
+          </MemoryRouter>
+        </AuthContext.Provider>
       </QueryClientProvider>,
     );
 
@@ -1512,5 +1545,150 @@ describe('fog of war (P4-3)', () => {
     await user.click(await screen.findByRole('button', { name: 'Table' }));
     await user.click(screen.getByRole('button', { name: 'Reveal fog' }));
     expect(screen.getByRole('region', { name: 'Fog of war' })).toBeInTheDocument();
+  });
+});
+
+describe('pings (P4-4)', () => {
+  const CAMPAIGN = 'c1';
+  // live events carry real ids, so this map has one
+  const MAP = '11111111-1111-4111-8111-111111111111';
+  let fake: FakeCampaign;
+  let close: (() => void) | null = null;
+
+  /** Goes live as this person, on the in-memory campaign, and waits until the channels are joined. */
+  async function live(as: string, isDm: boolean) {
+    close = openCampaignRealtime({ campaignId: CAMPAIGN, userId: as, isDm });
+    await act(async () => {
+      await Promise.resolve();
+      fake.flush();
+    });
+    await act(async () => fake.flush());
+  }
+  const pingFrom = (who: string, payload: Record<string, unknown>) =>
+    act(async () => {
+      await fake.connect(who).send({ campaignId: CAMPAIGN, target: 'campaign', type: 'ping', payload });
+      fake.flush();
+    });
+
+  const signInHere = (role: 'dm' | 'player') => {
+    signInAs(role);
+    vi.mocked(mapsApi.getMap).mockResolvedValue({ ...map, id: MAP });
+  };
+
+  beforeEach(() => {
+    fake = createFakeCampaign(CAMPAIGN, { [DEE]: 'dm', [ME]: 'player', [ANA]: 'player' });
+    setRealtimeTransport(fake.connect(ME));
+  });
+  afterEach(() => {
+    close?.();
+    close = null;
+  });
+
+  it('a player pings the map with the Ping tool: a ripple with their name, and the spot in words', async () => {
+    signInHere('player');
+    const user = userEvent.setup();
+    renderMap(MAP);
+    await live(ME, false);
+    await user.click(await screen.findByRole('button', { name: 'Ping' }));
+    expect(screen.getByTestId('map')).toHaveAttribute('data-pinging', 'true');
+    expect(screen.getByRole('status')).toHaveTextContent('Click a spot to ping it');
+
+    await user.click(screen.getByRole('button', { name: 'ping the map' }));
+    expect(await screen.findByText('ripple: Pat (ping-2) at 120,80')).toBeInTheDocument();
+    // the tavern is about 130 px away on a 2000 px map: close enough to name the spot
+    expect(screen.getByText('Pat pinged near The Drowned Rat')).toBeInTheDocument();
+    // the copy coming back from the server does not make a second ripple
+    act(() => fake.flush());
+    expect(screen.getAllByText(/^ripple: Pat/)).toHaveLength(1);
+  });
+
+  it('a second ping within two seconds is held back, and says so', async () => {
+    signInHere('player');
+    const user = userEvent.setup();
+    renderMap(MAP);
+    await live(ME, false);
+    await user.click(await screen.findByRole('button', { name: 'ping the map' }));
+    await screen.findByText(/^ripple: Pat/);
+    await user.click(screen.getByRole('button', { name: 'ping the map' }));
+    expect(await screen.findByText('One ping every two seconds: wait a moment.')).toBeInTheDocument();
+    expect(screen.getAllByText(/^ripple: Pat/)).toHaveLength(1);
+  });
+
+  it('shows another member’s ping on this map with the name and colour the table knows, not the payload’s', async () => {
+    signInHere('player');
+    renderMap(MAP);
+    await screen.findByRole('button', { name: 'Ping' });
+    await live(ME, false);
+    await pingFrom(ANA, { mapId: MAP, x: 1900, y: 1400, colour: 'ping-7', name: 'The DM' });
+    expect(await screen.findByText('ripple: Ana (ping-3) at 1900,1400')).toBeInTheDocument();
+    expect(screen.getByText('Ana pinged the map')).toBeInTheDocument();
+  });
+
+  it('ignores pings for another map', async () => {
+    signInHere('player');
+    renderMap(MAP);
+    await screen.findByRole('button', { name: 'Ping' });
+    await live(ME, false);
+    await pingFrom(ANA, { mapId: 'other-map', x: 10, y: 10, colour: 'ping-1', name: 'Ana' });
+    expect(screen.queryByText(/^ripple:/)).not.toBeInTheDocument();
+  });
+
+  it('a muted player has no Ping tool and is told why', async () => {
+    signInHere('player');
+    vi.mocked(pingsApi.listPingMutes).mockResolvedValue([{ userId: ME, mutedUntil: '2099-01-01T00:00:00Z' }]);
+    renderMap(MAP);
+    expect(await screen.findByText('The DM has muted your pings for this session.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ping' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'ping the map' })).not.toBeInTheDocument();
+  });
+
+  it('with player pings off, players have no Ping tool but the DM still does', async () => {
+    signInHere('player');
+    vi.mocked(campaignsApi.getCampaign).mockResolvedValue({
+      id: 'c1',
+      name: 'The Sunken Crown',
+      rulesEdition: '2024',
+      nextSessionAt: null,
+      gameSeconds: 0,
+      createdAt: '',
+      pingsEnabled: false,
+    });
+    const { unmount } = renderMap(MAP);
+    await screen.findByRole('button', { name: 'pin: The Drowned Rat' });
+    expect(screen.queryByRole('button', { name: 'Ping' })).not.toBeInTheDocument();
+    unmount();
+
+    signInHere('dm');
+    vi.mocked(campaignsApi.getCampaign).mockResolvedValue({
+      id: 'c1',
+      name: 'The Sunken Crown',
+      rulesEdition: '2024',
+      nextSessionAt: null,
+      gameSeconds: 0,
+      createdAt: '',
+      pingsEnabled: false,
+    });
+    renderMap(MAP);
+    expect(await screen.findByRole('button', { name: 'Ping' })).toBeInTheDocument();
+  });
+
+  it('the DM mutes one player from the Pings menu', async () => {
+    signInHere('dm');
+    vi.mocked(pingsApi.mutePings).mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderMap(MAP);
+    await user.click(await screen.findByText('Pings'));
+    const menu = screen.getByRole('group', { name: 'Player pings' });
+    expect(within(menu).getByText('Pat')).toBeInTheDocument();
+    expect(within(menu).queryByText('Dee')).not.toBeInTheDocument();
+    await user.click(within(menu).getByRole('button', { name: "Mute Ana's pings" }));
+    expect(pingsApi.mutePings).toHaveBeenCalledWith('c1', ANA);
+  });
+
+  it('players have no Pings menu', async () => {
+    signInHere('player');
+    renderMap(MAP);
+    await screen.findByRole('button', { name: 'Ping' });
+    expect(screen.queryByText('Pings')).not.toBeInTheDocument();
   });
 });

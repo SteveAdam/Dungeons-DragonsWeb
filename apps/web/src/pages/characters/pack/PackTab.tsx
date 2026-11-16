@@ -27,6 +27,8 @@ import {
   useTransfers,
 } from '../../../hooks/useItems';
 import { GiveDialog } from './GiveDialog';
+import { useAuth } from '../../../auth/authContext';
+import { HandoutList } from '../../../components/handouts/HandoutList';
 import styles from './pack.module.css';
 
 // the DM's tools carry the SRD weapon and armour lists, so they load only in DM mode
@@ -60,6 +62,9 @@ export function PackTab({ campaignId, character, effects, clock, dmMode }: Props
   const transfers = useTransfers(campaignId);
   const resolve = useResolveTransfer(campaignId);
   const [giving, setGiving] = useState<string | null>(null);
+  // P4-4: the handouts the DM showed this player, on their own character's Pack only
+  const { session } = useAuth();
+  const ownSheet = !!session && character.ownerId === session.user.id;
 
   if (items.isError) return <ErrorNotice error={items.error} onRetry={() => items.refetch()} />;
   if (!items.data)
@@ -209,6 +214,8 @@ export function PackTab({ campaignId, character, effects, clock, dmMode }: Props
           <DmItemTools mode="create" campaignId={campaignId} characterId={character.id} />
         </Suspense>
       )}
+
+      {ownSheet && <HandoutList campaignId={campaignId} className={styles.section} headingClassName={styles.heading} />}
 
       <section aria-labelledby="pack-history" className={styles.section}>
         <h2 id="pack-history" className={styles.heading}>

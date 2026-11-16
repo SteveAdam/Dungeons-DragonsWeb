@@ -36,6 +36,7 @@ describe('listCampaigns', () => {
         prepareAfterRestOnly: true,
         daylight: { start: 6, end: 18 },
         shareGroupPositions: false,
+        pingsEnabled: true,
         createdAt: '2026-10-18T10:00:00Z',
       },
       {
@@ -48,6 +49,7 @@ describe('listCampaigns', () => {
         prepareAfterRestOnly: true,
         daylight: { start: 6, end: 18 },
         shareGroupPositions: false,
+        pingsEnabled: true,
         createdAt: '2026-10-18T10:00:00Z',
       },
     ]);

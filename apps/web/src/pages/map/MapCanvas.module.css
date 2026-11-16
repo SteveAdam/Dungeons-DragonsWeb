@@ -405,3 +405,62 @@
   white-space: nowrap;
   transform: translateX(-50%);
 }
+
+/* P4-4: a ping. Two rings spread out from a dot in the sender's colour (--ping-color, a palette token), for the three
+   seconds it lasts. With reduced motion the rings stand still and the page also says it in words. */
+.ping {
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 64px;
+  pointer-events: none;
+}
+
+.pingDot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ping-color);
+  box-shadow: 0 0 0 2px var(--ink);
+  transform: translate(-50%, -50%);
+}
+
+.pingRing {
+  position: absolute;
+  inset: 0;
+  border: 4px solid var(--ping-color);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ping-ripple 1.5s ease-out 2 both;
+}
+
+.pingRing + .pingRing {
+  animation-delay: 0.5s;
+}
+
+@keyframes ping-ripple {
+  from {
+    opacity: 0.95;
+    transform: scale(0.15);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pingRing {
+    opacity: 0.9;
+    animation: none;
+    transform: scale(0.6);
+  }
+
+  .pingRing + .pingRing {
+    display: none;
+  }
+}

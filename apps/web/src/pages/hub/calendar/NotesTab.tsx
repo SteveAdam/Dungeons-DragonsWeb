@@ -10,6 +10,7 @@ import type { Note, NoteKind } from '../../../data/notes';
 import { friendlyMessage } from '../../../data/errors';
 import { useCalendar, useDeleteNote, useNotes, useSaveNote } from '../../../hooks/useCalendar';
 import { dayLabel } from '../../../lib/gameClock';
+import { PrivateNotes } from './PrivateNotes';
 import styles from './calendar.module.css';
 
 function NoteForm({ campaignId, note, onDone }: { campaignId: string; note: Note | null; onDone: () => void }) {
@@ -122,6 +123,7 @@ export function NotesTab({ campaignId, dmMode }: { campaignId: string; dmMode: b
   const cal = calendar.data ?? null;
   return (
     <div className={styles.panel}>
+      <PrivateNotes campaignId={campaignId} />
       {dmMode &&
         (editing ? (
           <NoteForm

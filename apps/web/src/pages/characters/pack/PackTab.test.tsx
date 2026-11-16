@@ -9,6 +9,8 @@ import { DataError } from '../../../data/errors';
 import type { Item, Transfer } from '../../../data/items';
 import * as api from '../../../data/items';
 import * as partyApi from '../../../data/party';
+import * as handoutsApi from '../../../data/handouts';
+import { AuthContext, type AuthState } from '../../../auth/authContext';
 import { axeViolations } from '../../../test/axe';
 import { PackTab } from './PackTab';
 
@@ -32,6 +34,10 @@ vi.mock('../../../data/items', async importOriginal => ({
 vi.mock('../../../data/characters', async importOriginal => ({
   ...(await importOriginal<typeof import('../../../data/characters')>()),
   listCharacters: vi.fn(),
+}));
+vi.mock('../../../data/handouts', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../../data/handouts')>()),
+  listHandouts: vi.fn(async () => []),
 }));
 vi.mock('../../../data/party', async importOriginal => ({
   ...(await importOriginal<typeof import('../../../data/party')>()),
@@ -108,6 +114,7 @@ function show({
   carried = CARRIED,
   transfers = [] as Transfer[],
   dmMode = false,
+  viewer = 'u1',
   effects = [] as ReturnType<typeof hillGiantStrength>[],
 } = {}) {
   vi.mocked(api.listCharacterItems).mockResolvedValue(carried);
@@ -125,14 +132,25 @@ function show({
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <PackTab campaignId="c1" character={brannoc} effects={effects} clock={{ seconds: 0 }} dmMode={dmMode} />
+      <AuthContext.Provider
+        value={{
+          session: { user: { id: viewer, email: 'someone@example.test' } } as NonNullable<AuthState['session']>,
+          loading: false,
+          signOut: async () => {},
+        }}
+      >
+        <PackTab campaignId="c1" character={brannoc} effects={effects} clock={{ seconds: 0 }} dmMode={dmMode} />
+      </AuthContext.Provider>
     </QueryClientProvider>,
   );
 }
 
 const row = (name: string) => screen.getByText(name, { selector: 'span' }).closest('li') as HTMLElement;
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(handoutsApi.listHandouts).mockResolvedValue([]);
+});
 
 describe('Pack tab (P2-7)', () => {
   it('lists what Brannoc carries, its weight, locks and the party inventory', async () => {
@@ -259,5 +277,32 @@ describe('Pack tab (P2-7)', () => {
       valueCp: 7500,
       definition: { armor: { category: 'heavy', baseAc: 16, strength: 13, stealthDisadvantage: true }, magicBonus: 1 },
     });
+  });
+});
+
+describe('handouts in the Pack (P4-4)', () => {
+  it('a player sees the handouts the DM showed them on their own Pack', async () => {
+    vi.mocked(handoutsApi.listHandouts).mockResolvedValue([
+      {
+        id: 'h1',
+        campaignId: 'c1',
+        title: 'A letter',
+        kind: 'text',
+        body: 'Hello',
+        imagePath: null,
+        createdAt: '',
+        shares: [{ userId: 'u1', sharedAt: '', seenAt: null }],
+      },
+    ]);
+    show();
+    expect(await screen.findByRole('heading', { name: 'Handouts, 1 new' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /A letter/ })).toHaveTextContent('new');
+  });
+
+  it('someone else looking at this Pack (the DM) does not get a Handouts list', async () => {
+    show({ viewer: 'the-dm', dmMode: true });
+    await screen.findByText('Carrying 69 lb');
+    expect(screen.queryByRole('heading', { name: /^Handouts/ })).not.toBeInTheDocument();
+    expect(handoutsApi.listHandouts).not.toHaveBeenCalled();
   });
 });

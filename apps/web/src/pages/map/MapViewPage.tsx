@@ -8,6 +8,7 @@ import {
   Map as MapIcon,
   MapPinPlus,
   PawPrint,
+  Radio,
   Ruler,
   Settings2,
   Shield,
@@ -18,7 +19,14 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
 import { ErrorNotice } from '../../components/ErrorNotice';
 import { Button, Cell, ICON_PROPS, iconClasses, IconLink, PageGrid, Tag, Toggle } from '../../components/ui';
-import { friendlyMessage } from '../../data/errors';
+import { friendlyMessage, toDataError } from '../../data/errors';
+import type { Member } from '../../data/members';
+import type { PingMute } from '../../data/pings';
+import { useAuth } from '../../auth/authContext';
+import { useMembers } from '../../hooks/useMembers';
+import { useLivePings, useMutePings, usePingMutes, useSendPing } from '../../hooks/usePings';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
+import { nearestPinName, pingAnnouncement, pingColour, pingColourValue } from '../../lib/pings';
 import type { MapTrailStep } from '../../data/maps';
 import type { PartyGroup } from '../../data/partyGroups';
 import type { MemberVitals } from '../../data/groupTokens';
@@ -87,6 +95,7 @@ import { useCalendar } from '../../hooks/useCalendar';
 import { useUpdateWeatherZone, useWeatherDays, useWeatherZones } from '../../hooks/useWeather';
 import styles from './MapView.module.css';
 import { MeasureBar } from './MeasureBar';
+import { PingMenu } from './PingMenu';
 import { PinPanel } from './PinPanel';
 import { PinSearch } from './PinSearch';
 import { RegionPanel } from './RegionPanel';
@@ -107,6 +116,8 @@ const NO_CONTENT: RegionContent[] = [];
 const NO_GROUPS: PartyGroup[] = [];
 const NO_VITALS: MemberVitals[] = [];
 const NO_STROKES: FogStroke[] = [];
+const NO_MEMBERS: Member[] = [];
+const NO_MUTES: PingMute[] = [];
 const UNDO_DEPTH = 20;
 const newKey = () => crypto.randomUUID();
 
@@ -209,7 +220,7 @@ function MapView() {
 
   // one thing is open in the side panel at a time: a pin, a region or the map settings
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [tool, setTool] = useState<'pin' | 'region' | 'spawn' | 'measure' | 'weather' | null>(null);
+  const [tool, setTool] = useState<'pin' | 'region' | 'spawn' | 'measure' | 'weather' | 'ping' | null>(null);
   const [zoneDraft, setZoneDraft] = useState<RegionCircle | null>(null);
   const [layers, setLayers] = useState<LayerState>({ pins: true, regions: true, grid: true, compass: true });
   const [route, setRoute] = useState<ImagePoint[]>([]);
@@ -233,7 +244,7 @@ function MapView() {
     [subMaps.data],
   );
   const selectPin = (id: string) => setSelection({ kind: 'pin', id });
-  const toggleTool = (which: 'pin' | 'region' | 'spawn' | 'measure' | 'weather') =>
+  const toggleTool = (which: 'pin' | 'region' | 'spawn' | 'measure' | 'weather' | 'ping') =>
     setTool(t => (t === which ? null : which));
 
   // Alt+Up goes up one level, as the button does (MAP-2). Not while typing, where Alt+Up may mean something else.
@@ -249,6 +260,53 @@ function MapView() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [up, navigate, campaignId]);
+
+  // P4-4: pings. Anyone may ping unless the DM turned player pings off or muted them (the database refuses too); the
+  // DM always can. A ping is shown to everyone viewing this map, and said in words for screen readers.
+  const { session } = useAuth();
+  const myId = session?.user.id;
+  const members = useMembers(campaignId);
+  const memberList = members.data ?? NO_MEMBERS;
+  const me = memberList.find(m => m.userId === myId);
+  const mutes = usePingMutes(campaignId);
+  const muteList = mutes.data ?? NO_MUTES;
+  const mutedMe = !isDm && muteList.some(m => m.userId === myId);
+  const pingsEnabled = campaign.data?.pingsEnabled !== false;
+  const canPing = isDm || (pingsEnabled && !mutedMe);
+  const mutePlayer = useMutePings(campaignId);
+  const pingSize = useMemo(
+    () => ({ width: map.data?.width ?? 0, height: map.data?.height ?? 0 }),
+    [map.data?.width, map.data?.height],
+  );
+  const pingPins = useMemo(() => (layers.pins ? (pins.data ?? NO_PINS) : NO_PINS), [layers.pins, pins.data]);
+  const livePings = useLivePings({ mapId, size: pingSize, members: memberList, pingsEnabled, pins: pingPins });
+  const sendPing = useSendPing(mapId, me, memberList);
+  const [pingNote, setPingNote] = useState<string | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const pinging = tool === 'ping' && canPing;
+  const pingAt = async (point: ImagePoint) => {
+    const result = await sendPing(point);
+    if (!result) return setPingNote('Pings need a live connection to the table.');
+    if (result.ok) {
+      setPingNote(null);
+      if (me) {
+        livePings.showOwn({
+          sender: me.userId,
+          x: point.x,
+          y: point.y,
+          colour: pingColour(me.userId, memberList),
+          name: me.displayName,
+        });
+      }
+    } else if (result.reason === 'rate-limited') {
+      setPingNote('One ping every two seconds: wait a moment.');
+    } else if (result.reason === 'failed' && toDataError(result.error).kind === 'forbidden') {
+      setPingNote('Your pings are off for now.');
+      void mutes.refetch();
+    } else {
+      setPingNote(result.reason === 'failed' ? friendlyMessage(result.error) : 'That ping could not be sent.');
+    }
+  };
 
   // Escape leaves add-pin, draw-region or measuring mode
   useEffect(() => {
@@ -616,6 +674,31 @@ function MapView() {
             <Ruler {...ICON_PROPS} className={iconClasses.icon} />
             {measuring ? 'Stop measuring' : 'Measure'}
           </Button>
+          {canPing && (
+            <Button
+              variant={pinging ? 'primary' : 'ghost'}
+              aria-pressed={pinging}
+              className={iconClasses.host}
+              onClick={() => {
+                setPingNote(null);
+                toggleTool('ping');
+              }}
+            >
+              <Radio {...ICON_PROPS} className={iconClasses.icon} />
+              {pinging ? 'Stop pinging' : 'Ping'}
+            </Button>
+          )}
+          {mutedMe && <p className={toolStyles.pingNote}>The DM has muted your pings for this session.</p>}
+          {dmMode && (
+            <PingMenu
+              players={memberList.filter(m => m.role === 'player')}
+              mutes={muteList}
+              pingsEnabled={pingsEnabled}
+              busy={mutePlayer.isPending}
+              error={mutePlayer.error}
+              onMute={(userId, muted) => mutePlayer.mutate({ userId, muted })}
+            />
+          )}
           {table && (
             <>
               <Button
@@ -715,6 +798,14 @@ function MapView() {
             {fogText}
           </p>
         )}
+        {(pinging || pingNote) && (
+          <p role="status" className={toolStyles.pingNote}>
+            {pingNote ?? 'Click a spot to ping it for everyone on this map. Pressing and holding still pings too.'}
+          </p>
+        )}
+        <p className="visually-hidden" aria-live="polite">
+          {livePings.announcement}
+        </p>
 
         {actionError && (
           <p role="alert" className={styles.alertOnDesk}>
@@ -799,6 +890,9 @@ function MapView() {
                 fog={fogOn ? { strokes: shownStrokes, dm: dmMode } : null}
                 brush={brushing ? { radius: brushRadius } : null}
                 onBrushStroke={onBrushStroke}
+                pings={livePings.pings}
+                pingMode={pinging}
+                onPing={canPing ? pingAt : undefined}
                 weatherZones={canvasZones}
                 canEditZones={dmMode && !table}
                 zoneDrawMode={drawingZone}
@@ -830,6 +924,16 @@ function MapView() {
               </p>
             )}
             {layers.compass && image.data && <Compass northDegrees={current.tools.northDegrees} />}
+            {reducedMotion && livePings.pings.length > 0 && (
+              // the same words the screen reader hears, for anyone who turned animation down
+              <ul className={toolStyles.pingWords} aria-hidden="true">
+                {livePings.pings.map(p => (
+                  <li key={p.key} style={{ '--ping-color': pingColourValue(p.colour) } as CSSProperties}>
+                    {pingAnnouncement(p.name, nearestPinName(p, pingPins, size))}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           {table && (

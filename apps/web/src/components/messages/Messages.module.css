@@ -1,0 +1,216 @@
+/* P4-5: the messages panel: a parchment drawer on the right (a sheet from the bottom on phones). Messages are plain
+   text, line breaks kept. A whisper is set apart in italic with a dashed rule, and says "A whisper" in words. */
+.panel {
+  position: fixed;
+  top: 4.5rem;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: min(26rem, calc(100vw - 2rem));
+  border: 1px solid var(--ink);
+  box-shadow: var(--paper-drop);
+  color: var(--ink);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.75rem;
+}
+
+.thread {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message {
+  display: grid;
+  gap: 0.15rem;
+  max-width: 85%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.3rem;
+  background: var(--ink-wash);
+}
+
+.mine {
+  justify-self: end;
+  background: var(--ink-wash-strong);
+}
+
+.whisper {
+  border-style: dashed;
+  border-color: var(--wax-red);
+  background: transparent;
+  font-style: italic;
+}
+
+.who {
+  color: var(--ink-faded);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+}
+
+.text {
+  margin: 0;
+  font-family: var(--font-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.whisperLabel {
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.composer {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--rule);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-faded);
+}
+
+.alert {
+  margin: 0;
+  color: var(--wax-red);
+  font-weight: 700;
+}
+
+.inbox {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--rule);
+  background: var(--ink-wash);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.player:hover,
+.player:focus-visible {
+  background: var(--ink-wash-strong);
+}
+
+.playerName {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+}
+
+.preview {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* an unread count: a wax seal with the number, and the words for screen readers */
+.count {
+  align-self: start;
+  min-width: 1.4rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--wax-red);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* the header button sits on the desk: gold, like the other header links */
+.headerButton {
+  position: relative;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gold);
+  font: inherit;
+  cursor: pointer;
+}
+
+.dot {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.45rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 1px solid var(--paper);
+  border-radius: 50%;
+  background: var(--wax-red);
+}
+
+@media (max-width: 40rem) {
+  .panel {
+    top: auto;
+    right: 0;
+    left: 0;
+    height: 80vh;
+    width: 100%;
+  }
+}

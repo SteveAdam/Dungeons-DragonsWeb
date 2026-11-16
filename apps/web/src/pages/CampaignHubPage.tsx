@@ -5,6 +5,7 @@ import {
   Feather,
   Library,
   Map as MapIcon,
+  Scroll,
   ScrollText,
   Tent,
   Users,
@@ -21,6 +22,7 @@ import { useCharacters } from '../hooks/useCharacters';
 import { useCampaign, useInviteCode, useSetOptionalFeats, useSetPrepareAfterRestOnly } from '../hooks/useCampaigns';
 import { useDmMode } from '../hooks/useDmMode';
 import { useMembers } from '../hooks/useMembers';
+import { useSetPingsEnabled } from '../hooks/usePings';
 import { useCalendar } from '../hooks/useCalendar';
 import { calendarClock } from '../lib/gameClock';
 import { useShowDmIndicator } from '../state/dmIndicator';
@@ -29,6 +31,7 @@ import { CalendarTab } from './hub/calendar/CalendarTab';
 import { NotesTab } from './hub/calendar/NotesTab';
 import { CharactersTab } from './hub/CharactersTab';
 import { CodexTab } from './hub/codex/CodexTab';
+import { HandoutsTab } from './hub/handouts/HandoutsTab';
 import { ComingSoonTab } from './hub/ComingSoonTab';
 import { MapsTab } from './hub/MapsTab';
 import { PartyTab } from './hub/party/PartyTab';
@@ -45,10 +48,13 @@ const TABS = [
   { id: 'web', label: 'Web', icon: Waypoints },
   { id: 'people', label: 'People', icon: Users },
 ] as const;
+// P4-4: the DM's handouts library, a tab of the hub in DM mode only
+const HANDOUTS_TAB = { id: 'handouts', label: 'Handouts', icon: Scroll } as const;
 // the DM's library is a page of its own at /campaigns/:id/library, so the ribbon simply leads there
 const LIBRARY_TAB = { id: 'library', label: 'Library', icon: Library };
-type TabId = (typeof TABS)[number]['id'];
-const isTab = (value: string | undefined): value is TabId => TABS.some(t => t.id === value);
+type TabId = (typeof TABS)[number]['id'] | typeof HANDOUTS_TAB.id;
+const isTab = (value: string | undefined): value is TabId =>
+  value === HANDOUTS_TAB.id || TABS.some(t => t.id === value);
 
 export function CampaignHubPage() {
   const { campaignId, tab } = useParams();
@@ -63,11 +69,13 @@ export function CampaignHubPage() {
   const invite = useInviteCode(campaignId, dmMode);
   const feats = useSetOptionalFeats(campaignId ?? '');
   const prepareRule = useSetPrepareAfterRestOnly(campaignId ?? '');
+  const pingRule = useSetPingsEnabled(campaignId ?? '');
   useShowDmIndicator(dmMode);
 
   if (!campaignId) return <Navigate to="/campaigns" replace />;
   if (tab !== undefined && !isTab(tab)) return <Navigate to={`/campaigns/${campaignId}/maps`} replace />;
-  const activeTab: TabId = isTab(tab) ? tab : 'maps';
+  // the handouts tab is the DM's: anyone else (or the DM previewing the player view) lands on the maps
+  const activeTab: TabId = isTab(tab) && (tab !== HANDOUTS_TAB.id || dmMode) ? tab : 'maps';
 
   if (campaign.isPending)
     return (
@@ -98,7 +106,7 @@ export function CampaignHubPage() {
     : members.isError
       ? 'members unavailable'
       : 'counting members…';
-  const tabLabel = TABS.find(t => t.id === activeTab)?.label ?? '';
+  const tabLabel = [...TABS, HANDOUTS_TAB].find(t => t.id === activeTab)?.label ?? '';
 
   const nextSession = campaign.data.nextSessionAt
     ? new Date(campaign.data.nextSessionAt).toLocaleString(undefined, {
@@ -180,6 +188,21 @@ export function CampaignHubPage() {
                   </p>
                 </div>
               )}
+              {dmMode && (
+                <div className={styles.dmSwitch}>
+                  <Toggle
+                    checked={campaign.data.pingsEnabled ?? true}
+                    disabled={pingRule.isPending}
+                    onChange={on => pingRule.mutate(on)}
+                    label="Player pings"
+                  />
+                  <p className={styles.dmHint}>
+                    {pingRule.isError
+                      ? friendlyMessage(pingRule.error)
+                      : 'Players can point at a spot on the map for everyone to see. You can always ping.'}
+                  </p>
+                </div>
+              )}
               <div className={styles.dmSwitch}>
                 <Toggle checked={dmMode} onChange={setDmMode} label="DM mode" />
                 <p className={styles.dmHint}>
@@ -208,7 +231,7 @@ export function CampaignHubPage() {
         <Cell>
           <RibbonTabs
             aria-label="Campaign sections"
-            tabs={dmMode ? [...TABS, LIBRARY_TAB] : [...TABS]}
+            tabs={dmMode ? [...TABS, HANDOUTS_TAB, LIBRARY_TAB] : [...TABS]}
             value={activeTab}
             onChange={id => navigate(`/campaigns/${campaignId}/${id}`)}
           />
@@ -221,6 +244,7 @@ export function CampaignHubPage() {
             {activeTab === 'notes' && <NotesTab campaignId={campaignId} dmMode={dmMode} />}
             {activeTab === 'calendar' && <CalendarTab campaignId={campaignId} dmMode={dmMode} />}
             {activeTab === 'web' && <ComingSoonTab name="Web" />}
+            {activeTab === 'handouts' && <HandoutsTab campaignId={campaignId} />}
           </Paper>
         </Cell>
         <Cell as="p" aria-hidden="true" className={styles.motto}>

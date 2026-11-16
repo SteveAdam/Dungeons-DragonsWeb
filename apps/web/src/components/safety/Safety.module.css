@@ -1,0 +1,44 @@
+/* P4-5: the pause controls in the header (on the desk: gold text) and the pause banner under it. */
+.controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.headerButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gold);
+  font: inherit;
+  cursor: pointer;
+}
+
+.headerButton:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/* the banner: paper on the desk, with a wax-red edge so it reads as "stop" without colour alone (it says so) */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 0.55rem 1.25rem;
+  border-bottom: 2px solid var(--gold-dark);
+  border-left: 0.6rem solid var(--wax-red);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+}
+
+.message {
+  flex: 1;
+}
+
+.since {
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+}

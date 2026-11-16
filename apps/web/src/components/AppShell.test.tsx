@@ -42,6 +42,18 @@ vi.mock('../data/partyGroups', async importOriginal => ({
   ...(await importOriginal<typeof import('../data/partyGroups')>()),
   listGroups: vi.fn(async () => []),
 }));
+vi.mock('../data/messages', async importOriginal => ({
+  ...(await importOriginal<typeof import('../data/messages')>()),
+  listThreads: vi.fn(async () => []),
+}));
+vi.mock('../data/safety', async importOriginal => ({
+  ...(await importOriginal<typeof import('../data/safety')>()),
+  getTablePause: vi.fn(async () => ({ paused: false, since: null, anonymous: false, name: null })),
+}));
+vi.mock('../data/handouts', async importOriginal => ({
+  ...(await importOriginal<typeof import('../data/handouts')>()),
+  listHandouts: vi.fn(async () => []),
+}));
 vi.mock('../data/calendar', async importOriginal => ({
   ...(await importOriginal<typeof import('../data/calendar')>()),
   getCalendar: vi.fn(async () => null),

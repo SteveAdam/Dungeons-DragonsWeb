@@ -228,3 +228,61 @@
     transition: none;
   }
 }
+
+/* P4-4: the DM's ping menu (it folds out like Layers) */
+.menuList {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menuList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.menuNote {
+  margin: 0;
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+}
+
+/* P4-4: a note about pinging, on a paper scrap (ink text only sits on paper) */
+.pingNote {
+  margin: 0;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--gold-dark);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+/* P4-4: with reduced motion, pings are also written out over the map's lower edge */
+.pingWords {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  z-index: 1000;
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.pingWords li {
+  justify-self: start;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--ink);
+  border-left: 0.5rem solid var(--ping-color);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+}

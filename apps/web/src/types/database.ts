@@ -1,2251 +1,3697 @@
-
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-  
-  "public": {
-          Tables: {
-            "ability_roll_uses": {
-                  Row: {
-                    "campaign_id": string,"character_id": string | null,"roll_id": string,"used_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"character_id"?: string | null,"roll_id": string,"used_at"?: string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"character_id"?: string | null,"roll_id"?: string,"used_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "ability_roll_uses_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "ability_roll_uses_character_id_fkey"
-      columns: ["character_id"]
-isOneToOne: false
-      referencedRelation: "characters"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"calendars": {
-                  Row: {
-                    "campaign_id": string,"definition": NonNullable<Json>,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"definition": NonNullable<Json>,"updated_at"?: string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"definition"?: NonNullable<Json>,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "calendars_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: true
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"campaign_secrets": {
-                  Row: {
-                    "campaign_id": string,"invite_code": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"invite_code": string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"invite_code"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "campaign_secrets_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: true
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"campaign_spotlight": {
-                  Row: {
-                    "campaign_id": string,"group_id": string | null,"summary": string,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"group_id"?: string | null,"summary"?: string,"updated_at"?: string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"group_id"?: string | null,"summary"?: string,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "campaign_spotlight_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: true
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "campaign_spotlight_group_id_fkey"
-      columns: ["group_id"]
-isOneToOne: false
-      referencedRelation: "party_groups"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"campaigns": {
-                  Row: {
-                    "created_at": string,"game_seconds": number,"id": string,"name": string,"next_session_at": string | null,"owner_id": string,"rules_edition": string,"settings": NonNullable<Json>
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"game_seconds"?: number,"id"?: string,"name": string,"next_session_at"?: string | null,"owner_id"?: string,"rules_edition"?: string,"settings"?: NonNullable<Json>
-                  }
-                  Update: {
-                    "created_at"?: string,"game_seconds"?: number,"id"?: string,"name"?: string,"next_session_at"?: string | null,"owner_id"?: string,"rules_edition"?: string,"settings"?: NonNullable<Json>
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"character_details": {
-                  Row: {
-                    "campaign_id": string,"character_id": string,"data": NonNullable<Json>,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"character_id": string,"data"?: NonNullable<Json>,"updated_at"?: string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"character_id"?: string,"data"?: NonNullable<Json>,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "character_details_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "character_details_character_id_fkey"
-      columns: ["character_id"]
-isOneToOne: true
-      referencedRelation: "characters"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"character_drafts": {
-                  Row: {
-                    "campaign_id": string,"data": NonNullable<Json>,"updated_at": string,"user_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"data"?: NonNullable<Json>,"updated_at"?: string,"user_id"?: string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"data"?: NonNullable<Json>,"updated_at"?: string,"user_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "character_drafts_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"character_spell_state": {
-                  Row: {
-                    "campaign_id": string,"character_id": string,"concentration": Json | null,"prepare_open": boolean,"slots_used": (number)[],"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"character_id": string,"concentration"?: Json | null,"prepare_open"?: boolean,"slots_used"?: (number)[],"updated_at"?: string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"character_id"?: string,"concentration"?: Json | null,"prepare_open"?: boolean,"slots_used"?: (number)[],"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "character_spell_state_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "character_spell_state_character_id_fkey"
-      columns: ["character_id"]
-isOneToOne: true
-      referencedRelation: "characters"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"characters": {
-                  Row: {
-                    "campaign_id": string,"conditions": (string)[],"created_at": string,"entity_id": string | null,"exhaustion": number,"id": string,"level_applied": number,"name": string,"owner_id": string,"sheet": NonNullable<Json>,"xp": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"conditions"?: (string)[],"created_at"?: string,"entity_id"?: string | null,"exhaustion"?: number,"id"?: string,"level_applied"?: number,"name": string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
-                  }
-                  Update: {
-                    "campaign_id"?: string,"conditions"?: (string)[],"created_at"?: string,"entity_id"?: string | null,"exhaustion"?: number,"id"?: string,"level_applied"?: number,"name"?: string,"owner_id"?: string,"sheet"?: NonNullable<Json>,"xp"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "characters_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "characters_entity_id_fkey"
-      columns: ["entity_id"]
-isOneToOne: true
-      referencedRelation: "entities"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"content_discoveries": {
-                  Row: {
-                    "content_id": string,"created_at": string,"group_id": string,"state": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "content_id": string,"created_at"?: string,"group_id": string,"state": string
-                  }
-                  Update: {
-                    "content_id"?: string,"created_at"?: string,"group_id"?: string,"state"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "content_discoveries_content_id_fkey"
-      columns: ["content_id"]
-isOneToOne: false
-      referencedRelation: "region_content"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "content_discoveries_group_id_fkey"
-      columns: ["group_id"]
-isOneToOne: false
-      referencedRelation: "party_groups"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"custom_content": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"created_by": string | null,"definition": NonNullable<Json>,"id": string,"kind": string,"name": string,"parent_ref": string | null,"updated_at": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"created_by"?: string | null,"definition"?: NonNullable<Json>,"id"?: string,"kind": string,"name": string,"parent_ref"?: string | null,"updated_at"?: string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"created_by"?: string | null,"definition"?: NonNullable<Json>,"id"?: string,"kind"?: string,"name"?: string,"parent_ref"?: string | null,"updated_at"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "custom_content_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"discovery_notices": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"group_id": string,"id": string,"text": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"group_id": string,"id"?: string,"text": string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"group_id"?: string,"id"?: string,"text"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "discovery_notices_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "discovery_notices_group_id_fkey"
-      columns: ["group_id"]
-isOneToOne: false
-      referencedRelation: "party_groups"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"effect_secrets": {
-                  Row: {
-                    "effect_id": string,"hidden_detail": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "effect_id": string,"hidden_detail"?: string
-                  }
-                  Update: {
-                    "effect_id"?: string,"hidden_detail"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "effect_secrets_effect_id_fkey"
-      columns: ["effect_id"]
-isOneToOne: true
-      referencedRelation: "effects"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"effects": {
-                  Row: {
-                    "character_id": string,"concentration": boolean,"created_at": string,"duration": NonNullable<Json>,"id": string,"mode": string,"name": string,"source": string,"stat": string,"value": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "character_id": string,"concentration"?: boolean,"created_at"?: string,"duration"?: NonNullable<Json>,"id"?: string,"mode": string,"name": string,"source"?: string,"stat": string,"value": number
-                  }
-                  Update: {
-                    "character_id"?: string,"concentration"?: boolean,"created_at"?: string,"duration"?: NonNullable<Json>,"id"?: string,"mode"?: string,"name"?: string,"source"?: string,"stat"?: string,"value"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "effects_character_id_fkey"
-      columns: ["character_id"]
-isOneToOne: false
-      referencedRelation: "characters"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"encounter_rolls": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"game_seconds": number,"hour": number,"id": string,"is_day": boolean,"region_id": string,"region_name": string,"results": NonNullable<Json>,"rolled_by": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"game_seconds": number,"hour": number,"id"?: string,"is_day": boolean,"region_id": string,"region_name": string,"results": NonNullable<Json>,"rolled_by": string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"game_seconds"?: number,"hour"?: number,"id"?: string,"is_day"?: boolean,"region_id"?: string,"region_name"?: string,"results"?: NonNullable<Json>,"rolled_by"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "encounter_rolls_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"entities": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"folder_id": string | null,"id": string,"name": string,"sort_order": number,"type": Database["public"]['Enums']["entity_type"],"updated_at": string,"visible_to_players": boolean
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"folder_id"?: string | null,"id"?: string,"name": string,"sort_order"?: number,"type": Database["public"]['Enums']["entity_type"],"updated_at"?: string,"visible_to_players"?: boolean
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"folder_id"?: string | null,"id"?: string,"name"?: string,"sort_order"?: number,"type"?: Database["public"]['Enums']["entity_type"],"updated_at"?: string,"visible_to_players"?: boolean
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "entities_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "entities_folder_id_fkey"
-      columns: ["folder_id"]
-isOneToOne: false
-      referencedRelation: "entity_folders"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"entity_folders": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"id": string,"name": string,"parent_id": string | null,"sort_order": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"id"?: string,"name": string,"parent_id"?: string | null,"sort_order"?: number
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"id"?: string,"name"?: string,"parent_id"?: string | null,"sort_order"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "entity_folders_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "entity_folders_parent_id_fkey"
-      columns: ["parent_id"]
-isOneToOne: false
-      referencedRelation: "entity_folders"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"entity_links": {
-                  Row: {
-                    "a_id": string,"b_id": string,"campaign_id": string,"created_at": string,"hidden": boolean,"id": string,"label_ab": string,"label_ba": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "a_id": string,"b_id": string,"campaign_id": string,"created_at"?: string,"hidden"?: boolean,"id"?: string,"label_ab": string,"label_ba": string
-                  }
-                  Update: {
-                    "a_id"?: string,"b_id"?: string,"campaign_id"?: string,"created_at"?: string,"hidden"?: boolean,"id"?: string,"label_ab"?: string,"label_ba"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "entity_links_a_id_fkey"
-      columns: ["a_id"]
-isOneToOne: false
-      referencedRelation: "entities"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "entity_links_b_id_fkey"
-      columns: ["b_id"]
-isOneToOne: false
-      referencedRelation: "entities"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "entity_links_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"fog_strokes": {
-                  Row: {
-                    "created_at": string,"created_by": string | null,"group_id": string | null,"id": string,"map_id": string,"mode": string,"points": NonNullable<Json>,"radius": number,"seq": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"created_by"?: string | null,"group_id"?: string | null,"id"?: string,"map_id": string,"mode": string,"points"?: NonNullable<Json>,"radius"?: number,"seq"?: never
-                  }
-                  Update: {
-                    "created_at"?: string,"created_by"?: string | null,"group_id"?: string | null,"id"?: string,"map_id"?: string,"mode"?: string,"points"?: NonNullable<Json>,"radius"?: number,"seq"?: never
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "fog_strokes_group_id_fkey"
-      columns: ["group_id"]
-isOneToOne: false
-      referencedRelation: "party_groups"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "fog_strokes_map_id_fkey"
-      columns: ["map_id"]
-isOneToOne: false
-      referencedRelation: "maps"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"folders": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"id": string,"name": string,"parent_id": string | null
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"id"?: string,"name": string,"parent_id"?: string | null
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"id"?: string,"name"?: string,"parent_id"?: string | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "folders_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "folders_parent_id_fkey"
-      columns: ["parent_id"]
-isOneToOne: false
-      referencedRelation: "folders"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"game_clock_events": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"created_by": string | null,"from_seconds": number,"id": string,"reason": string,"to_seconds": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"created_by"?: string | null,"from_seconds": number,"id"?: string,"reason"?: string,"to_seconds": number
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"created_by"?: string | null,"from_seconds"?: number,"id"?: string,"reason"?: string,"to_seconds"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "game_clock_events_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"item_secrets": {
-                  Row: {
-                    "dm_notes": string,"hidden_effect": string,"item_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "dm_notes"?: string,"hidden_effect"?: string,"item_id": string
-                  }
-                  Update: {
-                    "dm_notes"?: string,"hidden_effect"?: string,"item_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "item_secrets_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: true
-      referencedRelation: "items"
-      referencedColumns: ["entity_id"]
-    }
-                  ]
-                },"item_transfers": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"created_by": string | null,"from_id": string | null,"from_name": string,"from_type": string,"id": string,"item_id": string | null,"item_name": string,"quantity": number,"resolved_at": string | null,"seq": number,"status": string,"to_id": string | null,"to_name": string,"to_type": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"created_by"?: string | null,"from_id"?: string | null,"from_name": string,"from_type": string,"id"?: string,"item_id"?: string | null,"item_name": string,"quantity": number,"resolved_at"?: string | null,"seq"?: never,"status"?: string,"to_id"?: string | null,"to_name": string,"to_type": string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"created_by"?: string | null,"from_id"?: string | null,"from_name"?: string,"from_type"?: string,"id"?: string,"item_id"?: string | null,"item_name"?: string,"quantity"?: number,"resolved_at"?: string | null,"seq"?: never,"status"?: string,"to_id"?: string | null,"to_name"?: string,"to_type"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "item_transfers_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "item_transfers_item_id_fkey"
-      columns: ["item_id"]
-isOneToOne: false
-      referencedRelation: "items"
-      referencedColumns: ["entity_id"]
-    }
-                  ]
-                },"items": {
-                  Row: {
-                    "attuned": boolean,"bound": boolean,"campaign_id": string,"created_at": string,"definition": NonNullable<Json>,"entity_id": string,"equipped": boolean,"kind": string,"owner_id": string | null,"owner_type": string,"quantity": number,"rarity": string | null,"requires_attunement": boolean,"srd_ref": string | null,"value_cp": number,"weight": number | null
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "attuned"?: boolean,"bound"?: boolean,"campaign_id": string,"created_at"?: string,"definition"?: NonNullable<Json>,"entity_id": string,"equipped"?: boolean,"kind": string,"owner_id"?: string | null,"owner_type": string,"quantity"?: number,"rarity"?: string | null,"requires_attunement"?: boolean,"srd_ref"?: string | null,"value_cp"?: number,"weight"?: number | null
-                  }
-                  Update: {
-                    "attuned"?: boolean,"bound"?: boolean,"campaign_id"?: string,"created_at"?: string,"definition"?: NonNullable<Json>,"entity_id"?: string,"equipped"?: boolean,"kind"?: string,"owner_id"?: string | null,"owner_type"?: string,"quantity"?: number,"rarity"?: string | null,"requires_attunement"?: boolean,"srd_ref"?: string | null,"value_cp"?: number,"weight"?: number | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "items_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "items_entity_id_fkey"
-      columns: ["entity_id"]
-isOneToOne: true
-      referencedRelation: "entities"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"ledger": {
-                  Row: {
-                    "amount": NonNullable<Json>,"campaign_id": string,"created_at": string,"created_by": string | null,"id": string,"kind": string,"note": string,"seq": number,"source": string,"target_id": string,"target_type": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "amount": NonNullable<Json>,"campaign_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"kind": string,"note"?: string,"seq"?: never,"source": string,"target_id": string,"target_type": string
-                  }
-                  Update: {
-                    "amount"?: NonNullable<Json>,"campaign_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"kind"?: string,"note"?: string,"seq"?: never,"source"?: string,"target_id"?: string,"target_type"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "ledger_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"level_up_events": {
-                  Row: {
-                    "campaign_id": string,"character_id": string,"choices": NonNullable<Json>,"created_at": string,"created_by": string | null,"from_level": number,"hp_gain": number,"id": string,"roll_id": string | null,"to_level": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"character_id": string,"choices": NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"from_level": number,"hp_gain": number,"id"?: string,"roll_id"?: string | null,"to_level": number
-                  }
-                  Update: {
-                    "campaign_id"?: string,"character_id"?: string,"choices"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"from_level"?: number,"hp_gain"?: number,"id"?: string,"roll_id"?: string | null,"to_level"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "level_up_events_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"links": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"from_pin_id": string,"id": string,"label": string,"to_pin_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"from_pin_id": string,"id"?: string,"label"?: string,"to_pin_id": string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"from_pin_id"?: string,"id"?: string,"label"?: string,"to_pin_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "links_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "links_from_pin_id_fkey"
-      columns: ["from_pin_id"]
-isOneToOne: false
-      referencedRelation: "pins"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "links_to_pin_id_fkey"
-      columns: ["to_pin_id"]
-isOneToOne: false
-      referencedRelation: "pins"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"maps": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"fog_enabled": boolean,"fog_mode": string,"grid_size": number | null,"height": number,"id": string,"image_path": string,"name": string,"north_degrees": number,"parent_pin_id": string | null,"parent_region_id": string | null,"scale_unit": string,"scale_width": number | null,"visible_to_players": boolean,"width": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"fog_enabled"?: boolean,"fog_mode"?: string,"grid_size"?: number | null,"height": number,"id"?: string,"image_path": string,"name": string,"north_degrees"?: number,"parent_pin_id"?: string | null,"parent_region_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width": number
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"fog_enabled"?: boolean,"fog_mode"?: string,"grid_size"?: number | null,"height"?: number,"id"?: string,"image_path"?: string,"name"?: string,"north_degrees"?: number,"parent_pin_id"?: string | null,"parent_region_id"?: string | null,"scale_unit"?: string,"scale_width"?: number | null,"visible_to_players"?: boolean,"width"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "maps_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "maps_parent_pin_fk"
-      columns: ["parent_pin_id"]
-isOneToOne: false
-      referencedRelation: "pins"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "maps_parent_region_id_fkey"
-      columns: ["parent_region_id"]
-isOneToOne: false
-      referencedRelation: "regions"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"members": {
-                  Row: {
-                    "campaign_id": string,"joined_at": string,"role": string,"user_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"joined_at"?: string,"role"?: string,"user_id": string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"joined_at"?: string,"role"?: string,"user_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "members_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"pages": {
-                  Row: {
-                    "body": string,"campaign_id": string,"created_at": string,"entity_id": string | null,"folder_id": string | null,"id": string,"ingame_date": string | null,"ingame_day": number | null,"kind": string,"real_date": string | null,"session_no": number | null,"tags": (string)[],"title": string,"updated_at": string,"visible_to_players": boolean
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "body"?: string,"campaign_id": string,"created_at"?: string,"entity_id"?: string | null,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"ingame_day"?: number | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title": string,"updated_at"?: string,"visible_to_players"?: boolean
-                  }
-                  Update: {
-                    "body"?: string,"campaign_id"?: string,"created_at"?: string,"entity_id"?: string | null,"folder_id"?: string | null,"id"?: string,"ingame_date"?: string | null,"ingame_day"?: number | null,"kind"?: string,"real_date"?: string | null,"session_no"?: number | null,"tags"?: (string)[],"title"?: string,"updated_at"?: string,"visible_to_players"?: boolean
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "pages_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "pages_entity_id_fkey"
-      columns: ["entity_id"]
-isOneToOne: false
-      referencedRelation: "entities"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "pages_folder_id_fkey"
-      columns: ["folder_id"]
-isOneToOne: false
-      referencedRelation: "folders"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"parties": {
-                  Row: {
-                    "campaign_id": string,"entity_id": string,"is_official": boolean
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"entity_id": string,"is_official"?: boolean
-                  }
-                  Update: {
-                    "campaign_id"?: string,"entity_id"?: string,"is_official"?: boolean
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "parties_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "parties_entity_id_fkey"
-      columns: ["entity_id"]
-isOneToOne: true
-      referencedRelation: "entities"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"party_group_members": {
-                  Row: {
-                    "campaign_id": string,"character_id": string,"group_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"character_id": string,"group_id": string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"character_id"?: string,"group_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "party_group_members_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "party_group_members_character_id_fkey"
-      columns: ["character_id"]
-isOneToOne: false
-      referencedRelation: "characters"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "party_group_members_group_id_fkey"
-      columns: ["group_id"]
-isOneToOne: false
-      referencedRelation: "party_groups"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"party_groups": {
-                  Row: {
-                    "campaign_id": string,"color": string,"created_at": string,"id": string,"map_id": string | null,"name": string,"region_id": string | null,"x": number | null,"y": number | null,"group_member_count": number | null
-                  }
-                  ComputedFields: "group_member_count"
-                  Insert: {
-                    "campaign_id": string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string | null,"name": string,"region_id"?: string | null,"x"?: number | null,"y"?: number | null
-                  }
-                  Update: {
-                    "campaign_id"?: string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string | null,"name"?: string,"region_id"?: string | null,"x"?: number | null,"y"?: number | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "party_groups_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "party_groups_map_id_fkey"
-      columns: ["map_id"]
-isOneToOne: false
-      referencedRelation: "maps"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "party_groups_region_id_fkey"
-      columns: ["region_id"]
-isOneToOne: false
-      referencedRelation: "regions"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"party_members": {
-                  Row: {
-                    "character_id": string,"joined_at": string,"party_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "character_id": string,"joined_at"?: string,"party_id": string
-                  }
-                  Update: {
-                    "character_id"?: string,"joined_at"?: string,"party_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "party_members_character_id_fkey"
-      columns: ["character_id"]
-isOneToOne: false
-      referencedRelation: "characters"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "party_members_party_id_fkey"
-      columns: ["party_id"]
-isOneToOne: false
-      referencedRelation: "parties"
-      referencedColumns: ["entity_id"]
-    }
-                  ]
-                },"pin_secrets": {
-                  Row: {
-                    "dm_notes": string,"pin_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "dm_notes"?: string,"pin_id": string
-                  }
-                  Update: {
-                    "dm_notes"?: string,"pin_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "pin_secrets_pin_id_fkey"
-      columns: ["pin_id"]
-isOneToOne: true
-      referencedRelation: "pins"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"pins": {
-                  Row: {
-                    "color": string,"created_at": string,"description": string,"entity_id": string | null,"history": string,"icon": string,"id": string,"map_id": string,"music_url": string | null,"size": number,"tags": (string)[],"title": string,"traits": (string)[],"type": string,"visible_to_players": boolean,"x": number,"y": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "color"?: string,"created_at"?: string,"description"?: string,"entity_id"?: string | null,"history"?: string,"icon"?: string,"id"?: string,"map_id": string,"music_url"?: string | null,"size"?: number,"tags"?: (string)[],"title": string,"traits"?: (string)[],"type"?: string,"visible_to_players"?: boolean,"x": number,"y": number
-                  }
-                  Update: {
-                    "color"?: string,"created_at"?: string,"description"?: string,"entity_id"?: string | null,"history"?: string,"icon"?: string,"id"?: string,"map_id"?: string,"music_url"?: string | null,"size"?: number,"tags"?: (string)[],"title"?: string,"traits"?: (string)[],"type"?: string,"visible_to_players"?: boolean,"x"?: number,"y"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "pins_entity_id_fkey"
-      columns: ["entity_id"]
-isOneToOne: false
-      referencedRelation: "entities"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "pins_map_id_fkey"
-      columns: ["map_id"]
-isOneToOne: false
-      referencedRelation: "maps"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"profiles": {
-                  Row: {
-                    "avatar_url": string | null,"created_at": string,"discord_id": string | null,"display_name": string | null,"id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "avatar_url"?: string | null,"created_at"?: string,"discord_id"?: string | null,"display_name"?: string | null,"id": string
-                  }
-                  Update: {
-                    "avatar_url"?: string | null,"created_at"?: string,"discord_id"?: string | null,"display_name"?: string | null,"id"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"region_content": {
-                  Row: {
-                    "created_at": string,"details": NonNullable<Json>,"discovery_dc": number | null,"discovery_skill": string,"entity_id": string | null,"hint_text": string | null,"id": string,"kind": string,"monster_ref": string | null,"name": string,"region_id": string,"sort_order": number,"spawn_rule": NonNullable<Json>,"state": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"details"?: NonNullable<Json>,"discovery_dc"?: number | null,"discovery_skill"?: string,"entity_id"?: string | null,"hint_text"?: string | null,"id"?: string,"kind": string,"monster_ref"?: string | null,"name": string,"region_id": string,"sort_order"?: number,"spawn_rule"?: NonNullable<Json>,"state"?: string
-                  }
-                  Update: {
-                    "created_at"?: string,"details"?: NonNullable<Json>,"discovery_dc"?: number | null,"discovery_skill"?: string,"entity_id"?: string | null,"hint_text"?: string | null,"id"?: string,"kind"?: string,"monster_ref"?: string | null,"name"?: string,"region_id"?: string,"sort_order"?: number,"spawn_rule"?: NonNullable<Json>,"state"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "region_content_entity_id_fkey"
-      columns: ["entity_id"]
-isOneToOne: false
-      referencedRelation: "entities"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "region_content_region_id_fkey"
-      columns: ["region_id"]
-isOneToOne: false
-      referencedRelation: "regions"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"region_content_secrets": {
-                  Row: {
-                    "content_id": string,"dm_notes": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "content_id": string,"dm_notes"?: string
-                  }
-                  Update: {
-                    "content_id"?: string,"dm_notes"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "region_content_secrets_content_id_fkey"
-      columns: ["content_id"]
-isOneToOne: true
-      referencedRelation: "region_content"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"region_searches": {
-                  Row: {
-                    "campaign_id": string,"character_id": string,"created_at": string,"found": number,"group_id": string,"id": string,"region_id": string,"roll_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"character_id": string,"created_at"?: string,"found": number,"group_id": string,"id"?: string,"region_id": string,"roll_id": string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"character_id"?: string,"created_at"?: string,"found"?: number,"group_id"?: string,"id"?: string,"region_id"?: string,"roll_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "region_searches_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"regions": {
-                  Row: {
-                    "created_at": string,"cx": number,"cy": number,"description": string,"id": string,"map_id": string,"name": string,"radius": number,"shape": string,"terrain": string,"visible_to_players": boolean,"weather": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "created_at"?: string,"cx": number,"cy": number,"description"?: string,"id"?: string,"map_id": string,"name": string,"radius": number,"shape"?: string,"terrain"?: string,"visible_to_players"?: boolean,"weather"?: string
-                  }
-                  Update: {
-                    "created_at"?: string,"cx"?: number,"cy"?: number,"description"?: string,"id"?: string,"map_id"?: string,"name"?: string,"radius"?: number,"shape"?: string,"terrain"?: string,"visible_to_players"?: boolean,"weather"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "regions_map_id_fkey"
-      columns: ["map_id"]
-isOneToOne: false
-      referencedRelation: "maps"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"rest_events": {
-                  Row: {
-                    "campaign_id": string,"character_id": string,"created_at": string,"created_by": string | null,"details": NonNullable<Json>,"id": string,"kind": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"character_id": string,"created_at"?: string,"created_by"?: string | null,"details"?: NonNullable<Json>,"id"?: string,"kind": string
-                  }
-                  Update: {
-                    "campaign_id"?: string,"character_id"?: string,"created_at"?: string,"created_by"?: string | null,"details"?: NonNullable<Json>,"id"?: string,"kind"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "rest_events_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"rolls": {
-                  Row: {
-                    "bonus": number,"bonus_breakdown": Json | null,"campaign_id": string,"character_id": string | null,"created_at": string,"crit": boolean,"dice": (number)[],"fumble": boolean,"hidden": boolean,"id": string,"kept": number,"kind": string,"label": string,"mode": string,"rolled_by": string,"success": boolean | null,"target": number | null,"total": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "bonus": number,"bonus_breakdown"?: Json | null,"campaign_id": string,"character_id"?: string | null,"created_at"?: string,"crit"?: boolean,"dice": (number)[],"fumble"?: boolean,"hidden"?: boolean,"id"?: string,"kept": number,"kind": string,"label": string,"mode": string,"rolled_by"?: string,"success"?: boolean | null,"target"?: number | null,"total": number
-                  }
-                  Update: {
-                    "bonus"?: number,"bonus_breakdown"?: Json | null,"campaign_id"?: string,"character_id"?: string | null,"created_at"?: string,"crit"?: boolean,"dice"?: (number)[],"fumble"?: boolean,"hidden"?: boolean,"id"?: string,"kept"?: number,"kind"?: string,"label"?: string,"mode"?: string,"rolled_by"?: string,"success"?: boolean | null,"target"?: number | null,"total"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "rolls_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "rolls_character_fk"
-      columns: ["character_id"]
-isOneToOne: false
-      referencedRelation: "characters"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"spawn_pins": {
-                  Row: {
-                    "content_id": string | null,"created_at": string,"id": string,"kind": string,"label": string,"map_id": string,"x": number,"y": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "content_id"?: string | null,"created_at"?: string,"id"?: string,"kind"?: string,"label"?: string,"map_id": string,"x": number,"y": number
-                  }
-                  Update: {
-                    "content_id"?: string | null,"created_at"?: string,"id"?: string,"kind"?: string,"label"?: string,"map_id"?: string,"x"?: number,"y"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "spawn_pins_content_id_fkey"
-      columns: ["content_id"]
-isOneToOne: false
-      referencedRelation: "region_content"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "spawn_pins_map_id_fkey"
-      columns: ["map_id"]
-isOneToOne: false
-      referencedRelation: "maps"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"spell_casts": {
-                  Row: {
-                    "campaign_id": string,"character_id": string,"concentration": boolean,"created_at": string,"created_by": string | null,"ended_concentration": string | null,"id": string,"ritual": boolean,"seq": number,"slot_level": number | null,"spell": string,"spell_level": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"character_id": string,"concentration"?: boolean,"created_at"?: string,"created_by"?: string | null,"ended_concentration"?: string | null,"id"?: string,"ritual"?: boolean,"seq"?: never,"slot_level"?: number | null,"spell": string,"spell_level": number
-                  }
-                  Update: {
-                    "campaign_id"?: string,"character_id"?: string,"concentration"?: boolean,"created_at"?: string,"created_by"?: string | null,"ended_concentration"?: string | null,"id"?: string,"ritual"?: boolean,"seq"?: never,"slot_level"?: number | null,"spell"?: string,"spell_level"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "spell_casts_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"srd_armor": {
-                  Row: {
-                    "category": string,"data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "category": string,"data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  Update: {
-                    "category"?: string,"data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"srd_backgrounds": {
-                  Row: {
-                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  Update: {
-                    "data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"srd_classes": {
-                  Row: {
-                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  Update: {
-                    "data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"srd_monsters": {
-                  Row: {
-                    "challenge_value": number,"creature_type": string,"data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "challenge_value": number,"creature_type": string,"data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  Update: {
-                    "challenge_value"?: number,"creature_type"?: string,"data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"srd_species": {
-                  Row: {
-                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "data": NonNullable<Json>,"id": string,"name": string,"source": string
-                  }
-                  Update: {
-                    "data"?: NonNullable<Json>,"id"?: string,"name"?: string,"source"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"srd_spells": {
-                  Row: {
-                    "data": NonNullable<Json>,"id": string,"level": number,"name": string,"source": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "data": NonNullable<Json>,"id": string,"level": number,"name": string,"source": string
-                  }
-                  Update: {
-                    "data"?: NonNullable<Json>,"id"?: string,"level"?: number,"name"?: string,"source"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"srd_weapons": {
-                  Row: {
-                    "category": string,"data": NonNullable<Json>,"id": string,"kind": string,"name": string,"source": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "category": string,"data": NonNullable<Json>,"id": string,"kind": string,"name": string,"source": string
-                  }
-                  Update: {
-                    "category"?: string,"data"?: NonNullable<Json>,"id"?: string,"kind"?: string,"name"?: string,"source"?: string
-                  }
-                  Relationships: [
-                    
-                  ]
-                },"wallets": {
-                  Row: {
-                    "campaign_id": string,"cp": number,"gp": number,"id": string,"owner_id": string,"owner_type": string,"pp": number,"sp": number
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"cp"?: number,"gp"?: number,"id"?: string,"owner_id": string,"owner_type": string,"pp"?: number,"sp"?: number
-                  }
-                  Update: {
-                    "campaign_id"?: string,"cp"?: number,"gp"?: number,"id"?: string,"owner_id"?: string,"owner_type"?: string,"pp"?: number,"sp"?: number
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "wallets_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"weather_days": {
-                  Row: {
-                    "condition": string,"day": number,"note": string,"overridden": boolean,"temperature": string,"wind": string,"zone_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "condition": string,"day": number,"note"?: string,"overridden"?: boolean,"temperature": string,"wind": string,"zone_id": string
-                  }
-                  Update: {
-                    "condition"?: string,"day"?: number,"note"?: string,"overridden"?: boolean,"temperature"?: string,"wind"?: string,"zone_id"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "weather_days_zone_id_fkey"
-      columns: ["zone_id"]
-isOneToOne: false
-      referencedRelation: "weather_zones"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"weather_zones": {
-                  Row: {
-                    "campaign_id": string,"center_x": number,"center_y": number,"climate": string,"color": string,"created_at": string,"id": string,"map_id": string,"name": string,"radius": number,"show_border": boolean
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"center_x": number,"center_y": number,"climate": string,"color"?: string,"created_at"?: string,"id"?: string,"map_id": string,"name": string,"radius": number,"show_border"?: boolean
-                  }
-                  Update: {
-                    "campaign_id"?: string,"center_x"?: number,"center_y"?: number,"climate"?: string,"color"?: string,"created_at"?: string,"id"?: string,"map_id"?: string,"name"?: string,"radius"?: number,"show_border"?: boolean
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "weather_zones_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "weather_zones_map_id_fkey"
-      columns: ["map_id"]
-isOneToOne: false
-      referencedRelation: "maps"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"world_events": {
-                  Row: {
-                    "campaign_id": string,"created_at": string,"day": number,"description": string,"entity_id": string | null,"id": string,"title": string,"visible_to_players": boolean
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "campaign_id": string,"created_at"?: string,"day": number,"description"?: string,"entity_id"?: string | null,"id"?: string,"title": string,"visible_to_players"?: boolean
-                  }
-                  Update: {
-                    "campaign_id"?: string,"created_at"?: string,"day"?: number,"description"?: string,"entity_id"?: string | null,"id"?: string,"title"?: string,"visible_to_players"?: boolean
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "world_events_campaign_id_fkey"
-      columns: ["campaign_id"]
-isOneToOne: false
-      referencedRelation: "campaigns"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "world_events_entity_id_fkey"
-      columns: ["entity_id"]
-isOneToOne: false
-      referencedRelation: "entities"
-      referencedColumns: ["id"]
-    }
-                  ]
-                }
-          }
-          Views: {
-            [_ in never]: never
-          }
-          Functions: {
-            "accept_transfer":
-{ Args: { "p_transfer": string }; Returns: string
-                           },
-"add_link":
-{ Args: { "p_a": string,"p_b": string,"p_hidden"?: boolean,"p_label_ab": string,"p_label_ba": string }; Returns: {
-              "a_id": string,
-"b_id": string,
-"campaign_id": string,
-"created_at": string,
-"hidden": boolean,
-"id": string,
-"label_ab": string,
-"label_ba": string
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "entity_links"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"advance_clock":
-{ Args: { "p_campaign": string,"p_reason"?: string,"p_seconds": number }; Returns: number
-                           },
-"apply_effect":
-{ Args: { "p_character": string,"p_concentration"?: boolean,"p_duration": Json,"p_hidden_detail"?: string,"p_mode": string,"p_name": string,"p_source": string,"p_stat": string,"p_value": number }; Returns: {
-              "character_id": string,
-"concentration": boolean,
-"created_at": string,
-"duration": NonNullable<Json>,
-"id": string,
-"mode": string,
-"name": string,
-"source": string,
-"stat": string,
-"value": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "effects"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"apply_level_up_from_function":
-{ Args: { "p_actor": string,"p_character": string,"p_choices": Json,"p_from": number,"p_hp_gain": number,"p_roll"?: string,"p_sheet": Json }; Returns: {
-              "campaign_id": string,
-"character_id": string,
-"choices": NonNullable<Json>,
-"created_at": string,
-"created_by": string | null,
-"from_level": number,
-"hp_gain": number,
-"id": string,
-"roll_id": string | null,
-"to_level": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "level_up_events"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"assign_character":
-{ Args: { "p_character": string,"p_group": string }; Returns: undefined
-                           },
-"attune_item":
-{ Args: { "p_item": string }; Returns: {
-              "attuned": boolean,
-"bound": boolean,
-"campaign_id": string,
-"created_at": string,
-"definition": NonNullable<Json>,
-"entity_id": string,
-"equipped": boolean,
-"kind": string,
-"owner_id": string | null,
-"owner_type": string,
-"quantity": number,
-"rarity": string | null,
-"requires_attunement": boolean,
-"srd_ref": string | null,
-"value_cp": number,
-"weight": number | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "items"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"award_coins":
-{ Args: { "p_coins": Json,"p_note"?: string,"p_source"?: string,"p_target_id": string,"p_target_type": string }; Returns: undefined
-                           },
-"award_xp":
-{ Args: { "p_amount": number,"p_note"?: string,"p_source": string,"p_target_id": string,"p_target_type": string }; Returns: undefined
-                           },
-"body_armor":
-{ Args: { "d": Json }; Returns: boolean
-                           },
-"break_concentration":
-{ Args: { "p_character": string }; Returns: {
-              "campaign_id": string,
-"character_id": string,
-"concentration": Json | null,
-"prepare_open": boolean,
-"slots_used": (number)[],
-"updated_at": string
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "character_spell_state"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"can_read_item":
-{ Args: { "i": string }; Returns: boolean
-                           },
-"can_read_map_image":
-{ Args: { "object_name": string }; Returns: boolean
-                           },
-"cancel_transfer":
-{ Args: { "p_transfer": string }; Returns: undefined
-                           },
-"cast_spell":
-{ Args: { "p_character": string,"p_ritual"?: boolean,"p_slot_level"?: number,"p_spell": string }; Returns: {
-              "campaign_id": string,
-"character_id": string,
-"concentration": Json | null,
-"prepare_open": boolean,
-"slots_used": (number)[],
-"updated_at": string
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "character_spell_state"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"character_campaign":
-{ Args: { "c": string }; Returns: string
-                           },
-"check_source":
-{ Args: { "p_source": string }; Returns: undefined
-                           },
-"class_slots":
-{ Args: { "p_class": string,"p_level": number }; Returns: (number)[]
-                           },
-"clear_fog":
-{ Args: { "p_group": string,"p_map": string,"p_mode": string }; Returns: number
-                           },
-"coins_of":
-{ Args: { "p_coins": Json }; Returns: {
-              "cp": number,"gp": number,"pp": number,"sp": number
-            }[]
-                           },
-"content_campaign":
-{ Args: { "c": string }; Returns: string
-                           },
-"content_details_ok":
-{ Args: { "d": Json }; Returns: boolean
-                           },
-"create_character_from_wizard":
-{ Args: { "p_actor": string,"p_campaign": string,"p_gp": number,"p_items": Json,"p_name": string,"p_roll"?: string,"p_sheet": Json }; Returns: string
-                           },
-"create_entity":
-{ Args: { "p_campaign": string,"p_folder"?: string,"p_name": string,"p_type": Database["public"]['Enums']["entity_type"],"p_visible"?: boolean }; Returns: {
-              "campaign_id": string,
-"created_at": string,
-"folder_id": string | null,
-"id": string,
-"name": string,
-"sort_order": number,
-"type": Database["public"]['Enums']["entity_type"],
-"updated_at": string,
-"visible_to_players": boolean
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "entities"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"create_folder":
-{ Args: { "p_campaign": string,"p_name": string,"p_parent"?: string }; Returns: {
-              "campaign_id": string,
-"created_at": string,
-"id": string,
-"name": string,
-"parent_id": string | null,
-"sort_order": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "entity_folders"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"create_group":
-{ Args: { "p_campaign": string,"p_color"?: string,"p_name": string }; Returns: string
-                           },
-"create_item":
-{ Args: { "p_bound"?: boolean,"p_campaign": string,"p_definition": Json,"p_kind": string,"p_name": string,"p_owner_id": string,"p_owner_type": string,"p_quantity"?: number,"p_rarity"?: string,"p_requires_attunement"?: boolean,"p_srd_ref"?: string,"p_value_cp"?: number,"p_weight"?: number }; Returns: {
-              "attuned": boolean,
-"bound": boolean,
-"campaign_id": string,
-"created_at": string,
-"definition": NonNullable<Json>,
-"entity_id": string,
-"equipped": boolean,
-"kind": string,
-"owner_id": string | null,
-"owner_type": string,
-"quantity": number,
-"rarity": string | null,
-"requires_attunement": boolean,
-"srd_ref": string | null,
-"value_cp": number,
-"weight": number | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "items"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"create_official_party":
-{ Args: { "c": string }; Returns: string
-                           },
-"d20":
-{ Args: Record<PropertyKey, never>; Returns: number
-                           },
-"decline_transfer":
-{ Args: { "p_transfer": string }; Returns: undefined
-                           },
-"delete_custom_content":
-{ Args: { "p_id": string }; Returns: undefined
-                           },
-"delete_entity":
-{ Args: { "p_entity": string }; Returns: undefined
-                           },
-"delete_folder":
-{ Args: { "p_folder": string }; Returns: undefined
-                           },
-"deposit_to_party":
-{ Args: { "p_character": string,"p_coins": Json,"p_note"?: string }; Returns: undefined
-                           },
-"details_from_sheet":
-{ Args: { "s": Json }; Returns: Json
-                           },
-"details_ok":
-{ Args: { "d": Json }; Returns: boolean
-                           },
-"entity_campaign":
-{ Args: { "e": string }; Returns: string
-                           },
-"entity_folder_campaign":
-{ Args: { "f": string }; Returns: string
-                           },
-"entity_visible":
-{ Args: { "e": string }; Returns: boolean
-                           },
-"equip_item":
-{ Args: { "p_item": string }; Returns: {
-              "attuned": boolean,
-"bound": boolean,
-"campaign_id": string,
-"created_at": string,
-"definition": NonNullable<Json>,
-"entity_id": string,
-"equipped": boolean,
-"kind": string,
-"owner_id": string | null,
-"owner_type": string,
-"quantity": number,
-"rarity": string | null,
-"requires_attunement": boolean,
-"srd_ref": string | null,
-"value_cp": number,
-"weight": number | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "items"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"evaluate_spawn":
-{ Args: { "daytime": boolean,"rule": Json }; Returns: number
-                           },
-"fog_points_valid":
-{ Args: { "max_points": number,"p": Json }; Returns: boolean
-                           },
-"folder_campaign":
-{ Args: { "object_name": string }; Returns: string
-                           },
-"force_move_item":
-{ Args: { "p_item": string,"p_quantity"?: number,"p_to_id": string,"p_to_type": string }; Returns: string
-                           },
-"free_entity_name":
-{ Args: { "base": string,"c": string }; Returns: string
-                           },
-"get_here":
-{ Args: { "p_character": string }; Returns: Json
-                           },
-"get_spotlight":
-{ Args: { "p_campaign": string }; Returns: {
-              "group_id": string,"group_name": string,"mine": boolean,"place": string,"summary": string
-            }[]
-                           },
-"group_campaign":
-{ Args: { "g": string }; Returns: string
-                           },
-"group_entrance_counts":
-{ Args: { "p_map": string }; Returns: {
-              "entrance_id": string,"kind": string,"members": number
-            }[]
-                           },
-"group_member_count":
-{ Args: { "g": Omit<Database["public"]['Tables']["party_groups"]['Row'], Database["public"]['Tables']["party_groups"]['ComputedFields']> }; Returns: number
-                           },
-"group_positions_shared":
-{ Args: { "c": string }; Returns: boolean
-                           },
-"in_group":
-{ Args: { "g": string }; Returns: boolean
-                           },
-"is_daytime":
-{ Args: { "day_end": number,"day_start": number,"hour": number }; Returns: boolean
-                           },
-"is_dm":
-{ Args: { "c": string }; Returns: boolean
-                           },
-"is_member":
-{ Args: { "c": string }; Returns: boolean
-                           },
-"is_shield":
-{ Args: { "d": Json }; Returns: boolean
-                           },
-"item_campaign":
-{ Args: { "i": string }; Returns: string
-                           },
-"join_campaign":
-{ Args: { "code": string }; Returns: string
-                           },
-"ledger_note":
-{ Args: { "fallback": string }; Returns: string
-                           },
-"ledger_reason":
-{ Args: { "p_note": string,"p_source": string }; Returns: undefined
-                           },
-"ledger_source":
-{ Args: Record<PropertyKey, never>; Returns: string
-                           },
-"level_from_xp":
-{ Args: { "xp": number }; Returns: number
-                           },
-"map_ancestors":
-{ Args: { "as_player"?: boolean,"p_map": string }; Returns: {
-              "depth": number,"map_id": string,"name": string,"via_id": string,"via_kind": string
-            }[]
-                           },
-"map_campaign":
-{ Args: { "m": string }; Returns: string
-                           },
-"map_is_revealed":
-{ Args: { "m": string }; Returns: boolean
-                           },
-"max_spell_level":
-{ Args: { "p_class": string,"p_level": number }; Returns: number
-                           },
-"move_coins":
-{ Args: { "p_cp": number,"p_gp": number,"p_note": string,"p_owner_id": string,"p_owner_type": string,"p_pp": number,"p_sign": number,"p_source": string,"p_sp": number }; Returns: undefined
-                           },
-"move_entity":
-{ Args: { "p_entity": string,"p_folder": string,"p_sort_order"?: number }; Returns: {
-              "campaign_id": string,
-"created_at": string,
-"folder_id": string | null,
-"id": string,
-"name": string,
-"sort_order": number,
-"type": Database["public"]['Enums']["entity_type"],
-"updated_at": string,
-"visible_to_players": boolean
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "entities"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"move_folder":
-{ Args: { "p_folder": string,"p_parent": string,"p_sort_order"?: number }; Returns: {
-              "campaign_id": string,
-"created_at": string,
-"id": string,
-"name": string,
-"parent_id": string | null,
-"sort_order": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "entity_folders"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"move_group":
-{ Args: { "p_actor": string,"p_group": string,"p_map": string,"p_passives": Json,"p_region": string }; Returns: Json
-                           },
-"move_item":
-{ Args: { "p_item": string,"p_quantity": number,"p_to_id": string,"p_to_type": string }; Returns: string
-                           },
-"offer_transfer":
-{ Args: { "p_item": string,"p_quantity"?: number,"p_to_character": string }; Returns: {
-              "campaign_id": string,
-"created_at": string,
-"created_by": string | null,
-"from_id": string | null,
-"from_name": string,
-"from_type": string,
-"id": string,
-"item_id": string | null,
-"item_name": string,
-"quantity": number,
-"resolved_at": string | null,
-"seq": number,
-"status": string,
-"to_id": string | null,
-"to_name": string,
-"to_type": string
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "item_transfers"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"official_party":
-{ Args: { "c": string }; Returns: string
-                           },
-"owner_campaign":
-{ Args: { "p_id": string,"p_type": string }; Returns: string
-                           },
-"owner_name":
-{ Args: { "p_id": string,"p_type": string }; Returns: string
-                           },
-"owns_character":
-{ Args: { "c": string }; Returns: boolean
-                           },
-"parent_map":
-{ Args: { "m": string }; Returns: string
-                           },
-"party_campaign":
-{ Args: { "p": string }; Returns: string
-                           },
-"party_roster":
-{ Args: { "p_campaign": string }; Returns: {
-              "ability_scores": Json,"character_id": string,"effects": Json,"name": string
-            }[]
-                           },
-"pin_campaign":
-{ Args: { "p": string }; Returns: string
-                           },
-"pin_is_revealed":
-{ Args: { "p": string }; Returns: boolean
-                           },
-"realtime_can_read":
-{ Args: { "p_topic": string }; Returns: boolean
-                           },
-"realtime_can_track":
-{ Args: { "p_topic": string }; Returns: boolean
-                           },
-"record_discovery":
-{ Args: { "p_content": string,"p_group": string,"p_state": string }; Returns: boolean
-                           },
-"region_campaign":
-{ Args: { "r": string }; Returns: string
-                           },
-"remove_link":
-{ Args: { "p_link": string }; Returns: undefined
-                           },
-"rename_entity":
-{ Args: { "p_entity": string,"p_name": string }; Returns: {
-              "campaign_id": string,
-"created_at": string,
-"folder_id": string | null,
-"id": string,
-"name": string,
-"sort_order": number,
-"type": Database["public"]['Enums']["entity_type"],
-"updated_at": string,
-"visible_to_players": boolean
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "entities"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"rename_folder":
-{ Args: { "p_folder": string,"p_name": string }; Returns: {
-              "campaign_id": string,
-"created_at": string,
-"id": string,
-"name": string,
-"parent_id": string | null,
-"sort_order": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "entity_folders"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"require_dm":
-{ Args: { "c": string }; Returns: undefined
-                           },
-"require_owner_or_dm":
-{ Args: { "p_character": string }; Returns: undefined
-                           },
-"reveal_content":
-{ Args: { "p_content": string,"p_group": string,"p_state": string }; Returns: undefined
-                           },
-"reveal_link":
-{ Args: { "p_hidden"?: boolean,"p_link": string }; Returns: {
-              "a_id": string,
-"b_id": string,
-"campaign_id": string,
-"created_at": string,
-"hidden": boolean,
-"id": string,
-"label_ab": string,
-"label_ba": string
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "entity_links"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"roll_ability_scores":
-{ Args: { "p_campaign": string }; Returns: {
-              "bonus": number,
-"bonus_breakdown": Json | null,
-"campaign_id": string,
-"character_id": string | null,
-"created_at": string,
-"crit": boolean,
-"dice": (number)[],
-"fumble": boolean,
-"hidden": boolean,
-"id": string,
-"kept": number,
-"kind": string,
-"label": string,
-"mode": string,
-"rolled_by": string,
-"success": boolean | null,
-"target": number | null,
-"total": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "rolls"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"roll_d20":
-{ Args: { "p_actor": string,"p_bonus": number,"p_breakdown"?: Json,"p_campaign": string,"p_character": string,"p_hidden"?: boolean,"p_kind": string,"p_label": string,"p_mode": string,"p_target": number }; Returns: {
-              "bonus": number,
-"bonus_breakdown": Json | null,
-"campaign_id": string,
-"character_id": string | null,
-"created_at": string,
-"crit": boolean,
-"dice": (number)[],
-"fumble": boolean,
-"hidden": boolean,
-"id": string,
-"kept": number,
-"kind": string,
-"label": string,
-"mode": string,
-"rolled_by": string,
-"success": boolean | null,
-"target": number | null,
-"total": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "rolls"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"roll_die":
-{ Args: { "sides": number }; Returns: number
-                           },
-"roll_hit_die":
-{ Args: { "p_character": string }; Returns: {
-              "bonus": number,
-"bonus_breakdown": Json | null,
-"campaign_id": string,
-"character_id": string | null,
-"created_at": string,
-"crit": boolean,
-"dice": (number)[],
-"fumble": boolean,
-"hidden": boolean,
-"id": string,
-"kept": number,
-"kind": string,
-"label": string,
-"mode": string,
-"rolled_by": string,
-"success": boolean | null,
-"target": number | null,
-"total": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "rolls"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"roll_outcome":
-{ Args: { "p_bonus": number,"p_dice": (number)[],"p_kind": string,"p_mode": string,"p_target": number }; Returns: Record<string, unknown>
-                           },
-"roll_pool":
-{ Args: { "count": number,"sides": number }; Returns: (number)[]
-                           },
-"roll_random_encounter":
-{ Args: { "p_region": string }; Returns: Json
-                           },
-"search_region":
-{ Args: { "p_actor": string,"p_bonus": number,"p_bonuses": Json,"p_breakdown": Json,"p_character": string,"p_mode": string }; Returns: Json
-                           },
-"send_realtime_event":
-{ Args: { "p_campaign": string,"p_channel": string,"p_event": string,"p_payload": Json,"p_target"?: string }; Returns: Json
-                           },
-"set_daylight_hours":
-{ Args: { "p_campaign": string,"p_end": number,"p_start": number }; Returns: undefined
-                           },
-"set_entity_visibility":
-{ Args: { "p_entity": string,"p_visible": boolean }; Returns: {
-              "campaign_id": string,
-"created_at": string,
-"folder_id": string | null,
-"id": string,
-"name": string,
-"sort_order": number,
-"type": Database["public"]['Enums']["entity_type"],
-"updated_at": string,
-"visible_to_players": boolean
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "entities"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"set_game_date":
-{ Args: { "p_campaign": string,"p_confirm_rewind"?: boolean,"p_day": number,"p_reason"?: string,"p_seconds_into_day"?: number }; Returns: number
-                           },
-"set_item_worn":
-{ Args: { "p_field": string,"p_item": string,"p_value": boolean }; Returns: {
-              "attuned": boolean,
-"bound": boolean,
-"campaign_id": string,
-"created_at": string,
-"definition": NonNullable<Json>,
-"entity_id": string,
-"equipped": boolean,
-"kind": string,
-"owner_id": string | null,
-"owner_type": string,
-"quantity": number,
-"rarity": string | null,
-"requires_attunement": boolean,
-"srd_ref": string | null,
-"value_cp": number,
-"weight": number | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "items"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"set_prepared_spells":
-{ Args: { "p_character": string,"p_prepared": (string)[] }; Returns: Json
-                           },
-"set_spotlight":
-{ Args: { "p_campaign": string,"p_group": string,"p_summary"?: string }; Returns: undefined
-                           },
-"shares_campaign":
-{ Args: { "other": string }; Returns: boolean
-                           },
-"simple_long_rest":
-{ Args: { "p_character": string }; Returns: {
-              "campaign_id": string,
-"character_id": string,
-"created_at": string,
-"created_by": string | null,
-"details": NonNullable<Json>,
-"id": string,
-"kind": string
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "rest_events"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"simple_long_rest_party":
-{ Args: { "p_campaign": string }; Returns: number
-                           },
-"simplify_fog":
-{ Args: { "p_group": string,"p_map": string,"p_strokes": Json }; Returns: number
-                           },
-"spawn_rule_ok":
-{ Args: { "r": Json }; Returns: boolean
-                           },
-"spell_state_for":
-{ Args: { "p_character": string }; Returns: {
-              "campaign_id": string,
-"character_id": string,
-"concentration": Json | null,
-"prepare_open": boolean,
-"slots_used": (number)[],
-"updated_at": string
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "character_spell_state"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"split_party_gold":
-{ Args: { "p_party": string }; Returns: undefined
-                           },
-"target_campaign":
-{ Args: { "p_target_id": string,"p_target_type": string }; Returns: string
-                           },
-"unattune_item":
-{ Args: { "p_item": string }; Returns: {
-              "attuned": boolean,
-"bound": boolean,
-"campaign_id": string,
-"created_at": string,
-"definition": NonNullable<Json>,
-"entity_id": string,
-"equipped": boolean,
-"kind": string,
-"owner_id": string | null,
-"owner_type": string,
-"quantity": number,
-"rarity": string | null,
-"requires_attunement": boolean,
-"srd_ref": string | null,
-"value_cp": number,
-"weight": number | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "items"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"unequip_item":
-{ Args: { "p_item": string }; Returns: {
-              "attuned": boolean,
-"bound": boolean,
-"campaign_id": string,
-"created_at": string,
-"definition": NonNullable<Json>,
-"entity_id": string,
-"equipped": boolean,
-"kind": string,
-"owner_id": string | null,
-"owner_type": string,
-"quantity": number,
-"rarity": string | null,
-"requires_attunement": boolean,
-"srd_ref": string | null,
-"value_cp": number,
-"weight": number | null
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "items"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"unused_ability_roll":
-{ Args: { "p_campaign": string,"p_user": string }; Returns: {
-              "bonus": number,
-"bonus_breakdown": Json | null,
-"campaign_id": string,
-"character_id": string | null,
-"created_at": string,
-"crit": boolean,
-"dice": (number)[],
-"fumble": boolean,
-"hidden": boolean,
-"id": string,
-"kept": number,
-"kind": string,
-"label": string,
-"mode": string,
-"rolled_by": string,
-"success": boolean | null,
-"target": number | null,
-"total": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "rolls"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"unused_hit_die_roll":
-{ Args: { "p_character": string,"p_level": number }; Returns: {
-              "bonus": number,
-"bonus_breakdown": Json | null,
-"campaign_id": string,
-"character_id": string | null,
-"created_at": string,
-"crit": boolean,
-"dice": (number)[],
-"fumble": boolean,
-"hidden": boolean,
-"id": string,
-"kept": number,
-"kind": string,
-"label": string,
-"mode": string,
-"rolled_by": string,
-"success": boolean | null,
-"target": number | null,
-"total": number
-            }
-                          SetofOptions: {
-        from: "*"
-        to: "rolls"
-        isOneToOne: true
-        isSetofReturn: false
-      } },
-"weather_zone_campaign":
-{ Args: { "z": string }; Returns: string
-                           },
-"withdraw_from_party":
-{ Args: { "p_character": string,"p_coins": Json,"p_note"?: string }; Returns: undefined
-                           }
-          }
-          Enums: {
-            "entity_type": "npc"|"location"|"item"|"faction"|"lore"|"player"|"party"|"session"
-          }
-          CompositeTypes: {
-            [_ in never]: never
-          }
-        }
-}
+  public: {
+    Tables: {
+      ability_roll_uses: {
+        Row: {
+          campaign_id: string;
+          character_id: string | null;
+          roll_id: string;
+          used_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          character_id?: string | null;
+          roll_id: string;
+          used_at?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          character_id?: string | null;
+          roll_id?: string;
+          used_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'ability_roll_uses_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'ability_roll_uses_character_id_fkey';
+            columns: ['character_id'];
+            isOneToOne: false;
+            referencedRelation: 'characters';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      calendars: {
+        Row: {
+          campaign_id: string;
+          definition: NonNullable<Json>;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          definition: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          definition?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'calendars_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: true;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      campaign_secrets: {
+        Row: {
+          campaign_id: string;
+          invite_code: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          invite_code: string;
+        };
+        Update: {
+          campaign_id?: string;
+          invite_code?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'campaign_secrets_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: true;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      campaign_spotlight: {
+        Row: {
+          campaign_id: string;
+          group_id: string | null;
+          summary: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          group_id?: string | null;
+          summary?: string;
+          updated_at?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          group_id?: string | null;
+          summary?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'campaign_spotlight_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: true;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_spotlight_group_id_fkey';
+            columns: ['group_id'];
+            isOneToOne: false;
+            referencedRelation: 'party_groups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      campaigns: {
+        Row: {
+          created_at: string;
+          game_seconds: number;
+          id: string;
+          name: string;
+          next_session_at: string | null;
+          owner_id: string;
+          rules_edition: string;
+          settings: NonNullable<Json>;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          game_seconds?: number;
+          id?: string;
+          name: string;
+          next_session_at?: string | null;
+          owner_id?: string;
+          rules_edition?: string;
+          settings?: NonNullable<Json>;
+        };
+        Update: {
+          created_at?: string;
+          game_seconds?: number;
+          id?: string;
+          name?: string;
+          next_session_at?: string | null;
+          owner_id?: string;
+          rules_edition?: string;
+          settings?: NonNullable<Json>;
+        };
+        Relationships: [];
+      };
+      character_details: {
+        Row: {
+          campaign_id: string;
+          character_id: string;
+          data: NonNullable<Json>;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          character_id: string;
+          data?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          character_id?: string;
+          data?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'character_details_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'character_details_character_id_fkey';
+            columns: ['character_id'];
+            isOneToOne: true;
+            referencedRelation: 'characters';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      character_drafts: {
+        Row: {
+          campaign_id: string;
+          data: NonNullable<Json>;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          data?: NonNullable<Json>;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          data?: NonNullable<Json>;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'character_drafts_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      character_spell_state: {
+        Row: {
+          campaign_id: string;
+          character_id: string;
+          concentration: Json | null;
+          prepare_open: boolean;
+          slots_used: number[];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          character_id: string;
+          concentration?: Json | null;
+          prepare_open?: boolean;
+          slots_used?: number[];
+          updated_at?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          character_id?: string;
+          concentration?: Json | null;
+          prepare_open?: boolean;
+          slots_used?: number[];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'character_spell_state_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'character_spell_state_character_id_fkey';
+            columns: ['character_id'];
+            isOneToOne: true;
+            referencedRelation: 'characters';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      characters: {
+        Row: {
+          campaign_id: string;
+          conditions: string[];
+          created_at: string;
+          entity_id: string | null;
+          exhaustion: number;
+          id: string;
+          level_applied: number;
+          name: string;
+          owner_id: string;
+          sheet: NonNullable<Json>;
+          xp: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          conditions?: string[];
+          created_at?: string;
+          entity_id?: string | null;
+          exhaustion?: number;
+          id?: string;
+          level_applied?: number;
+          name: string;
+          owner_id?: string;
+          sheet?: NonNullable<Json>;
+          xp?: number;
+        };
+        Update: {
+          campaign_id?: string;
+          conditions?: string[];
+          created_at?: string;
+          entity_id?: string | null;
+          exhaustion?: number;
+          id?: string;
+          level_applied?: number;
+          name?: string;
+          owner_id?: string;
+          sheet?: NonNullable<Json>;
+          xp?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'characters_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'characters_entity_id_fkey';
+            columns: ['entity_id'];
+            isOneToOne: true;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      content_discoveries: {
+        Row: {
+          content_id: string;
+          created_at: string;
+          group_id: string;
+          state: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          content_id: string;
+          created_at?: string;
+          group_id: string;
+          state: string;
+        };
+        Update: {
+          content_id?: string;
+          created_at?: string;
+          group_id?: string;
+          state?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'content_discoveries_content_id_fkey';
+            columns: ['content_id'];
+            isOneToOne: false;
+            referencedRelation: 'region_content';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'content_discoveries_group_id_fkey';
+            columns: ['group_id'];
+            isOneToOne: false;
+            referencedRelation: 'party_groups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      custom_content: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          created_by: string | null;
+          definition: NonNullable<Json>;
+          id: string;
+          kind: string;
+          name: string;
+          parent_ref: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          definition?: NonNullable<Json>;
+          id?: string;
+          kind: string;
+          name: string;
+          parent_ref?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          definition?: NonNullable<Json>;
+          id?: string;
+          kind?: string;
+          name?: string;
+          parent_ref?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'custom_content_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      discovery_notices: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          group_id: string;
+          id: string;
+          text: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          group_id: string;
+          id?: string;
+          text: string;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          group_id?: string;
+          id?: string;
+          text?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'discovery_notices_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'discovery_notices_group_id_fkey';
+            columns: ['group_id'];
+            isOneToOne: false;
+            referencedRelation: 'party_groups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      effect_secrets: {
+        Row: {
+          effect_id: string;
+          hidden_detail: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          effect_id: string;
+          hidden_detail?: string;
+        };
+        Update: {
+          effect_id?: string;
+          hidden_detail?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'effect_secrets_effect_id_fkey';
+            columns: ['effect_id'];
+            isOneToOne: true;
+            referencedRelation: 'effects';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      effects: {
+        Row: {
+          character_id: string;
+          concentration: boolean;
+          created_at: string;
+          duration: NonNullable<Json>;
+          id: string;
+          mode: string;
+          name: string;
+          source: string;
+          stat: string;
+          value: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          character_id: string;
+          concentration?: boolean;
+          created_at?: string;
+          duration?: NonNullable<Json>;
+          id?: string;
+          mode: string;
+          name: string;
+          source?: string;
+          stat: string;
+          value: number;
+        };
+        Update: {
+          character_id?: string;
+          concentration?: boolean;
+          created_at?: string;
+          duration?: NonNullable<Json>;
+          id?: string;
+          mode?: string;
+          name?: string;
+          source?: string;
+          stat?: string;
+          value?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'effects_character_id_fkey';
+            columns: ['character_id'];
+            isOneToOne: false;
+            referencedRelation: 'characters';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      encounter_rolls: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          game_seconds: number;
+          hour: number;
+          id: string;
+          is_day: boolean;
+          region_id: string;
+          region_name: string;
+          results: NonNullable<Json>;
+          rolled_by: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          game_seconds: number;
+          hour: number;
+          id?: string;
+          is_day: boolean;
+          region_id: string;
+          region_name: string;
+          results: NonNullable<Json>;
+          rolled_by: string;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          game_seconds?: number;
+          hour?: number;
+          id?: string;
+          is_day?: boolean;
+          region_id?: string;
+          region_name?: string;
+          results?: NonNullable<Json>;
+          rolled_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'encounter_rolls_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      entities: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          folder_id: string | null;
+          id: string;
+          name: string;
+          sort_order: number;
+          type: Database['public']['Enums']['entity_type'];
+          updated_at: string;
+          visible_to_players: boolean;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          folder_id?: string | null;
+          id?: string;
+          name: string;
+          sort_order?: number;
+          type: Database['public']['Enums']['entity_type'];
+          updated_at?: string;
+          visible_to_players?: boolean;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          folder_id?: string | null;
+          id?: string;
+          name?: string;
+          sort_order?: number;
+          type?: Database['public']['Enums']['entity_type'];
+          updated_at?: string;
+          visible_to_players?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'entities_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'entities_folder_id_fkey';
+            columns: ['folder_id'];
+            isOneToOne: false;
+            referencedRelation: 'entity_folders';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      entity_folders: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          id: string;
+          name: string;
+          parent_id: string | null;
+          sort_order: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          id?: string;
+          name: string;
+          parent_id?: string | null;
+          sort_order?: number;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          parent_id?: string | null;
+          sort_order?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'entity_folders_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'entity_folders_parent_id_fkey';
+            columns: ['parent_id'];
+            isOneToOne: false;
+            referencedRelation: 'entity_folders';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      entity_links: {
+        Row: {
+          a_id: string;
+          b_id: string;
+          campaign_id: string;
+          created_at: string;
+          hidden: boolean;
+          id: string;
+          label_ab: string;
+          label_ba: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          a_id: string;
+          b_id: string;
+          campaign_id: string;
+          created_at?: string;
+          hidden?: boolean;
+          id?: string;
+          label_ab: string;
+          label_ba: string;
+        };
+        Update: {
+          a_id?: string;
+          b_id?: string;
+          campaign_id?: string;
+          created_at?: string;
+          hidden?: boolean;
+          id?: string;
+          label_ab?: string;
+          label_ba?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'entity_links_a_id_fkey';
+            columns: ['a_id'];
+            isOneToOne: false;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'entity_links_b_id_fkey';
+            columns: ['b_id'];
+            isOneToOne: false;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'entity_links_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      fog_strokes: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          group_id: string | null;
+          id: string;
+          map_id: string;
+          mode: string;
+          points: NonNullable<Json>;
+          radius: number;
+          seq: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          group_id?: string | null;
+          id?: string;
+          map_id: string;
+          mode: string;
+          points?: NonNullable<Json>;
+          radius?: number;
+          seq?: never;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          group_id?: string | null;
+          id?: string;
+          map_id?: string;
+          mode?: string;
+          points?: NonNullable<Json>;
+          radius?: number;
+          seq?: never;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fog_strokes_group_id_fkey';
+            columns: ['group_id'];
+            isOneToOne: false;
+            referencedRelation: 'party_groups';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'fog_strokes_map_id_fkey';
+            columns: ['map_id'];
+            isOneToOne: false;
+            referencedRelation: 'maps';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      folders: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          id: string;
+          name: string;
+          parent_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          id?: string;
+          name: string;
+          parent_id?: string | null;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          parent_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'folders_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'folders_parent_id_fkey';
+            columns: ['parent_id'];
+            isOneToOne: false;
+            referencedRelation: 'folders';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      game_clock_events: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          created_by: string | null;
+          from_seconds: number;
+          id: string;
+          reason: string;
+          to_seconds: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          from_seconds: number;
+          id?: string;
+          reason?: string;
+          to_seconds: number;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          from_seconds?: number;
+          id?: string;
+          reason?: string;
+          to_seconds?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'game_clock_events_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      handout_shares: {
+        Row: {
+          handout_id: string;
+          seen_at: string | null;
+          shared_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          handout_id: string;
+          seen_at?: string | null;
+          shared_at?: string;
+          user_id: string;
+        };
+        Update: {
+          handout_id?: string;
+          seen_at?: string | null;
+          shared_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'handout_shares_handout_id_fkey';
+            columns: ['handout_id'];
+            isOneToOne: false;
+            referencedRelation: 'handouts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      handouts: {
+        Row: {
+          body: string | null;
+          campaign_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          image_path: string | null;
+          kind: string;
+          title: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          body?: string | null;
+          campaign_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          image_path?: string | null;
+          kind: string;
+          title: string;
+        };
+        Update: {
+          body?: string | null;
+          campaign_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          image_path?: string | null;
+          kind?: string;
+          title?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'handouts_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      item_secrets: {
+        Row: {
+          dm_notes: string;
+          hidden_effect: string;
+          item_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          dm_notes?: string;
+          hidden_effect?: string;
+          item_id: string;
+        };
+        Update: {
+          dm_notes?: string;
+          hidden_effect?: string;
+          item_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'item_secrets_item_id_fkey';
+            columns: ['item_id'];
+            isOneToOne: true;
+            referencedRelation: 'items';
+            referencedColumns: ['entity_id'];
+          },
+        ];
+      };
+      item_transfers: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          created_by: string | null;
+          from_id: string | null;
+          from_name: string;
+          from_type: string;
+          id: string;
+          item_id: string | null;
+          item_name: string;
+          quantity: number;
+          resolved_at: string | null;
+          seq: number;
+          status: string;
+          to_id: string | null;
+          to_name: string;
+          to_type: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          from_id?: string | null;
+          from_name: string;
+          from_type: string;
+          id?: string;
+          item_id?: string | null;
+          item_name: string;
+          quantity: number;
+          resolved_at?: string | null;
+          seq?: never;
+          status?: string;
+          to_id?: string | null;
+          to_name: string;
+          to_type: string;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          from_id?: string | null;
+          from_name?: string;
+          from_type?: string;
+          id?: string;
+          item_id?: string | null;
+          item_name?: string;
+          quantity?: number;
+          resolved_at?: string | null;
+          seq?: never;
+          status?: string;
+          to_id?: string | null;
+          to_name?: string;
+          to_type?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'item_transfers_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'item_transfers_item_id_fkey';
+            columns: ['item_id'];
+            isOneToOne: false;
+            referencedRelation: 'items';
+            referencedColumns: ['entity_id'];
+          },
+        ];
+      };
+      items: {
+        Row: {
+          attuned: boolean;
+          bound: boolean;
+          campaign_id: string;
+          created_at: string;
+          definition: NonNullable<Json>;
+          entity_id: string;
+          equipped: boolean;
+          kind: string;
+          owner_id: string | null;
+          owner_type: string;
+          quantity: number;
+          rarity: string | null;
+          requires_attunement: boolean;
+          srd_ref: string | null;
+          value_cp: number;
+          weight: number | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          attuned?: boolean;
+          bound?: boolean;
+          campaign_id: string;
+          created_at?: string;
+          definition?: NonNullable<Json>;
+          entity_id: string;
+          equipped?: boolean;
+          kind: string;
+          owner_id?: string | null;
+          owner_type: string;
+          quantity?: number;
+          rarity?: string | null;
+          requires_attunement?: boolean;
+          srd_ref?: string | null;
+          value_cp?: number;
+          weight?: number | null;
+        };
+        Update: {
+          attuned?: boolean;
+          bound?: boolean;
+          campaign_id?: string;
+          created_at?: string;
+          definition?: NonNullable<Json>;
+          entity_id?: string;
+          equipped?: boolean;
+          kind?: string;
+          owner_id?: string | null;
+          owner_type?: string;
+          quantity?: number;
+          rarity?: string | null;
+          requires_attunement?: boolean;
+          srd_ref?: string | null;
+          value_cp?: number;
+          weight?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'items_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'items_entity_id_fkey';
+            columns: ['entity_id'];
+            isOneToOne: true;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      ledger: {
+        Row: {
+          amount: NonNullable<Json>;
+          campaign_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          kind: string;
+          note: string;
+          seq: number;
+          source: string;
+          target_id: string;
+          target_type: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: NonNullable<Json>;
+          campaign_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          kind: string;
+          note?: string;
+          seq?: never;
+          source: string;
+          target_id: string;
+          target_type: string;
+        };
+        Update: {
+          amount?: NonNullable<Json>;
+          campaign_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          kind?: string;
+          note?: string;
+          seq?: never;
+          source?: string;
+          target_id?: string;
+          target_type?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'ledger_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      level_up_events: {
+        Row: {
+          campaign_id: string;
+          character_id: string;
+          choices: NonNullable<Json>;
+          created_at: string;
+          created_by: string | null;
+          from_level: number;
+          hp_gain: number;
+          id: string;
+          roll_id: string | null;
+          to_level: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          character_id: string;
+          choices: NonNullable<Json>;
+          created_at?: string;
+          created_by?: string | null;
+          from_level: number;
+          hp_gain: number;
+          id?: string;
+          roll_id?: string | null;
+          to_level: number;
+        };
+        Update: {
+          campaign_id?: string;
+          character_id?: string;
+          choices?: NonNullable<Json>;
+          created_at?: string;
+          created_by?: string | null;
+          from_level?: number;
+          hp_gain?: number;
+          id?: string;
+          roll_id?: string | null;
+          to_level?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'level_up_events_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      links: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          from_pin_id: string;
+          id: string;
+          label: string;
+          to_pin_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          from_pin_id: string;
+          id?: string;
+          label?: string;
+          to_pin_id: string;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          from_pin_id?: string;
+          id?: string;
+          label?: string;
+          to_pin_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'links_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'links_from_pin_id_fkey';
+            columns: ['from_pin_id'];
+            isOneToOne: false;
+            referencedRelation: 'pins';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'links_to_pin_id_fkey';
+            columns: ['to_pin_id'];
+            isOneToOne: false;
+            referencedRelation: 'pins';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      maps: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          fog_enabled: boolean;
+          fog_mode: string;
+          grid_size: number | null;
+          height: number;
+          id: string;
+          image_path: string;
+          name: string;
+          north_degrees: number;
+          parent_pin_id: string | null;
+          parent_region_id: string | null;
+          scale_unit: string;
+          scale_width: number | null;
+          visible_to_players: boolean;
+          width: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          fog_enabled?: boolean;
+          fog_mode?: string;
+          grid_size?: number | null;
+          height: number;
+          id?: string;
+          image_path: string;
+          name: string;
+          north_degrees?: number;
+          parent_pin_id?: string | null;
+          parent_region_id?: string | null;
+          scale_unit?: string;
+          scale_width?: number | null;
+          visible_to_players?: boolean;
+          width: number;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          fog_enabled?: boolean;
+          fog_mode?: string;
+          grid_size?: number | null;
+          height?: number;
+          id?: string;
+          image_path?: string;
+          name?: string;
+          north_degrees?: number;
+          parent_pin_id?: string | null;
+          parent_region_id?: string | null;
+          scale_unit?: string;
+          scale_width?: number | null;
+          visible_to_players?: boolean;
+          width?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'maps_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'maps_parent_pin_fk';
+            columns: ['parent_pin_id'];
+            isOneToOne: false;
+            referencedRelation: 'pins';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'maps_parent_region_id_fkey';
+            columns: ['parent_region_id'];
+            isOneToOne: false;
+            referencedRelation: 'regions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      members: {
+        Row: {
+          campaign_id: string;
+          joined_at: string;
+          role: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          joined_at?: string;
+          role?: string;
+          user_id: string;
+        };
+        Update: {
+          campaign_id?: string;
+          joined_at?: string;
+          role?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'members_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      messages: {
+        Row: {
+          body: string;
+          campaign_id: string;
+          created_at: string;
+          id: string;
+          kind: string;
+          player_id: string;
+          read_at: string | null;
+          sender_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          body: string;
+          campaign_id: string;
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          player_id: string;
+          read_at?: string | null;
+          sender_id: string;
+        };
+        Update: {
+          body?: string;
+          campaign_id?: string;
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          player_id?: string;
+          read_at?: string | null;
+          sender_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'messages_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pages: {
+        Row: {
+          body: string;
+          campaign_id: string;
+          created_at: string;
+          entity_id: string | null;
+          folder_id: string | null;
+          id: string;
+          ingame_date: string | null;
+          ingame_day: number | null;
+          kind: string;
+          real_date: string | null;
+          session_no: number | null;
+          tags: string[];
+          title: string;
+          updated_at: string;
+          visible_to_players: boolean;
+        };
+        ComputedFields: never;
+        Insert: {
+          body?: string;
+          campaign_id: string;
+          created_at?: string;
+          entity_id?: string | null;
+          folder_id?: string | null;
+          id?: string;
+          ingame_date?: string | null;
+          ingame_day?: number | null;
+          kind?: string;
+          real_date?: string | null;
+          session_no?: number | null;
+          tags?: string[];
+          title: string;
+          updated_at?: string;
+          visible_to_players?: boolean;
+        };
+        Update: {
+          body?: string;
+          campaign_id?: string;
+          created_at?: string;
+          entity_id?: string | null;
+          folder_id?: string | null;
+          id?: string;
+          ingame_date?: string | null;
+          ingame_day?: number | null;
+          kind?: string;
+          real_date?: string | null;
+          session_no?: number | null;
+          tags?: string[];
+          title?: string;
+          updated_at?: string;
+          visible_to_players?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pages_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pages_entity_id_fkey';
+            columns: ['entity_id'];
+            isOneToOne: false;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pages_folder_id_fkey';
+            columns: ['folder_id'];
+            isOneToOne: false;
+            referencedRelation: 'folders';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      parties: {
+        Row: {
+          campaign_id: string;
+          entity_id: string;
+          is_official: boolean;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          entity_id: string;
+          is_official?: boolean;
+        };
+        Update: {
+          campaign_id?: string;
+          entity_id?: string;
+          is_official?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'parties_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'parties_entity_id_fkey';
+            columns: ['entity_id'];
+            isOneToOne: true;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      party_group_members: {
+        Row: {
+          campaign_id: string;
+          character_id: string;
+          group_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          character_id: string;
+          group_id: string;
+        };
+        Update: {
+          campaign_id?: string;
+          character_id?: string;
+          group_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'party_group_members_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'party_group_members_character_id_fkey';
+            columns: ['character_id'];
+            isOneToOne: false;
+            referencedRelation: 'characters';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'party_group_members_group_id_fkey';
+            columns: ['group_id'];
+            isOneToOne: false;
+            referencedRelation: 'party_groups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      party_groups: {
+        Row: {
+          campaign_id: string;
+          color: string;
+          created_at: string;
+          id: string;
+          map_id: string | null;
+          name: string;
+          region_id: string | null;
+          x: number | null;
+          y: number | null;
+          group_member_count: number | null;
+        };
+        ComputedFields: 'group_member_count';
+        Insert: {
+          campaign_id: string;
+          color?: string;
+          created_at?: string;
+          id?: string;
+          map_id?: string | null;
+          name: string;
+          region_id?: string | null;
+          x?: number | null;
+          y?: number | null;
+        };
+        Update: {
+          campaign_id?: string;
+          color?: string;
+          created_at?: string;
+          id?: string;
+          map_id?: string | null;
+          name?: string;
+          region_id?: string | null;
+          x?: number | null;
+          y?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'party_groups_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'party_groups_map_id_fkey';
+            columns: ['map_id'];
+            isOneToOne: false;
+            referencedRelation: 'maps';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'party_groups_region_id_fkey';
+            columns: ['region_id'];
+            isOneToOne: false;
+            referencedRelation: 'regions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      party_members: {
+        Row: {
+          character_id: string;
+          joined_at: string;
+          party_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          character_id: string;
+          joined_at?: string;
+          party_id: string;
+        };
+        Update: {
+          character_id?: string;
+          joined_at?: string;
+          party_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'party_members_character_id_fkey';
+            columns: ['character_id'];
+            isOneToOne: false;
+            referencedRelation: 'characters';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'party_members_party_id_fkey';
+            columns: ['party_id'];
+            isOneToOne: false;
+            referencedRelation: 'parties';
+            referencedColumns: ['entity_id'];
+          },
+        ];
+      };
+      pin_secrets: {
+        Row: {
+          dm_notes: string;
+          pin_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          dm_notes?: string;
+          pin_id: string;
+        };
+        Update: {
+          dm_notes?: string;
+          pin_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pin_secrets_pin_id_fkey';
+            columns: ['pin_id'];
+            isOneToOne: true;
+            referencedRelation: 'pins';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      ping_mutes: {
+        Row: {
+          campaign_id: string;
+          muted_by: string | null;
+          muted_until: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          muted_by?: string | null;
+          muted_until?: string;
+          user_id: string;
+        };
+        Update: {
+          campaign_id?: string;
+          muted_by?: string | null;
+          muted_until?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'ping_mutes_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pins: {
+        Row: {
+          color: string;
+          created_at: string;
+          description: string;
+          entity_id: string | null;
+          history: string;
+          icon: string;
+          id: string;
+          map_id: string;
+          music_url: string | null;
+          size: number;
+          tags: string[];
+          title: string;
+          traits: string[];
+          type: string;
+          visible_to_players: boolean;
+          x: number;
+          y: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          color?: string;
+          created_at?: string;
+          description?: string;
+          entity_id?: string | null;
+          history?: string;
+          icon?: string;
+          id?: string;
+          map_id: string;
+          music_url?: string | null;
+          size?: number;
+          tags?: string[];
+          title: string;
+          traits?: string[];
+          type?: string;
+          visible_to_players?: boolean;
+          x: number;
+          y: number;
+        };
+        Update: {
+          color?: string;
+          created_at?: string;
+          description?: string;
+          entity_id?: string | null;
+          history?: string;
+          icon?: string;
+          id?: string;
+          map_id?: string;
+          music_url?: string | null;
+          size?: number;
+          tags?: string[];
+          title?: string;
+          traits?: string[];
+          type?: string;
+          visible_to_players?: boolean;
+          x?: number;
+          y?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pins_entity_id_fkey';
+            columns: ['entity_id'];
+            isOneToOne: false;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pins_map_id_fkey';
+            columns: ['map_id'];
+            isOneToOne: false;
+            referencedRelation: 'maps';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      player_notes: {
+        Row: {
+          body: string;
+          campaign_id: string;
+          created_at: string;
+          id: string;
+          message_id: string | null;
+          source: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          body: string;
+          campaign_id: string;
+          created_at?: string;
+          id?: string;
+          message_id?: string | null;
+          source?: string;
+          user_id: string;
+        };
+        Update: {
+          body?: string;
+          campaign_id?: string;
+          created_at?: string;
+          id?: string;
+          message_id?: string | null;
+          source?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'player_notes_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'player_notes_message_id_fkey';
+            columns: ['message_id'];
+            isOneToOne: false;
+            referencedRelation: 'messages';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      profiles: {
+        Row: {
+          avatar_url: string | null;
+          created_at: string;
+          discord_id: string | null;
+          display_name: string | null;
+          id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          avatar_url?: string | null;
+          created_at?: string;
+          discord_id?: string | null;
+          display_name?: string | null;
+          id: string;
+        };
+        Update: {
+          avatar_url?: string | null;
+          created_at?: string;
+          discord_id?: string | null;
+          display_name?: string | null;
+          id?: string;
+        };
+        Relationships: [];
+      };
+      region_content: {
+        Row: {
+          created_at: string;
+          details: NonNullable<Json>;
+          discovery_dc: number | null;
+          discovery_skill: string;
+          entity_id: string | null;
+          hint_text: string | null;
+          id: string;
+          kind: string;
+          monster_ref: string | null;
+          name: string;
+          region_id: string;
+          sort_order: number;
+          spawn_rule: NonNullable<Json>;
+          state: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          details?: NonNullable<Json>;
+          discovery_dc?: number | null;
+          discovery_skill?: string;
+          entity_id?: string | null;
+          hint_text?: string | null;
+          id?: string;
+          kind: string;
+          monster_ref?: string | null;
+          name: string;
+          region_id: string;
+          sort_order?: number;
+          spawn_rule?: NonNullable<Json>;
+          state?: string;
+        };
+        Update: {
+          created_at?: string;
+          details?: NonNullable<Json>;
+          discovery_dc?: number | null;
+          discovery_skill?: string;
+          entity_id?: string | null;
+          hint_text?: string | null;
+          id?: string;
+          kind?: string;
+          monster_ref?: string | null;
+          name?: string;
+          region_id?: string;
+          sort_order?: number;
+          spawn_rule?: NonNullable<Json>;
+          state?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'region_content_entity_id_fkey';
+            columns: ['entity_id'];
+            isOneToOne: false;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'region_content_region_id_fkey';
+            columns: ['region_id'];
+            isOneToOne: false;
+            referencedRelation: 'regions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      region_content_secrets: {
+        Row: {
+          content_id: string;
+          dm_notes: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          content_id: string;
+          dm_notes?: string;
+        };
+        Update: {
+          content_id?: string;
+          dm_notes?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'region_content_secrets_content_id_fkey';
+            columns: ['content_id'];
+            isOneToOne: true;
+            referencedRelation: 'region_content';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      region_searches: {
+        Row: {
+          campaign_id: string;
+          character_id: string;
+          created_at: string;
+          found: number;
+          group_id: string;
+          id: string;
+          region_id: string;
+          roll_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          character_id: string;
+          created_at?: string;
+          found: number;
+          group_id: string;
+          id?: string;
+          region_id: string;
+          roll_id: string;
+        };
+        Update: {
+          campaign_id?: string;
+          character_id?: string;
+          created_at?: string;
+          found?: number;
+          group_id?: string;
+          id?: string;
+          region_id?: string;
+          roll_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'region_searches_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      regions: {
+        Row: {
+          created_at: string;
+          cx: number;
+          cy: number;
+          description: string;
+          id: string;
+          map_id: string;
+          name: string;
+          radius: number;
+          shape: string;
+          terrain: string;
+          visible_to_players: boolean;
+          weather: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          cx: number;
+          cy: number;
+          description?: string;
+          id?: string;
+          map_id: string;
+          name: string;
+          radius: number;
+          shape?: string;
+          terrain?: string;
+          visible_to_players?: boolean;
+          weather?: string;
+        };
+        Update: {
+          created_at?: string;
+          cx?: number;
+          cy?: number;
+          description?: string;
+          id?: string;
+          map_id?: string;
+          name?: string;
+          radius?: number;
+          shape?: string;
+          terrain?: string;
+          visible_to_players?: boolean;
+          weather?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'regions_map_id_fkey';
+            columns: ['map_id'];
+            isOneToOne: false;
+            referencedRelation: 'maps';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      rest_events: {
+        Row: {
+          campaign_id: string;
+          character_id: string;
+          created_at: string;
+          created_by: string | null;
+          details: NonNullable<Json>;
+          id: string;
+          kind: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          character_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          details?: NonNullable<Json>;
+          id?: string;
+          kind: string;
+        };
+        Update: {
+          campaign_id?: string;
+          character_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          details?: NonNullable<Json>;
+          id?: string;
+          kind?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'rest_events_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      rolls: {
+        Row: {
+          bonus: number;
+          bonus_breakdown: Json | null;
+          campaign_id: string;
+          character_id: string | null;
+          created_at: string;
+          crit: boolean;
+          dice: number[];
+          fumble: boolean;
+          hidden: boolean;
+          id: string;
+          kept: number;
+          kind: string;
+          label: string;
+          mode: string;
+          rolled_by: string;
+          success: boolean | null;
+          target: number | null;
+          total: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          bonus: number;
+          bonus_breakdown?: Json | null;
+          campaign_id: string;
+          character_id?: string | null;
+          created_at?: string;
+          crit?: boolean;
+          dice: number[];
+          fumble?: boolean;
+          hidden?: boolean;
+          id?: string;
+          kept: number;
+          kind: string;
+          label: string;
+          mode: string;
+          rolled_by?: string;
+          success?: boolean | null;
+          target?: number | null;
+          total: number;
+        };
+        Update: {
+          bonus?: number;
+          bonus_breakdown?: Json | null;
+          campaign_id?: string;
+          character_id?: string | null;
+          created_at?: string;
+          crit?: boolean;
+          dice?: number[];
+          fumble?: boolean;
+          hidden?: boolean;
+          id?: string;
+          kept?: number;
+          kind?: string;
+          label?: string;
+          mode?: string;
+          rolled_by?: string;
+          success?: boolean | null;
+          target?: number | null;
+          total?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'rolls_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rolls_character_fk';
+            columns: ['character_id'];
+            isOneToOne: false;
+            referencedRelation: 'characters';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      safety_events: {
+        Row: {
+          anonymous: boolean;
+          campaign_id: string;
+          created_at: string;
+          id: string;
+          kind: string;
+          seq: number;
+          user_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          anonymous?: boolean;
+          campaign_id: string;
+          created_at?: string;
+          id?: string;
+          kind: string;
+          seq?: never;
+          user_id?: string | null;
+        };
+        Update: {
+          anonymous?: boolean;
+          campaign_id?: string;
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          seq?: never;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'safety_events_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      safety_rate: {
+        Row: {
+          campaign_id: string;
+          last_request_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          last_request_at: string;
+          user_id: string;
+        };
+        Update: {
+          campaign_id?: string;
+          last_request_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'safety_rate_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      spawn_pins: {
+        Row: {
+          content_id: string | null;
+          created_at: string;
+          id: string;
+          kind: string;
+          label: string;
+          map_id: string;
+          x: number;
+          y: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          content_id?: string | null;
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          label?: string;
+          map_id: string;
+          x: number;
+          y: number;
+        };
+        Update: {
+          content_id?: string | null;
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          label?: string;
+          map_id?: string;
+          x?: number;
+          y?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'spawn_pins_content_id_fkey';
+            columns: ['content_id'];
+            isOneToOne: false;
+            referencedRelation: 'region_content';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'spawn_pins_map_id_fkey';
+            columns: ['map_id'];
+            isOneToOne: false;
+            referencedRelation: 'maps';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      spell_casts: {
+        Row: {
+          campaign_id: string;
+          character_id: string;
+          concentration: boolean;
+          created_at: string;
+          created_by: string | null;
+          ended_concentration: string | null;
+          id: string;
+          ritual: boolean;
+          seq: number;
+          slot_level: number | null;
+          spell: string;
+          spell_level: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          character_id: string;
+          concentration?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+          ended_concentration?: string | null;
+          id?: string;
+          ritual?: boolean;
+          seq?: never;
+          slot_level?: number | null;
+          spell: string;
+          spell_level: number;
+        };
+        Update: {
+          campaign_id?: string;
+          character_id?: string;
+          concentration?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+          ended_concentration?: string | null;
+          id?: string;
+          ritual?: boolean;
+          seq?: never;
+          slot_level?: number | null;
+          spell?: string;
+          spell_level?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'spell_casts_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      srd_armor: {
+        Row: {
+          category: string;
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          category: string;
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        Update: {
+          category?: string;
+          data?: NonNullable<Json>;
+          id?: string;
+          name?: string;
+          source?: string;
+        };
+        Relationships: [];
+      };
+      srd_backgrounds: {
+        Row: {
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        Update: {
+          data?: NonNullable<Json>;
+          id?: string;
+          name?: string;
+          source?: string;
+        };
+        Relationships: [];
+      };
+      srd_classes: {
+        Row: {
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        Update: {
+          data?: NonNullable<Json>;
+          id?: string;
+          name?: string;
+          source?: string;
+        };
+        Relationships: [];
+      };
+      srd_monsters: {
+        Row: {
+          challenge_value: number;
+          creature_type: string;
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          challenge_value: number;
+          creature_type: string;
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        Update: {
+          challenge_value?: number;
+          creature_type?: string;
+          data?: NonNullable<Json>;
+          id?: string;
+          name?: string;
+          source?: string;
+        };
+        Relationships: [];
+      };
+      srd_species: {
+        Row: {
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          data: NonNullable<Json>;
+          id: string;
+          name: string;
+          source: string;
+        };
+        Update: {
+          data?: NonNullable<Json>;
+          id?: string;
+          name?: string;
+          source?: string;
+        };
+        Relationships: [];
+      };
+      srd_spells: {
+        Row: {
+          data: NonNullable<Json>;
+          id: string;
+          level: number;
+          name: string;
+          source: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          data: NonNullable<Json>;
+          id: string;
+          level: number;
+          name: string;
+          source: string;
+        };
+        Update: {
+          data?: NonNullable<Json>;
+          id?: string;
+          level?: number;
+          name?: string;
+          source?: string;
+        };
+        Relationships: [];
+      };
+      srd_weapons: {
+        Row: {
+          category: string;
+          data: NonNullable<Json>;
+          id: string;
+          kind: string;
+          name: string;
+          source: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          category: string;
+          data: NonNullable<Json>;
+          id: string;
+          kind: string;
+          name: string;
+          source: string;
+        };
+        Update: {
+          category?: string;
+          data?: NonNullable<Json>;
+          id?: string;
+          kind?: string;
+          name?: string;
+          source?: string;
+        };
+        Relationships: [];
+      };
+      wallets: {
+        Row: {
+          campaign_id: string;
+          cp: number;
+          gp: number;
+          id: string;
+          owner_id: string;
+          owner_type: string;
+          pp: number;
+          sp: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          cp?: number;
+          gp?: number;
+          id?: string;
+          owner_id: string;
+          owner_type: string;
+          pp?: number;
+          sp?: number;
+        };
+        Update: {
+          campaign_id?: string;
+          cp?: number;
+          gp?: number;
+          id?: string;
+          owner_id?: string;
+          owner_type?: string;
+          pp?: number;
+          sp?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'wallets_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      weather_days: {
+        Row: {
+          condition: string;
+          day: number;
+          note: string;
+          overridden: boolean;
+          temperature: string;
+          wind: string;
+          zone_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          condition: string;
+          day: number;
+          note?: string;
+          overridden?: boolean;
+          temperature: string;
+          wind: string;
+          zone_id: string;
+        };
+        Update: {
+          condition?: string;
+          day?: number;
+          note?: string;
+          overridden?: boolean;
+          temperature?: string;
+          wind?: string;
+          zone_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'weather_days_zone_id_fkey';
+            columns: ['zone_id'];
+            isOneToOne: false;
+            referencedRelation: 'weather_zones';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      weather_zones: {
+        Row: {
+          campaign_id: string;
+          center_x: number;
+          center_y: number;
+          climate: string;
+          color: string;
+          created_at: string;
+          id: string;
+          map_id: string;
+          name: string;
+          radius: number;
+          show_border: boolean;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          center_x: number;
+          center_y: number;
+          climate: string;
+          color?: string;
+          created_at?: string;
+          id?: string;
+          map_id: string;
+          name: string;
+          radius: number;
+          show_border?: boolean;
+        };
+        Update: {
+          campaign_id?: string;
+          center_x?: number;
+          center_y?: number;
+          climate?: string;
+          color?: string;
+          created_at?: string;
+          id?: string;
+          map_id?: string;
+          name?: string;
+          radius?: number;
+          show_border?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'weather_zones_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'weather_zones_map_id_fkey';
+            columns: ['map_id'];
+            isOneToOne: false;
+            referencedRelation: 'maps';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      world_events: {
+        Row: {
+          campaign_id: string;
+          created_at: string;
+          day: number;
+          description: string;
+          entity_id: string | null;
+          id: string;
+          title: string;
+          visible_to_players: boolean;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          created_at?: string;
+          day: number;
+          description?: string;
+          entity_id?: string | null;
+          id?: string;
+          title: string;
+          visible_to_players?: boolean;
+        };
+        Update: {
+          campaign_id?: string;
+          created_at?: string;
+          day?: number;
+          description?: string;
+          entity_id?: string | null;
+          id?: string;
+          title?: string;
+          visible_to_players?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'world_events_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'world_events_entity_id_fkey';
+            columns: ['entity_id'];
+            isOneToOne: false;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      accept_transfer: { Args: { p_transfer: string }; Returns: string };
+      add_link: {
+        Args: { p_a: string; p_b: string; p_hidden?: boolean; p_label_ab: string; p_label_ba: string };
+        Returns: {
+          a_id: string;
+          b_id: string;
+          campaign_id: string;
+          created_at: string;
+          hidden: boolean;
+          id: string;
+          label_ab: string;
+          label_ba: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'entity_links';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      advance_clock: { Args: { p_campaign: string; p_reason?: string; p_seconds: number }; Returns: number };
+      apply_effect: {
+        Args: {
+          p_character: string;
+          p_concentration?: boolean;
+          p_duration: Json;
+          p_hidden_detail?: string;
+          p_mode: string;
+          p_name: string;
+          p_source: string;
+          p_stat: string;
+          p_value: number;
+        };
+        Returns: {
+          character_id: string;
+          concentration: boolean;
+          created_at: string;
+          duration: NonNullable<Json>;
+          id: string;
+          mode: string;
+          name: string;
+          source: string;
+          stat: string;
+          value: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'effects';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      apply_level_up_from_function: {
+        Args: {
+          p_actor: string;
+          p_character: string;
+          p_choices: Json;
+          p_from: number;
+          p_hp_gain: number;
+          p_roll?: string;
+          p_sheet: Json;
+        };
+        Returns: {
+          campaign_id: string;
+          character_id: string;
+          choices: NonNullable<Json>;
+          created_at: string;
+          created_by: string | null;
+          from_level: number;
+          hp_gain: number;
+          id: string;
+          roll_id: string | null;
+          to_level: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'level_up_events';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      assign_character: { Args: { p_character: string; p_group: string }; Returns: undefined };
+      attune_item: {
+        Args: { p_item: string };
+        Returns: {
+          attuned: boolean;
+          bound: boolean;
+          campaign_id: string;
+          created_at: string;
+          definition: NonNullable<Json>;
+          entity_id: string;
+          equipped: boolean;
+          kind: string;
+          owner_id: string | null;
+          owner_type: string;
+          quantity: number;
+          rarity: string | null;
+          requires_attunement: boolean;
+          srd_ref: string | null;
+          value_cp: number;
+          weight: number | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'items';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      award_coins: {
+        Args: { p_coins: Json; p_note?: string; p_source?: string; p_target_id: string; p_target_type: string };
+        Returns: undefined;
+      };
+      award_xp: {
+        Args: { p_amount: number; p_note?: string; p_source: string; p_target_id: string; p_target_type: string };
+        Returns: undefined;
+      };
+      body_armor: { Args: { d: Json }; Returns: boolean };
+      break_concentration: {
+        Args: { p_character: string };
+        Returns: {
+          campaign_id: string;
+          character_id: string;
+          concentration: Json | null;
+          prepare_open: boolean;
+          slots_used: number[];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'character_spell_state';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      can_ping: { Args: { p_campaign: string }; Returns: boolean };
+      can_read_handout_image: { Args: { object_name: string }; Returns: boolean };
+      can_read_item: { Args: { i: string }; Returns: boolean };
+      can_read_map_image: { Args: { object_name: string }; Returns: boolean };
+      cancel_transfer: { Args: { p_transfer: string }; Returns: undefined };
+      cast_spell: {
+        Args: { p_character: string; p_ritual?: boolean; p_slot_level?: number; p_spell: string };
+        Returns: {
+          campaign_id: string;
+          character_id: string;
+          concentration: Json | null;
+          prepare_open: boolean;
+          slots_used: number[];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'character_spell_state';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      character_campaign: { Args: { c: string }; Returns: string };
+      check_source: { Args: { p_source: string }; Returns: undefined };
+      class_slots: { Args: { p_class: string; p_level: number }; Returns: number[] };
+      clear_fog: { Args: { p_group: string; p_map: string; p_mode: string }; Returns: number };
+      coins_of: {
+        Args: { p_coins: Json };
+        Returns: {
+          cp: number;
+          gp: number;
+          pp: number;
+          sp: number;
+        }[];
+      };
+      content_campaign: { Args: { c: string }; Returns: string };
+      content_details_ok: { Args: { d: Json }; Returns: boolean };
+      create_character_from_wizard: {
+        Args: {
+          p_actor: string;
+          p_campaign: string;
+          p_gp: number;
+          p_items: Json;
+          p_name: string;
+          p_roll?: string;
+          p_sheet: Json;
+        };
+        Returns: string;
+      };
+      create_entity: {
+        Args: {
+          p_campaign: string;
+          p_folder?: string;
+          p_name: string;
+          p_type: Database['public']['Enums']['entity_type'];
+          p_visible?: boolean;
+        };
+        Returns: {
+          campaign_id: string;
+          created_at: string;
+          folder_id: string | null;
+          id: string;
+          name: string;
+          sort_order: number;
+          type: Database['public']['Enums']['entity_type'];
+          updated_at: string;
+          visible_to_players: boolean;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'entities';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      create_folder: {
+        Args: { p_campaign: string; p_name: string; p_parent?: string };
+        Returns: {
+          campaign_id: string;
+          created_at: string;
+          id: string;
+          name: string;
+          parent_id: string | null;
+          sort_order: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'entity_folders';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      create_group: { Args: { p_campaign: string; p_color?: string; p_name: string }; Returns: string };
+      create_item: {
+        Args: {
+          p_bound?: boolean;
+          p_campaign: string;
+          p_definition: Json;
+          p_kind: string;
+          p_name: string;
+          p_owner_id: string;
+          p_owner_type: string;
+          p_quantity?: number;
+          p_rarity?: string;
+          p_requires_attunement?: boolean;
+          p_srd_ref?: string;
+          p_value_cp?: number;
+          p_weight?: number;
+        };
+        Returns: {
+          attuned: boolean;
+          bound: boolean;
+          campaign_id: string;
+          created_at: string;
+          definition: NonNullable<Json>;
+          entity_id: string;
+          equipped: boolean;
+          kind: string;
+          owner_id: string | null;
+          owner_type: string;
+          quantity: number;
+          rarity: string | null;
+          requires_attunement: boolean;
+          srd_ref: string | null;
+          value_cp: number;
+          weight: number | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'items';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      create_official_party: { Args: { c: string }; Returns: string };
+      d20: { Args: Record<PropertyKey, never>; Returns: number };
+      decline_transfer: { Args: { p_transfer: string }; Returns: undefined };
+      delete_custom_content: { Args: { p_id: string }; Returns: undefined };
+      delete_entity: { Args: { p_entity: string }; Returns: undefined };
+      delete_folder: { Args: { p_folder: string }; Returns: undefined };
+      deposit_to_party: { Args: { p_character: string; p_coins: Json; p_note?: string }; Returns: undefined };
+      details_from_sheet: { Args: { s: Json }; Returns: Json };
+      details_ok: { Args: { d: Json }; Returns: boolean };
+      entity_campaign: { Args: { e: string }; Returns: string };
+      entity_folder_campaign: { Args: { f: string }; Returns: string };
+      entity_visible: { Args: { e: string }; Returns: boolean };
+      equip_item: {
+        Args: { p_item: string };
+        Returns: {
+          attuned: boolean;
+          bound: boolean;
+          campaign_id: string;
+          created_at: string;
+          definition: NonNullable<Json>;
+          entity_id: string;
+          equipped: boolean;
+          kind: string;
+          owner_id: string | null;
+          owner_type: string;
+          quantity: number;
+          rarity: string | null;
+          requires_attunement: boolean;
+          srd_ref: string | null;
+          value_cp: number;
+          weight: number | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'items';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      evaluate_spawn: { Args: { daytime: boolean; rule: Json }; Returns: number };
+      fog_points_valid: { Args: { max_points: number; p: Json }; Returns: boolean };
+      folder_campaign: { Args: { object_name: string }; Returns: string };
+      force_move_item: {
+        Args: { p_item: string; p_quantity?: number; p_to_id: string; p_to_type: string };
+        Returns: string;
+      };
+      free_entity_name: { Args: { base: string; c: string }; Returns: string };
+      get_here: { Args: { p_character: string }; Returns: Json };
+      get_spotlight: {
+        Args: { p_campaign: string };
+        Returns: {
+          group_id: string;
+          group_name: string;
+          mine: boolean;
+          place: string;
+          summary: string;
+        }[];
+      };
+      get_table_pause: { Args: { p_campaign: string }; Returns: Json };
+      group_campaign: { Args: { g: string }; Returns: string };
+      group_entrance_counts: {
+        Args: { p_map: string };
+        Returns: {
+          entrance_id: string;
+          kind: string;
+          members: number;
+        }[];
+      };
+      group_member_count: {
+        Args: {
+          g: Omit<
+            Database['public']['Tables']['party_groups']['Row'],
+            Database['public']['Tables']['party_groups']['ComputedFields']
+          >;
+        };
+        Returns: number;
+      };
+      group_positions_shared: { Args: { c: string }; Returns: boolean };
+      handout_campaign: { Args: { h: string }; Returns: string };
+      handout_shared_with_me: { Args: { h: string }; Returns: boolean };
+      in_group: { Args: { g: string }; Returns: boolean };
+      is_daytime: { Args: { day_end: number; day_start: number; hour: number }; Returns: boolean };
+      is_dm: { Args: { c: string }; Returns: boolean };
+      is_member: { Args: { c: string }; Returns: boolean };
+      is_shield: { Args: { d: Json }; Returns: boolean };
+      item_campaign: { Args: { i: string }; Returns: string };
+      join_campaign: { Args: { code: string }; Returns: string };
+      ledger_note: { Args: { fallback: string }; Returns: string };
+      ledger_reason: { Args: { p_note: string; p_source: string }; Returns: undefined };
+      ledger_source: { Args: Record<PropertyKey, never>; Returns: string };
+      level_from_xp: { Args: { xp: number }; Returns: number };
+      map_ancestors: {
+        Args: { as_player?: boolean; p_map: string };
+        Returns: {
+          depth: number;
+          map_id: string;
+          name: string;
+          via_id: string;
+          via_kind: string;
+        }[];
+      };
+      map_campaign: { Args: { m: string }; Returns: string };
+      map_is_revealed: { Args: { m: string }; Returns: boolean };
+      mark_handout_seen: { Args: { p_handout: string }; Returns: boolean };
+      mark_thread_read: { Args: { p_campaign: string; p_player: string }; Returns: number };
+      max_spell_level: { Args: { p_class: string; p_level: number }; Returns: number };
+      message_threads: {
+        Args: { p_campaign: string };
+        Returns: {
+          last_at: string;
+          last_body: string;
+          last_kind: string;
+          last_sender: string;
+          player_id: string;
+          unread: number;
+        }[];
+      };
+      move_coins: {
+        Args: {
+          p_cp: number;
+          p_gp: number;
+          p_note: string;
+          p_owner_id: string;
+          p_owner_type: string;
+          p_pp: number;
+          p_sign: number;
+          p_source: string;
+          p_sp: number;
+        };
+        Returns: undefined;
+      };
+      move_entity: {
+        Args: { p_entity: string; p_folder: string; p_sort_order?: number };
+        Returns: {
+          campaign_id: string;
+          created_at: string;
+          folder_id: string | null;
+          id: string;
+          name: string;
+          sort_order: number;
+          type: Database['public']['Enums']['entity_type'];
+          updated_at: string;
+          visible_to_players: boolean;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'entities';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      move_folder: {
+        Args: { p_folder: string; p_parent: string; p_sort_order?: number };
+        Returns: {
+          campaign_id: string;
+          created_at: string;
+          id: string;
+          name: string;
+          parent_id: string | null;
+          sort_order: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'entity_folders';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      move_group: {
+        Args: { p_actor: string; p_group: string; p_map: string; p_passives: Json; p_region: string };
+        Returns: Json;
+      };
+      move_item: { Args: { p_item: string; p_quantity: number; p_to_id: string; p_to_type: string }; Returns: string };
+      offer_transfer: {
+        Args: { p_item: string; p_quantity?: number; p_to_character: string };
+        Returns: {
+          campaign_id: string;
+          created_at: string;
+          created_by: string | null;
+          from_id: string | null;
+          from_name: string;
+          from_type: string;
+          id: string;
+          item_id: string | null;
+          item_name: string;
+          quantity: number;
+          resolved_at: string | null;
+          seq: number;
+          status: string;
+          to_id: string | null;
+          to_name: string;
+          to_type: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'item_transfers';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      official_party: { Args: { c: string }; Returns: string };
+      owner_campaign: { Args: { p_id: string; p_type: string }; Returns: string };
+      owner_name: { Args: { p_id: string; p_type: string }; Returns: string };
+      owns_character: { Args: { c: string }; Returns: boolean };
+      parent_map: { Args: { m: string }; Returns: string };
+      party_campaign: { Args: { p: string }; Returns: string };
+      party_roster: {
+        Args: { p_campaign: string };
+        Returns: {
+          ability_scores: Json;
+          character_id: string;
+          effects: Json;
+          name: string;
+        }[];
+      };
+      pin_campaign: { Args: { p: string }; Returns: string };
+      pin_is_revealed: { Args: { p: string }; Returns: boolean };
+      realtime_can_read: { Args: { p_topic: string }; Returns: boolean };
+      realtime_can_track: { Args: { p_topic: string }; Returns: boolean };
+      record_discovery: { Args: { p_content: string; p_group: string; p_state: string }; Returns: boolean };
+      region_campaign: { Args: { r: string }; Returns: string };
+      remove_link: { Args: { p_link: string }; Returns: undefined };
+      rename_entity: {
+        Args: { p_entity: string; p_name: string };
+        Returns: {
+          campaign_id: string;
+          created_at: string;
+          folder_id: string | null;
+          id: string;
+          name: string;
+          sort_order: number;
+          type: Database['public']['Enums']['entity_type'];
+          updated_at: string;
+          visible_to_players: boolean;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'entities';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      rename_folder: {
+        Args: { p_folder: string; p_name: string };
+        Returns: {
+          campaign_id: string;
+          created_at: string;
+          id: string;
+          name: string;
+          parent_id: string | null;
+          sort_order: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'entity_folders';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      request_pause: { Args: { p_anonymous?: boolean; p_campaign: string }; Returns: undefined };
+      require_dm: { Args: { c: string }; Returns: undefined };
+      require_owner_or_dm: { Args: { p_character: string }; Returns: undefined };
+      resume_table: { Args: { p_campaign: string }; Returns: undefined };
+      reveal_content: { Args: { p_content: string; p_group: string; p_state: string }; Returns: undefined };
+      reveal_link: {
+        Args: { p_hidden?: boolean; p_link: string };
+        Returns: {
+          a_id: string;
+          b_id: string;
+          campaign_id: string;
+          created_at: string;
+          hidden: boolean;
+          id: string;
+          label_ab: string;
+          label_ba: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'entity_links';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      roll_ability_scores: {
+        Args: { p_campaign: string };
+        Returns: {
+          bonus: number;
+          bonus_breakdown: Json | null;
+          campaign_id: string;
+          character_id: string | null;
+          created_at: string;
+          crit: boolean;
+          dice: number[];
+          fumble: boolean;
+          hidden: boolean;
+          id: string;
+          kept: number;
+          kind: string;
+          label: string;
+          mode: string;
+          rolled_by: string;
+          success: boolean | null;
+          target: number | null;
+          total: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'rolls';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      roll_d20: {
+        Args: {
+          p_actor: string;
+          p_bonus: number;
+          p_breakdown?: Json;
+          p_campaign: string;
+          p_character: string;
+          p_hidden?: boolean;
+          p_kind: string;
+          p_label: string;
+          p_mode: string;
+          p_target: number;
+        };
+        Returns: {
+          bonus: number;
+          bonus_breakdown: Json | null;
+          campaign_id: string;
+          character_id: string | null;
+          created_at: string;
+          crit: boolean;
+          dice: number[];
+          fumble: boolean;
+          hidden: boolean;
+          id: string;
+          kept: number;
+          kind: string;
+          label: string;
+          mode: string;
+          rolled_by: string;
+          success: boolean | null;
+          target: number | null;
+          total: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'rolls';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      roll_die: { Args: { sides: number }; Returns: number };
+      roll_hit_die: {
+        Args: { p_character: string };
+        Returns: {
+          bonus: number;
+          bonus_breakdown: Json | null;
+          campaign_id: string;
+          character_id: string | null;
+          created_at: string;
+          crit: boolean;
+          dice: number[];
+          fumble: boolean;
+          hidden: boolean;
+          id: string;
+          kept: number;
+          kind: string;
+          label: string;
+          mode: string;
+          rolled_by: string;
+          success: boolean | null;
+          target: number | null;
+          total: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'rolls';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      roll_outcome: {
+        Args: { p_bonus: number; p_dice: number[]; p_kind: string; p_mode: string; p_target: number };
+        Returns: Record<string, unknown>;
+      };
+      roll_pool: { Args: { count: number; sides: number }; Returns: number[] };
+      roll_random_encounter: { Args: { p_region: string }; Returns: Json };
+      search_region: {
+        Args: {
+          p_actor: string;
+          p_bonus: number;
+          p_bonuses: Json;
+          p_breakdown: Json;
+          p_character: string;
+          p_mode: string;
+        };
+        Returns: Json;
+      };
+      send_message: {
+        Args: { p_body: string; p_campaign: string; p_kind?: string; p_player: string; p_save_note?: boolean };
+        Returns: string;
+      };
+      send_realtime_event: {
+        Args: { p_campaign: string; p_channel: string; p_event: string; p_payload: Json; p_target?: string };
+        Returns: Json;
+      };
+      set_daylight_hours: { Args: { p_campaign: string; p_end: number; p_start: number }; Returns: undefined };
+      set_entity_visibility: {
+        Args: { p_entity: string; p_visible: boolean };
+        Returns: {
+          campaign_id: string;
+          created_at: string;
+          folder_id: string | null;
+          id: string;
+          name: string;
+          sort_order: number;
+          type: Database['public']['Enums']['entity_type'];
+          updated_at: string;
+          visible_to_players: boolean;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'entities';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      set_game_date: {
+        Args: {
+          p_campaign: string;
+          p_confirm_rewind?: boolean;
+          p_day: number;
+          p_reason?: string;
+          p_seconds_into_day?: number;
+        };
+        Returns: number;
+      };
+      set_item_worn: {
+        Args: { p_field: string; p_item: string; p_value: boolean };
+        Returns: {
+          attuned: boolean;
+          bound: boolean;
+          campaign_id: string;
+          created_at: string;
+          definition: NonNullable<Json>;
+          entity_id: string;
+          equipped: boolean;
+          kind: string;
+          owner_id: string | null;
+          owner_type: string;
+          quantity: number;
+          rarity: string | null;
+          requires_attunement: boolean;
+          srd_ref: string | null;
+          value_cp: number;
+          weight: number | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'items';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      set_prepared_spells: { Args: { p_character: string; p_prepared: string[] }; Returns: Json };
+      set_spotlight: { Args: { p_campaign: string; p_group: string; p_summary?: string }; Returns: undefined };
+      shares_campaign: { Args: { other: string }; Returns: boolean };
+      show_handout: {
+        Args: { p_audience: string; p_group?: string; p_handout: string; p_users?: string[] };
+        Returns: string[];
+      };
+      simple_long_rest: {
+        Args: { p_character: string };
+        Returns: {
+          campaign_id: string;
+          character_id: string;
+          created_at: string;
+          created_by: string | null;
+          details: NonNullable<Json>;
+          id: string;
+          kind: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'rest_events';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      simple_long_rest_party: { Args: { p_campaign: string }; Returns: number };
+      simplify_fog: { Args: { p_group: string; p_map: string; p_strokes: Json }; Returns: number };
+      spawn_rule_ok: { Args: { r: Json }; Returns: boolean };
+      spell_state_for: {
+        Args: { p_character: string };
+        Returns: {
+          campaign_id: string;
+          character_id: string;
+          concentration: Json | null;
+          prepare_open: boolean;
+          slots_used: number[];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'character_spell_state';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      split_party_gold: { Args: { p_party: string }; Returns: undefined };
+      target_campaign: { Args: { p_target_id: string; p_target_type: string }; Returns: string };
+      unattune_item: {
+        Args: { p_item: string };
+        Returns: {
+          attuned: boolean;
+          bound: boolean;
+          campaign_id: string;
+          created_at: string;
+          definition: NonNullable<Json>;
+          entity_id: string;
+          equipped: boolean;
+          kind: string;
+          owner_id: string | null;
+          owner_type: string;
+          quantity: number;
+          rarity: string | null;
+          requires_attunement: boolean;
+          srd_ref: string | null;
+          value_cp: number;
+          weight: number | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'items';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      unequip_item: {
+        Args: { p_item: string };
+        Returns: {
+          attuned: boolean;
+          bound: boolean;
+          campaign_id: string;
+          created_at: string;
+          definition: NonNullable<Json>;
+          entity_id: string;
+          equipped: boolean;
+          kind: string;
+          owner_id: string | null;
+          owner_type: string;
+          quantity: number;
+          rarity: string | null;
+          requires_attunement: boolean;
+          srd_ref: string | null;
+          value_cp: number;
+          weight: number | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'items';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      unused_ability_roll: {
+        Args: { p_campaign: string; p_user: string };
+        Returns: {
+          bonus: number;
+          bonus_breakdown: Json | null;
+          campaign_id: string;
+          character_id: string | null;
+          created_at: string;
+          crit: boolean;
+          dice: number[];
+          fumble: boolean;
+          hidden: boolean;
+          id: string;
+          kept: number;
+          kind: string;
+          label: string;
+          mode: string;
+          rolled_by: string;
+          success: boolean | null;
+          target: number | null;
+          total: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'rolls';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      unused_hit_die_roll: {
+        Args: { p_character: string; p_level: number };
+        Returns: {
+          bonus: number;
+          bonus_breakdown: Json | null;
+          campaign_id: string;
+          character_id: string | null;
+          created_at: string;
+          crit: boolean;
+          dice: number[];
+          fumble: boolean;
+          hidden: boolean;
+          id: string;
+          kept: number;
+          kind: string;
+          label: string;
+          mode: string;
+          rolled_by: string;
+          success: boolean | null;
+          target: number | null;
+          total: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'rolls';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      weather_zone_campaign: { Args: { z: string }; Returns: string };
+      withdraw_from_party: { Args: { p_character: string; p_coins: Json; p_note?: string }; Returns: undefined };
+    };
+    Enums: {
+      entity_type: 'npc' | 'location' | 'item' | 'faction' | 'lore' | 'player' | 'party' | 'session';
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
+};
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>];
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    keyof (DefaultSchema['Tables'] & DefaultSchema['Views']) | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+      Row: infer R;
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Insert: infer I;
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Update: infer U;
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums'] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
+    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+    : never;
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    keyof DefaultSchema['CompositeTypes'] | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
+    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+    : never;
 
 export const Constants = {
-  "public": {
-          Enums: {
-            "entity_type": ["npc", "location", "item", "faction", "lore", "player", "party", "session"]
-          }
-        }
-} as const
+  public: {
+    Enums: {
+      entity_type: ['npc', 'location', 'item', 'faction', 'lore', 'player', 'party', 'session'],
+    },
+  },
+} as const;

@@ -9,6 +9,7 @@ import { DataError } from '../data/errors';
 import * as mapsApi from '../data/maps';
 import type { Member } from '../data/members';
 import * as membersApi from '../data/members';
+import * as handoutsApi from '../data/handouts';
 import { DmModeIndicator } from '../components/DmModeIndicator';
 import { useDmModeStore } from '../state/dmModeStore';
 import { CampaignHubPage } from './CampaignHubPage';
@@ -20,6 +21,14 @@ vi.mock('../components/ui', () => import('../test/uiStandIns'));
 vi.mock('../data/campaigns');
 vi.mock('../data/members');
 vi.mock('../data/maps');
+vi.mock('../data/handouts', async importOriginal => ({
+  ...(await importOriginal<typeof import('../data/handouts')>()),
+  listHandouts: vi.fn(async () => []),
+}));
+vi.mock('../data/partyGroups', async importOriginal => ({
+  ...(await importOriginal<typeof import('../data/partyGroups')>()),
+  listGroups: vi.fn(async () => []),
+}));
 vi.mock('../auth/authContext', () => ({ useAuth: () => ({ session: null }) }));
 
 const campaign: Campaign = {
@@ -313,6 +322,34 @@ describe('hub navigation and errors', () => {
     await screen.findByRole('heading', { name: 'The Sunken Crown' });
     await user.click(screen.getByRole('tab', { name: 'Web' }));
     expect(await screen.findByText('The Web section is still being built.')).toBeInTheDocument();
+  });
+
+  it('the Handouts tab is the DM’s: a player is sent back to Maps', async () => {
+    signInAs('player');
+    renderAt('/campaigns/c1/handouts');
+    expect(await screen.findByText('Sword Coast')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Handouts' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Maps' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('a DM opens the Handouts library from the ribbon', async () => {
+    signInAs('dm');
+    vi.mocked(handoutsApi.listHandouts).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderAt('/campaigns/c1');
+    await user.click(await screen.findByRole('tab', { name: 'Handouts' }));
+    expect(await screen.findByText('No handouts yet')).toBeInTheDocument();
+  });
+
+  it('a DM turns player pings off as a table rule', async () => {
+    signInAs('dm');
+    vi.mocked(campaignsApi.setPingsEnabled).mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderAt('/campaigns/c1');
+    const toggle = await screen.findByRole('switch', { name: 'Player pings' });
+    expect(toggle).toBeChecked();
+    await user.click(screen.getByText('Player pings'));
+    expect(campaignsApi.setPingsEnabled).toHaveBeenCalledWith('c1', false);
   });
 
   it('sends an unknown tab back to Maps', async () => {

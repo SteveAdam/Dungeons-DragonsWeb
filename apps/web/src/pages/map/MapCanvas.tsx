@@ -27,6 +27,8 @@ import { entranceKey } from '../../data/groupTokens';
 import type { FogPoint, FogStroke } from '../../lib/fog';
 import { nudgePoint, safeGroupColor } from '../../lib/groupTokens';
 import { BrushLayer, FogLayer } from './fog/FogLayer';
+import { PingInput, PingMarkers } from './PingLayer';
+import type { PingView } from '../../lib/pings';
 import {
   clampToImage,
   containZoom,
@@ -122,6 +124,12 @@ export interface MapCanvasProps {
   /** P4-3: the DM's brush, when one is in hand; each stroke is reported as it grows and when it ends. */
   brush?: { radius: number } | null;
   onBrushStroke?: (points: FogPoint[], done: boolean) => void;
+  /** P4-4: the pings showing now (each lasts three seconds). */
+  pings?: readonly PingView[];
+  /** P4-4: the Ping tool is in hand: a click pings the spot. */
+  pingMode?: boolean;
+  /** P4-4: set when this person may ping; pressing and holding still on the map pings too. */
+  onPing?: (point: ImagePoint) => void;
 }
 
 export interface CanvasWeatherZone {
@@ -632,6 +640,7 @@ function PanTo({ size, focus }: { size: ImageSize; focus: MapCanvasProps['focus'
 
 const NO_TOKENS: GroupTokenView[] = [];
 const NO_COUNTS: ReadonlyMap<string, number> = new Map();
+const NO_PINGS: readonly PingView[] = [];
 
 export function MapCanvas({
   imageUrl,
@@ -681,8 +690,13 @@ export function MapCanvas({
   fog = null,
   brush = null,
   onBrushStroke,
+  pings = NO_PINGS,
+  pingMode = false,
+  onPing,
 }: MapCanvasProps) {
-  const busy = addMode || drawMode || measuring || spawnMode || zoneDrawMode || !!brush;
+  const busy = addMode || drawMode || measuring || spawnMode || zoneDrawMode || !!brush || pingMode;
+  // holding to ping works whenever no other tool is in hand (a tool's own clicks come first)
+  const holdToPing = !!onPing && !(addMode || drawMode || measuring || spawnMode || zoneDrawMode || !!brush);
   const bounds = useMemo(() => imageBounds(size), [size]);
   return (
     <MapContainer
@@ -741,6 +755,8 @@ export function MapCanvas({
         </Pane>
       )}
       {brush && onBrushStroke && <BrushLayer size={size} radius={brush.radius} onStroke={onBrushStroke} />}
+      {onPing && <PingInput size={size} clickToPing={pingMode} holdToPing={holdToPing} onPing={onPing} />}
+      <PingMarkers pings={pings} size={size} />
       {spawnPins.map(sp => {
         const name = `Spawn pin: ${sp.label || SPAWN_PIN_LABELS[sp.kind]} (${SPAWN_PIN_LABELS[sp.kind]}, DM only)`;
         return (

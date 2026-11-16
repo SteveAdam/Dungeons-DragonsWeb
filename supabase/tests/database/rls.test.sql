@@ -6,7 +6,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(779);
+select plan(903);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -1859,6 +1859,224 @@ select is((select count(*)::int from fog_strokes where map_id = tests.u('map:vis
 select throws_ok(format($$ select simplify_fog(%L, %L, '[{"mode":"reveal","radius":0,"points":[[1,1]]}]') $$, tests.u('map:visible'), (select id from here_groups where label = 'a')), '23514', null, 'T89: the new strokes are checked like any other');
 select is((select count(*)::int from fog_strokes where map_id = tests.u('map:visible') and group_id = (select id from here_groups where label = 'a')), 2, 'T89: and a refused rewrite changes nothing');
 select throws_ok(format($$ select simplify_fog(%L, null, '[]') $$, tests.u('map:visible')), '22023', null, 'T89: a fog keeps at least one stroke');
+reset role;
+
+-- T90: pings (P4-4). Anyone may ping, unless the DM turned pings off or muted them; the server refuses, not only the app.
+select tests.act_as('player');
+select lives_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', '{"x":1}') $$, 'T90: a player pings the table');
+select is((select can_ping(tests.u('campaign'))), true, 'T90: can_ping says so');
+select throws_ok($$ insert into ping_mutes (campaign_id, user_id) values (tests.u('campaign'), tests.u('user:roller')) $$, '42501', null, 'T90: a player cannot mute another');
+reset role;
+
+select tests.act_as('dm');
+select lives_ok($$ update campaigns set settings = coalesce(settings, '{}') || '{"pingsEnabled": false}' where id = tests.u('campaign') $$, 'T90: the DM turns pings off');
+reset role;
+select tests.act_as('player');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', '{"x":1}') $$, '42501', 'Pings are off for you in this campaign', 'T90: then a player cannot ping');
+reset role;
+select tests.act_as('dm');
+select lives_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', '{"x":1}') $$, 'T90: the DM still can');
+select lives_ok($$ update campaigns set settings = settings - 'pingsEnabled' where id = tests.u('campaign') $$, 'T90: pings back on');
+select lives_ok($$ insert into ping_mutes (campaign_id, user_id) values (tests.u('campaign'), tests.u('user:player')) $$, 'T90: the DM mutes one player');
+select throws_ok($$ insert into ping_mutes (campaign_id, user_id) values (tests.u('campaign'), tests.u('user:outsider')) $$, '42501', null, 'T90: only a player of the campaign can be muted');
+select throws_ok($$ insert into ping_mutes (campaign_id, user_id) values (tests.u('campaign'), tests.u('user:dm')) $$, '42501', null, 'T90: not a DM');
+select ok((select muted_until > now() + interval '11 hours' from ping_mutes where user_id = tests.u('user:player') and campaign_id = tests.u('campaign')), 'T90: a mute lasts the session (12 hours) unless lifted');
+reset role;
+
+select tests.act_as('player');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', '{"x":1}') $$, '42501', 'Pings are off for you in this campaign', 'T90: the muted player cannot ping');
+select is((select can_ping(tests.u('campaign'))), false, 'T90: can_ping says so');
+select is((select count(*)::int from ping_mutes), 1, 'T90: they can see their own mute');
+select is_empty($$ delete from ping_mutes where user_id = tests.u('user:player') returning user_id $$, 'T90: but cannot lift it');
+select is_empty($$ update ping_mutes set muted_until = now() returning user_id $$, 'T90: nor shorten it');
+reset role;
+select tests.act_as('roller');
+select lives_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', '{"x":1}') $$, 'T90: another player still pings');
+select is((select count(*)::int from ping_mutes), 0, 'T90: and sees nobody''s mute');
+reset role;
+
+select tests.act_as('dm');
+select lives_ok($$ update ping_mutes set muted_until = now() - interval '1 minute' where user_id = tests.u('user:player') $$, 'T90: the session ends');
+reset role;
+select tests.act_as('player');
+select lives_ok($$ select send_realtime_event(tests.u('campaign'), 'campaign', 'ping', '{"x":1}') $$, 'T90: so an old mute no longer counts');
+reset role;
+select tests.act_as('dm');
+select isnt_empty($$ delete from ping_mutes where user_id = tests.u('user:player') returning user_id $$, 'T90: the DM lifts a mute');
+reset role;
+
+-- T91: handouts (P4-4). The DM makes three; shows one to the player; images are read through a handout only.
+insert into storage.objects (bucket_id, name) values
+  ('handouts', tests.u('campaign') || '/letter.png'),
+  ('handouts', tests.u('campaign') || '/secret.png');
+select tests.act_as('dm');
+select lives_ok($$ insert into handouts (id, campaign_id, title, kind, image_path, created_by) values (tests.u('h:image'), tests.u('campaign'), 'A letter', 'image', tests.u('campaign') || '/letter.png', tests.u('user:player')) $$, 'T91: the DM makes an image handout');
+select is((select created_by from handouts where id = tests.u('h:image')), tests.u('user:dm'), 'T91: it is the DM''s, whatever the insert says');
+select lives_ok($$ insert into handouts (id, campaign_id, title, kind, image_path) values (tests.u('h:secret'), tests.u('campaign'), 'The real map', 'image', tests.u('campaign') || '/secret.png') $$, 'T91: and one shown to nobody');
+select lives_ok($$ insert into handouts (id, campaign_id, title, kind, body) values (tests.u('h:text'), tests.u('campaign'), 'A riddle', 'text', E'Line one\nLine two') $$, 'T91: and a text handout');
+select throws_ok($$ insert into handouts (campaign_id, title, kind) values (tests.u('campaign'), 'Empty', 'text') $$, '23514', null, 'T91: a text handout has text');
+select throws_ok($$ insert into handouts (campaign_id, title, kind) values (tests.u('campaign'), 'Empty', 'image') $$, '23514', null, 'T91: an image handout has an image');
+select throws_ok($$ insert into handouts (campaign_id, title, kind, body) values (tests.u('campaign'), 'Long', 'text', repeat('a', 8001)) $$, '23514', null, 'T91: text is at most 8,000 characters');
+select throws_ok($$ insert into handouts (campaign_id, title, kind, image_path) values (tests.u('campaign'), 'Borrowed', 'image', tests.u('campaign:solo') || '/x.png') $$, '23514', null, 'T91: an image comes from this campaign''s own folder');
+select throws_ok($$ insert into handouts (campaign_id, title, kind, body) values (tests.u('campaign'), '   ', 'text', 'x') $$, '23514', null, 'T91: a handout has a title');
+select lives_ok($$ update handouts set campaign_id = tests.u('campaign:solo') where id = tests.u('h:text') $$, 'T91: moving a handout to another campaign…');
+select is((select campaign_id from handouts where id = tests.u('h:text')), tests.u('campaign'), 'T91: …leaves it where it was');
+reset role;
+
+select tests.act_as('player');
+select throws_ok($$ insert into handouts (campaign_id, title, kind, body) values (tests.u('campaign'), 'Forged', 'text', 'x') $$, '42501', null, 'T91: a player cannot make a handout');
+select is((select count(*)::int from handouts), 0, 'T91: before anything is shown, a player reads no handout');
+select is((select count(*)::int from storage.objects where bucket_id = 'handouts'), 0, 'T91: and no handout image');
+select throws_ok($$ select show_handout(tests.u('h:image'), 'everyone') $$, '42501', 'Only the DM can do that', 'T91: a player cannot show a handout');
+select throws_ok($$ insert into handout_shares (handout_id, user_id) values (tests.u('h:secret'), tests.u('user:player')) $$, '42501', null, 'T91: nor share one with themselves');
+reset role;
+
+select tests.act_as('dm');
+select is((select show_handout(tests.u('h:image'), 'players', null, array[tests.u('user:player')])), array[tests.u('user:player')], 'T91: the DM shows the letter to one player');
+select throws_ok($$ select show_handout(tests.u('h:text'), 'players', null, array[tests.u('user:outsider')]) $$, '22023', null, 'T91: only to players of the campaign');
+select throws_ok($$ select show_handout(tests.u('h:text'), 'players', null, array[tests.u('user:dm')]) $$, '22023', null, 'T91: (not to a DM)');
+select throws_ok($$ select show_handout(tests.u('h:text'), 'nobody') $$, '22023', null, 'T91: everyone, a group or chosen players');
+select throws_ok($$ select show_handout(tests.u('h:text'), 'group', tests.u('p42:foreign')) $$, '22023', null, 'T91: a group of this campaign');
+select is((select count(*)::int from handouts where campaign_id = tests.u('campaign')), 3, 'T91: the DM reads every handout');
+select is((select count(*)::int from storage.objects where bucket_id = 'handouts'), 2, 'T91: and every handout image');
+reset role;
+
+select tests.act_as('player');
+select is((select string_agg(title, ',') from handouts), 'A letter', 'T91: the player reads the letter shown to them, and nothing else');
+select is((select string_agg(name, ',') from storage.objects where bucket_id = 'handouts'), tests.u('campaign') || '/letter.png', 'T91: and its image, not the other');
+select is((select count(*)::int from handout_shares), 1, 'T91: and their own share');
+select is((select seen_at from handout_shares where handout_id = tests.u('h:image')), null, 'T91: marked new');
+select is_empty($$ update handout_shares set seen_at = now() returning handout_id $$, 'T91: they cannot change a share directly');
+select is((select mark_handout_seen(tests.u('h:image'))), true, 'T91: opening it marks it seen');
+select isnt((select seen_at from handout_shares where handout_id = tests.u('h:image')), null, 'T91: the marker goes');
+select is((select mark_handout_seen(tests.u('h:secret'))), false, 'T91: a handout not shown to them cannot be marked');
+reset role;
+
+select tests.act_as('roller');
+select is((select count(*)::int from handouts), 0, 'T91: another player reads none of it');
+select is((select count(*)::int from storage.objects where bucket_id = 'handouts'), 0, 'T91: nor its image');
+select is((select count(*)::int from handout_shares), 0, 'T91: nor who it was shown to');
+reset role;
+
+select tests.act_as('dm');
+select ok((select show_handout(tests.u('h:text'), 'group', (select id from here_groups where label = 'b'))) = array[tests.u('user:roller')], 'T91: shown to group B reaches only its player');
+select ok((select show_handout(tests.u('h:text'), 'everyone')) @> array[tests.u('user:player'), tests.u('user:roller')], 'T91: shown to everyone reaches every player');
+select is((select count(*)::int from handout_shares where handout_id = tests.u('h:text') and user_id = tests.u('user:dm')), 0, 'T91: but not the DM');
+select lives_ok($$ select show_handout(tests.u('h:image'), 'players', null, array[tests.u('user:player')]) $$, 'T91: showing the letter again…');
+select is((select seen_at from handout_shares where handout_id = tests.u('h:image') and user_id = tests.u('user:player')), null, 'T91: …marks it new again');
+select isnt_empty($$ delete from handout_shares where handout_id = tests.u('h:image') and user_id = tests.u('user:player') returning user_id $$, 'T91: the DM takes the letter back');
+reset role;
+
+select tests.act_as('player');
+select is((select string_agg(title, ',') from handouts), 'A riddle', 'T91: then the player no longer reads it, only the riddle');
+select is((select count(*)::int from storage.objects where bucket_id = 'handouts'), 0, 'T91: nor its image');
+reset role;
+
+select tests.act_as('outsider');
+select is((select count(*)::int from handouts), 0, 'T91: a non-member reads no handout');
+select is((select count(*)::int from storage.objects where bucket_id = 'handouts'), 0, 'T91: nor any image');
+reset role;
+
+-- T92: private messages (P4-5). The player writes to the DM; the DM answers and whispers; the other player sees none of
+-- it. Nothing can be edited or deleted; 20 a minute at most.
+select tests.act_as('player');
+select lives_ok($$ select send_message(tests.u('campaign'), tests.u('user:player'), 'Can I search the cellar?') $$, 'T92: a player writes to the DM');
+select throws_ok($$ insert into messages (campaign_id, player_id, sender_id, body) values (tests.u('campaign'), tests.u('user:player'), tests.u('user:roller'), 'Forged') $$, '42501', null, 'T92: a player cannot send as someone else');
+select throws_ok($$ insert into messages (campaign_id, player_id, sender_id, body) values (tests.u('campaign'), tests.u('user:roller'), tests.u('user:player'), 'Psst') $$, '42501', null, 'T92: nor write in another player''s thread');
+select throws_ok($$ select send_message(tests.u('campaign'), tests.u('user:roller'), 'Psst') $$, '42501', 'Players write only to the DM', 'T92: not even through the function');
+select throws_ok($$ select send_message(tests.u('campaign'), tests.u('user:player'), 'Fake', 'whisper') $$, '42501', null, 'T92: a player cannot whisper');
+select throws_ok($$ insert into messages (campaign_id, player_id, sender_id, body, kind) values (tests.u('campaign'), tests.u('user:player'), tests.u('user:player'), 'Fake', 'whisper') $$, '42501', null, 'T92: not directly either');
+select throws_ok($$ select send_message(tests.u('campaign'), tests.u('user:player'), '   ') $$, '23514', null, 'T92: a message has words');
+reset role;
+
+select tests.act_as('dm');
+select lives_ok($$ select send_message(tests.u('campaign'), tests.u('user:player'), 'Yes, roll Investigation.') $$, 'T92: the DM answers');
+select lives_ok($$ select send_message(tests.u('campaign'), tests.u('user:player'), 'You notice the harbourmaster''s ring', 'whisper', true) $$, 'T92: and whispers, saving it to the player''s notes');
+select lives_ok($$ select send_message(tests.u('campaign'), tests.u('user:roller'), 'Your turn soon.') $$, 'T92: and writes to the other player');
+select throws_ok($$ select send_message(tests.u('campaign'), tests.u('user:outsider'), 'Hello?') $$, '22023', null, 'T92: only to players of the campaign');
+select throws_ok($$ select send_message(tests.u('campaign'), tests.u('user:dm'), 'Note to self') $$, '22023', null, 'T92: (a DM has no thread)');
+select throws_ok($$ select send_message(tests.u('campaign'), tests.u('user:player'), 'Plain', 'message', true) $$, '22023', null, 'T92: only a whisper is saved to notes');
+select is((select count(*)::int from messages where campaign_id = tests.u('campaign')), 4, 'T92: the DM reads every thread');
+select is((select count(*)::int from player_notes), 0, 'T92: but not the player''s private notes, though the DM saved one');
+select is_empty($$ update messages set body = 'Changed' where campaign_id = tests.u('campaign') returning id $$, 'T92: the DM cannot change a message');
+select is_empty($$ delete from messages where campaign_id = tests.u('campaign') returning id $$, 'T92: nor delete one');
+select is((select unread from message_threads(tests.u('campaign')) where player_id = tests.u('user:player')), 1, 'T92: the DM has one unread message from the player');
+reset role;
+
+-- even the database owner, past row level security, meets the triggers
+select throws_ok($$ update messages set body = 'Changed' where body = 'Can I search the cellar?' $$, '42501', 'Messages cannot be edited', 'T92: a message is never edited');
+select throws_ok($$ update messages set read_at = null where body = 'Can I search the cellar?' $$, '42501', 'Messages cannot be edited', 'T92: (read_at is set once, never cleared)');
+select throws_ok($$ delete from messages where body = 'Can I search the cellar?' $$, '42501', 'Messages cannot be deleted', 'T92: nor deleted');
+
+select tests.act_as('player');
+select is((select count(*)::int from messages), 3, 'T92: the player reads their own thread: their message, the answer and the whisper');
+select is((select count(*)::int from messages where player_id = tests.u('user:roller')), 0, 'T92: and nothing of the other player''s');
+select is((select string_agg(player_id::text, ',') from message_threads(tests.u('campaign'))), tests.u('user:player')::text, 'T92: their thread list has their own thread only');
+select is((select unread from message_threads(tests.u('campaign'))), 2, 'T92: with two unread from the DM');
+select is((select mark_thread_read(tests.u('campaign'), tests.u('user:player'))), 2, 'T92: opening it marks the DM''s two read');
+select is((select count(*)::int from messages where read_at is null), 1, 'T92: their own stays unread until the DM opens it');
+select throws_ok($$ select mark_thread_read(tests.u('campaign'), tests.u('user:roller')) $$, '42501', null, 'T92: they cannot mark another thread');
+select is((select body from player_notes), 'You notice the harbourmaster''s ring', 'T92: the whisper is in their private notes');
+reset role;
+
+select tests.act_as('dm');
+select is((select mark_thread_read(tests.u('campaign'), tests.u('user:player'))), 1, 'T92: the DM opens the thread and reads the player''s message');
+select is((select unread from message_threads(tests.u('campaign')) where player_id = tests.u('user:player')), 0, 'T92: nothing unread left');
+reset role;
+
+select tests.act_as('roller');
+select is((select string_agg(body, ',') from messages), 'Your turn soon.', 'T92: the other player reads only their own thread');
+select is((select count(*)::int from player_notes), 0, 'T92: and not the first player''s notes');
+select lives_ok($$ do $d$ begin for i in 1..20 loop perform send_message(tests.u('campaign'), tests.u('user:roller'), 'Message ' || i); end loop; end $d$ $$, 'T92: 20 messages in a minute are fine');
+select throws_ok($$ select send_message(tests.u('campaign'), tests.u('user:roller'), 'One more') $$, 'PT429', null, 'T92: the 21st is refused');
+reset role;
+
+select tests.act_as('outsider');
+select is((select count(*)::int from messages), 0, 'T92: a non-member reads no message');
+select throws_ok($$ select send_message(tests.u('campaign'), tests.u('user:outsider'), 'Let me in') $$, '42501', null, 'T92: nor sends one');
+reset role;
+
+-- a campaign (or an account) that goes takes its messages with it
+insert into campaigns (id, owner_id, name) values (tests.u('campaign:msg'), tests.u('user:dm'), 'Short-lived');
+insert into members (campaign_id, user_id, role) values (tests.u('campaign:msg'), tests.u('user:roller'), 'player');
+insert into messages (campaign_id, player_id, sender_id, body) values (tests.u('campaign:msg'), tests.u('user:roller'), tests.u('user:dm'), 'Bye');
+select lives_ok($$ delete from campaigns where id = tests.u('campaign:msg') $$, 'T92: deleting a campaign deletes its messages');
+
+-- T93: the pause button and the anonymous X-card (P4-5)
+select tests.act_as('player');
+select lives_ok($$ select request_pause(tests.u('campaign'), true) $$, 'T93: a player plays the anonymous X-card');
+select is((select (get_table_pause(tests.u('campaign')) ->> 'paused')::boolean), true, 'T93: the table is paused');
+select is((select get_table_pause(tests.u('campaign')) -> 'name'), 'null'::jsonb, 'T93: players are not told who asked');
+select throws_ok($$ select request_pause(tests.u('campaign'), false) $$, 'PT429', null, 'T93: one request per five minutes');
+select is((select count(*)::int from safety_events), 0, 'T93: players cannot read the safety history');
+select throws_ok($$ select * from safety_rate $$, '42501', null, 'T93: nor the rate table');
+select throws_ok($$ insert into safety_events (campaign_id, kind) values (tests.u('campaign'), 'resumed') $$, '42501', null, 'T93: nor write a safety event');
+select throws_ok($$ select resume_table(tests.u('campaign')) $$, '42501', 'Only the DM can do that', 'T93: nor resume the table');
+reset role;
+
+select tests.act_as('dm');
+select is((select get_table_pause(tests.u('campaign')) ->> 'anonymous'), 'true', 'T93: the DM sees an X-card');
+select is((select get_table_pause(tests.u('campaign')) -> 'name'), 'null'::jsonb, 'T93: with no name');
+select is((select user_id from safety_events where campaign_id = tests.u('campaign') order by seq desc limit 1), null, 'T93: and the stored event holds no user');
+select throws_ok($$ select * from safety_rate $$, '42501', null, 'T93: the DM cannot read who asked from the rate table');
+select lives_ok($$ select resume_table(tests.u('campaign')) $$, 'T93: the DM resumes');
+select is((select (get_table_pause(tests.u('campaign')) ->> 'paused')::boolean), false, 'T93: the table goes on');
+reset role;
+
+select tests.act_as('roller');
+select lives_ok($$ select request_pause(tests.u('campaign'), false) $$, 'T93: another player asks for a pause openly');
+reset role;
+select tests.act_as('dm');
+select is((select get_table_pause(tests.u('campaign')) ->> 'name'), 'roller', 'T93: the DM is told who asked');
+select is((select user_id from safety_events where campaign_id = tests.u('campaign') order by seq desc limit 1), tests.u('user:roller'), 'T93: and it is stored');
+select lives_ok($$ select request_pause(tests.u('campaign')) $$, 'T93: a DM may ask too');
+reset role;
+
+select throws_ok($$ insert into safety_events (campaign_id, kind, anonymous, user_id) values (tests.u('campaign'), 'pause_requested', true, tests.u('user:player')) $$, '23514', null, 'T93: an anonymous event can never hold a user');
+
+select tests.act_as('outsider');
+select throws_ok($$ select request_pause(tests.u('campaign'), true) $$, '42501', null, 'T93: a non-member cannot ask for a pause');
+select throws_ok($$ select get_table_pause(tests.u('campaign')) $$, '42501', null, 'T93: nor see whether the table is paused');
 reset role;
 
 select * from finish();

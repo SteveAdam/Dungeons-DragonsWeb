@@ -155,6 +155,17 @@
   --terrain-underdark-mark: #a990cc;
   --terrain-urban: #9a9088;
   --terrain-urban-mark: #3f3832;
+
+  /* P4-4: one colour per person for pings, by the order they joined (lib/pings.ts uses --ping-1 to --ping-8). Bright
+     and far apart, so they read on any map image; the name label sits on paper, so its text stays ink. */
+  --ping-1: #d9412f;
+  --ping-2: #e8b33a;
+  --ping-3: #3f9e7f;
+  --ping-4: #3b7fc4;
+  --ping-5: #9a5fc8;
+  --ping-6: #e07a2e;
+  --ping-7: #d65b9a;
+  --ping-8: #7fb83a;
 }
 
 /* Reduce texture: flat surfaces, no shadows. */

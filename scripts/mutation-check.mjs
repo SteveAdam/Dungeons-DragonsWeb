@@ -17,7 +17,12 @@ const SUITE = 'supabase/tests/database/rls.test.sql';
 const TMP_DIR = 'supabase/tests-mutations';
 const MARKER = '-- @mutation-point';
 const MARKER_LINE = /^-- @mutation-point.*$/m;
-const RUNNER = process.env.MUTATION_RUNNER ?? 'pnpm exec supabase test db "{file}"';
+// The suite runs once per mutation, so the runner's own start-up counts every time. Straight into the running local
+// database with psql is about twice as fast as `supabase test db`, which starts a pg_prove container on each run.
+// MUTATION_RUNNER='pnpm exec supabase test db "{file}"' (or any command with {file}) uses that instead.
+const RUNNER = process.env.MUTATION_RUNNER ?? null;
+const PROJECT = /^project_id\s*=\s*"([^"]+)"/m.exec(readFileSync('supabase/config.toml', 'utf8'))?.[1];
+const DB_CONTAINER = `supabase_db_${PROJECT}`;
 
 // `fails` lists the tests that must fail when the protection is removed.
 const MUTATIONS = [
@@ -1019,14 +1024,145 @@ create policy "dm writes fog" on fog_strokes for all to authenticated using (is_
     sql: `alter table fog_strokes drop constraint fog_strokes_shape;`,
     fails: ['T89'],
   },
+  {
+    name: 'mutes and the pings setting ignored (P4-4)',
+    why: 'a muted player, or any player with pings off, could still ping the table from the console',
+    sql: `create or replace function can_ping(p_campaign uuid) returns boolean language sql stable security definer set search_path = public as $$ select is_member(p_campaign) $$;`,
+    fails: ['T90'],
+  },
+  {
+    name: 'players lift their own mute (P4-4)',
+    why: 'a muted player could simply delete the mute',
+    sql: `drop policy "dm unmutes" on ping_mutes;
+create policy "dm unmutes" on ping_mutes for delete to authenticated using (is_dm(campaign_id) or user_id = auth.uid());`,
+    fails: ['T90'],
+  },
+  {
+    name: 'every member reads every handout (P4-4)',
+    why: 'a handout shown to one player would reach every player',
+    sql: `drop policy "players read handouts shown to them" on handouts;
+create policy "players read handouts shown to them" on handouts for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T91'],
+  },
+  {
+    name: 'handout images readable by every member (P4-4)',
+    why: 'a player could download a handout image the DM never showed them',
+    sql: `drop policy "handouts: DMs or players it was shown to read" on storage.objects;
+create policy "handouts: DMs or players it was shown to read" on storage.objects for select to authenticated using (bucket_id = 'handouts' and is_member(folder_campaign(name)));`,
+    fails: ['T91'],
+  },
+  {
+    name: 'every member reads every share (P4-4)',
+    why: 'players would learn who was shown which handout',
+    sql: `drop policy "read own shares or dm" on handout_shares;
+create policy "read own shares or dm" on handout_shares for select to authenticated using (true);`,
+    fails: ['T91'],
+  },
+  {
+    name: 'show_handout open to players (P4-4)',
+    why: 'a player could show themselves any handout',
+    sql: `create or replace function show_handout(p_handout uuid, p_audience text, p_group uuid default null, p_users uuid[] default null) returns uuid[] language plpgsql volatile security definer set search_path = public as $$ begin insert into handout_shares (handout_id, user_id) values (p_handout, auth.uid()) on conflict do nothing; return array[auth.uid()]; end $$;`,
+    fails: ['T91'],
+  },
+  {
+    name: 'handouts may point at another campaign image (P4-4)',
+    why: 'a DM of one campaign could lend out an image from another campaign they run',
+    sql: `alter table handouts drop constraint handouts_image_folder;`,
+    fails: ['T91'],
+  },
+  {
+    name: 'every member reads every thread (P4-5)',
+    why: 'a player would read what another player and the DM said to each other',
+    sql: `drop policy "read own thread or dm" on messages;
+create policy "read own thread or dm" on messages for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T92'],
+  },
+  {
+    name: 'messages may be sent as someone else (P4-5)',
+    why: 'a player could put words in the DM’s mouth',
+    sql: `drop policy "write as yourself" on messages;
+create policy "write as yourself" on messages for insert to authenticated with check (is_member(campaign_id));`,
+    fails: ['T92'],
+  },
+  {
+    name: 'messages can be edited (P4-5)',
+    why: 'what was said could be rewritten afterwards',
+    sql: `drop trigger messages_no_edit on messages;`,
+    fails: ['T92'],
+  },
+  {
+    name: 'messages can be deleted (P4-5)',
+    why: 'what was said could be made to disappear',
+    sql: `drop trigger messages_no_delete on messages;`,
+    fails: ['T92'],
+  },
+  {
+    name: 'no message rate limit (P4-5)',
+    why: 'one person could flood the DM',
+    sql: `create or replace function messages_before_insert() returns trigger language plpgsql security definer set search_path = public as $$ begin if not exists (select 1 from members where campaign_id = new.campaign_id and user_id = new.player_id and role = 'player') then raise exception 'x' using errcode = '22023'; end if; new.created_at := now(); new.read_at := null; return new; end $$;`,
+    fails: ['T92'],
+  },
+  {
+    name: 'the DM reads private notes (P4-5)',
+    why: 'a player’s private notes would not be private',
+    sql: `drop policy "read own private notes" on player_notes;
+create policy "read own private notes" on player_notes for select to authenticated using (user_id = auth.uid() or is_dm(campaign_id));`,
+    fails: ['T92'],
+  },
+  {
+    name: 'anonymous X-card keeps who asked (P4-5)',
+    why: 'the DM could find out who played an anonymous X-card',
+    sql: `alter table safety_events drop constraint safety_events_anonymous_has_no_user;
+create or replace function request_pause(p_campaign uuid, p_anonymous boolean default false) returns void language plpgsql volatile security definer set search_path = public as $$ begin if not is_member(p_campaign) then raise exception 'x' using errcode = '42501'; end if; if exists (select 1 from safety_rate where user_id = auth.uid() and campaign_id = p_campaign and last_request_at > now() - interval '5 minutes') then raise exception 'x' using errcode = 'PT429'; end if; insert into safety_rate values (auth.uid(), p_campaign, now()) on conflict (user_id, campaign_id) do update set last_request_at = now(); insert into safety_events (campaign_id, kind, anonymous, user_id) values (p_campaign, 'pause_requested', p_anonymous, auth.uid()); end $$;`,
+    fails: ['T93'],
+  },
+  {
+    name: 'the rate table is readable (P4-5)',
+    why: 'the DM could read who asked for a pause, and when, from the rate table',
+    sql: `grant select on safety_rate to authenticated;
+create policy "read rate" on safety_rate for select to authenticated using (is_dm(campaign_id) or user_id = auth.uid());`,
+    fails: ['T93'],
+  },
+  {
+    name: 'no pause rate limit (P4-5)',
+    why: 'one person could flood the DM with pause requests',
+    sql: `create or replace function request_pause(p_campaign uuid, p_anonymous boolean default false) returns void language plpgsql volatile security definer set search_path = public as $$ begin if not is_member(p_campaign) then raise exception 'x' using errcode = '42501'; end if; insert into safety_events (campaign_id, kind, anonymous, user_id) values (p_campaign, 'pause_requested', coalesce(p_anonymous, false), case when p_anonymous then null else auth.uid() end); end $$;`,
+    fails: ['T93'],
+  },
+  {
+    name: 'players can resume (P4-5)',
+    why: 'anyone could end a pause someone else asked for',
+    sql: `create or replace function resume_table(p_campaign uuid) returns void language plpgsql volatile security definer set search_path = public as $$ begin insert into safety_events (campaign_id, kind) values (p_campaign, 'resumed'); end $$;`,
+    fails: ['T93'],
+  },
 ];
 
+const dbContainerRunning = () =>
+  spawnSync('docker', ['inspect', '-f', '{{.State.Running}}', DB_CONTAINER], { encoding: 'utf8' }).stdout?.trim() ===
+  'true';
+
 function runFile(path) {
-  const cmd = RUNNER.replace('{file}', path);
-  const r = spawnSync(cmd, { shell: true, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+  if (RUNNER) {
+    const cmd = RUNNER.replace('{file}', path);
+    const r = spawnSync(cmd, { shell: true, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+    const out = `${r.stdout ?? ''}\n${r.stderr ?? ''}`;
+    const failed = new Set([...out.matchAll(/Failed test \d+: "(T\d+):/g)].map(m => m[1]));
+    return { ok: r.status === 0, failed, out };
+  }
+  // psql inside the database container, the suite on stdin (it is one transaction that rolls back)
+  const r = spawnSync(
+    'docker',
+    [
+      ...['exec', '-i', DB_CONTAINER, 'psql', '-U', 'postgres', '-d', 'postgres'],
+      ...['-q', '-X', '-t', '-A', '-v', 'ON_ERROR_STOP=1', '-f', '-'],
+    ],
+    { input: readFileSync(path, 'utf8'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 },
+  );
   const out = `${r.stdout ?? ''}\n${r.stderr ?? ''}`;
-  const failed = new Set([...out.matchAll(/Failed test \d+: "(T\d+):/g)].map(m => m[1]));
-  return { ok: r.status === 0, failed, out };
+  const failed = new Set([...out.matchAll(/^not ok \d+ - (T\d+):/gm)].map(m => m[1]));
+  // a pass is a clean exit, no failed test, and the whole plan run (pgTAP says "# Looks like…" otherwise)
+  const ok = r.status === 0 && failed.size === 0 && !/^# Looks like/m.test(out);
+  return { ok, failed, out };
 }
 
 const suite = readFileSync(SUITE, 'utf8');
@@ -1036,6 +1172,10 @@ if (!MARKER_LINE.test(suite)) {
 }
 
 function main() {
+  if (!RUNNER && !dbContainerRunning()) {
+    console.error(`The local database (${DB_CONTAINER}) is not running: start it with pnpm db:start.`);
+    return 2;
+  }
   mkdirSync(TMP_DIR, { recursive: true });
 
   const baseFile = `${TMP_DIR}/baseline.test.sql`;
