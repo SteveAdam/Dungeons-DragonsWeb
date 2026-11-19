@@ -170,6 +170,33 @@ const deps: RollDeps = {
     const { data, error } = await admin.rpc(name, args as never);
     return { data, error: error ? { code: error.code, message: error.message } : null };
   },
+  async loadRequest(requestId) {
+    const row = orThrow(
+      await admin
+        .from('check_requests')
+        .select('id, campaign_id, character_ids, skill_or_ability, kind, dc, mode, reason, show_odds, status')
+        .eq('id', requestId)
+        .maybeSingle(),
+    );
+    return row
+      ? {
+          id: row.id,
+          campaignId: row.campaign_id,
+          characterIds: row.character_ids,
+          key: row.skill_or_ability,
+          kind: row.kind === 'save' ? 'save' : 'check',
+          dc: row.dc,
+          mode: row.mode as 'normal' | 'advantage' | 'disadvantage',
+          reason: row.reason,
+          showOdds: row.show_odds,
+          status: row.status === 'open' ? 'open' : 'closed',
+        }
+      : null;
+  },
+  async rollForRequest(args) {
+    const { data, error } = await admin.rpc('roll_for_request', args);
+    return { data, error: error ? { code: error.code, message: error.message } : null };
+  },
   async rollD20(args) {
     const { data, error } = await admin.rpc('roll_d20', args);
     return { data, error: error ? { code: error.code, message: error.message } : null };

@@ -330,6 +330,117 @@ export type Database = {
           },
         ];
       };
+      check_answers: {
+        Row: {
+          answered_at: string;
+          character_id: string;
+          request_id: string;
+          roll_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          answered_at?: string;
+          character_id: string;
+          request_id: string;
+          roll_id: string;
+        };
+        Update: {
+          answered_at?: string;
+          character_id?: string;
+          request_id?: string;
+          roll_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'check_answers_character_id_fkey';
+            columns: ['character_id'];
+            isOneToOne: false;
+            referencedRelation: 'characters';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'check_answers_request_id_fkey';
+            columns: ['request_id'];
+            isOneToOne: false;
+            referencedRelation: 'check_requests';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'check_answers_roll_id_fkey';
+            columns: ['roll_id'];
+            isOneToOne: false;
+            referencedRelation: 'rolls';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      check_requests: {
+        Row: {
+          campaign_id: string;
+          character_ids: string[];
+          created_at: string;
+          created_by: string | null;
+          dc: number;
+          id: string;
+          kind: string;
+          mode: string;
+          npc_entity_id: string | null;
+          prompt: string;
+          reason: string | null;
+          show_odds: boolean;
+          skill_or_ability: string;
+          status: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          character_ids: string[];
+          created_at?: string;
+          created_by?: string | null;
+          dc: number;
+          id?: string;
+          kind?: string;
+          mode?: string;
+          npc_entity_id?: string | null;
+          prompt: string;
+          reason?: string | null;
+          show_odds?: boolean;
+          skill_or_ability: string;
+          status?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          character_ids?: string[];
+          created_at?: string;
+          created_by?: string | null;
+          dc?: number;
+          id?: string;
+          kind?: string;
+          mode?: string;
+          npc_entity_id?: string | null;
+          prompt?: string;
+          reason?: string | null;
+          show_odds?: boolean;
+          skill_or_ability?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'check_requests_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'check_requests_npc_entity_id_fkey';
+            columns: ['npc_entity_id'];
+            isOneToOne: false;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       content_discoveries: {
         Row: {
           content_id: string;
@@ -408,6 +519,107 @@ export type Database = {
             columns: ['campaign_id'];
             isOneToOne: false;
             referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      dialogue_lines: {
+        Row: {
+          campaign_id: string;
+          condition: Json | null;
+          created_at: string;
+          id: string;
+          npc_entity_id: string;
+          options: NonNullable<Json>;
+          sort_order: number;
+          tag: string;
+          text: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          condition?: Json | null;
+          created_at?: string;
+          id?: string;
+          npc_entity_id: string;
+          options?: NonNullable<Json>;
+          sort_order?: number;
+          tag?: string;
+          text: string;
+        };
+        Update: {
+          campaign_id?: string;
+          condition?: Json | null;
+          created_at?: string;
+          id?: string;
+          npc_entity_id?: string;
+          options?: NonNullable<Json>;
+          sort_order?: number;
+          tag?: string;
+          text?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'dialogue_lines_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'dialogue_lines_npc_entity_id_fkey';
+            columns: ['npc_entity_id'];
+            isOneToOne: false;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      dialogue_log: {
+        Row: {
+          campaign_id: string;
+          group_ids: string[];
+          id: string;
+          npc_entity_id: string;
+          options: NonNullable<Json>;
+          said_at: string;
+          said_by: string | null;
+          text: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          group_ids: string[];
+          id?: string;
+          npc_entity_id: string;
+          options?: NonNullable<Json>;
+          said_at?: string;
+          said_by?: string | null;
+          text: string;
+        };
+        Update: {
+          campaign_id?: string;
+          group_ids?: string[];
+          id?: string;
+          npc_entity_id?: string;
+          options?: NonNullable<Json>;
+          said_at?: string;
+          said_by?: string | null;
+          text?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'dialogue_log_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'dialogue_log_npc_entity_id_fkey';
+            columns: ['npc_entity_id'];
+            isOneToOne: false;
+            referencedRelation: 'entities';
             referencedColumns: ['id'];
           },
         ];
@@ -1396,6 +1608,53 @@ export type Database = {
             columns: ['campaign_id'];
             isOneToOne: false;
             referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      npc_profiles: {
+        Row: {
+          campaign_id: string;
+          disposition: string;
+          entity_id: string;
+          location_pin_id: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          campaign_id: string;
+          disposition?: string;
+          entity_id: string;
+          location_pin_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          campaign_id?: string;
+          disposition?: string;
+          entity_id?: string;
+          location_pin_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'npc_profiles_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'npc_profiles_entity_id_fkey';
+            columns: ['entity_id'];
+            isOneToOne: true;
+            referencedRelation: 'entities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'npc_profiles_location_pin_id_fkey';
+            columns: ['location_pin_id'];
+            isOneToOne: false;
+            referencedRelation: 'pins';
             referencedColumns: ['id'];
           },
         ];
@@ -2847,6 +3106,7 @@ export type Database = {
       check_source: { Args: { p_source: string }; Returns: undefined };
       class_slots: { Args: { p_class: string; p_level: number }; Returns: number[] };
       clear_fog: { Args: { p_group: string; p_map: string; p_mode: string }; Returns: number };
+      close_check: { Args: { p_request: string }; Returns: undefined };
       coins_of: {
         Args: { p_coins: Json };
         Returns: {
@@ -2964,6 +3224,8 @@ export type Database = {
       deposit_to_party: { Args: { p_character: string; p_coins: Json; p_note?: string }; Returns: undefined };
       details_from_sheet: { Args: { s: Json }; Returns: Json };
       details_ok: { Args: { d: Json }; Returns: boolean };
+      dialogue_check_key_valid: { Args: { k: string }; Returns: boolean };
+      dialogue_options_valid: { Args: { p: Json }; Returns: boolean };
       entity_campaign: { Args: { e: string }; Returns: string };
       entity_folder_campaign: { Args: { f: string }; Returns: string };
       entity_visible: { Args: { e: string }; Returns: boolean };
@@ -3032,6 +3294,7 @@ export type Database = {
         };
         Returns: number;
       };
+      group_players: { Args: { p_campaign: string; p_groups: string[] }; Returns: string[] };
       group_positions_shared: { Args: { c: string }; Returns: boolean };
       handout_campaign: { Args: { h: string }; Returns: string };
       handout_shared_with_me: { Args: { h: string }; Returns: boolean };
@@ -3128,6 +3391,43 @@ export type Database = {
         Returns: Json;
       };
       move_item: { Args: { p_item: string; p_quantity: number; p_to_id: string; p_to_type: string }; Returns: string };
+      my_check_requests: {
+        Args: { p_campaign: string; p_open_only?: boolean };
+        Returns: {
+          answered: string[];
+          character_ids: string[];
+          created_at: string;
+          dc: number;
+          id: string;
+          kind: string;
+          mode: string;
+          npc_entity_id: string;
+          prompt: string;
+          reason: string;
+          show_odds: boolean;
+          skill_or_ability: string;
+          status: string;
+        }[];
+      };
+      notify_users: {
+        Args: { p_campaign: string; p_event: string; p_payload: Json; p_users: string[] };
+        Returns: undefined;
+      };
+      offer_check: {
+        Args: {
+          p_campaign: string;
+          p_character_ids: string[];
+          p_dc: number;
+          p_key: string;
+          p_kind: string;
+          p_mode: string;
+          p_npc?: string;
+          p_prompt: string;
+          p_reason: string;
+          p_show_odds: boolean;
+        };
+        Returns: string;
+      };
       offer_transfer: {
         Args: { p_item: string; p_quantity?: number; p_to_character: string };
         Returns: {
@@ -3308,6 +3608,43 @@ export type Database = {
         };
       };
       roll_die: { Args: { sides: number }; Returns: number };
+      roll_for_request: {
+        Args: {
+          p_actor: string;
+          p_bonus: number;
+          p_breakdown: Json;
+          p_character: string;
+          p_label: string;
+          p_mode: string;
+          p_request: string;
+        };
+        Returns: {
+          bonus: number;
+          bonus_breakdown: Json | null;
+          campaign_id: string;
+          character_id: string | null;
+          created_at: string;
+          crit: boolean;
+          dice: number[];
+          fumble: boolean;
+          hidden: boolean;
+          id: string;
+          kept: number;
+          kind: string;
+          label: string;
+          mode: string;
+          rolled_by: string;
+          success: boolean | null;
+          target: number | null;
+          total: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'rolls';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       roll_hit_die: {
         Args: { p_character: string };
         Returns: {
@@ -3343,6 +3680,17 @@ export type Database = {
       };
       roll_pool: { Args: { count: number; sides: number }; Returns: number[] };
       roll_random_encounter: { Args: { p_region: string }; Returns: Json };
+      say_line: {
+        Args: {
+          p_group_ids: string[];
+          p_npc: string;
+          p_options: Json;
+          p_save_to_log?: boolean;
+          p_save_to_npc?: boolean;
+          p_text: string;
+        };
+        Returns: Json;
+      };
       search_region: {
         Args: {
           p_actor: string;

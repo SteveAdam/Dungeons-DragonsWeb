@@ -1135,6 +1135,64 @@ create policy "read rate" on safety_rate for select to authenticated using (is_d
     sql: `create or replace function resume_table(p_campaign uuid) returns void language plpgsql volatile security definer set search_path = public as $$ begin insert into safety_events (campaign_id, kind) values (p_campaign, 'resumed'); end $$;`,
     fails: ['T93'],
   },
+  {
+    name: 'players read prepared lines (P4-6)',
+    why: 'players would read lines the DM never said',
+    sql: `drop policy "dm manages dialogue lines" on dialogue_lines;
+create policy "dm manages dialogue lines" on dialogue_lines for all to authenticated using (is_member(campaign_id)) with check (is_dm(campaign_id));`,
+    fails: ['T94'],
+  },
+  {
+    name: 'every group reads every logged line (P4-6)',
+    why: 'one group would read what an NPC told another',
+    sql: `drop policy "read dialogue heard by your group" on dialogue_log;
+create policy "read dialogue heard by your group" on dialogue_log for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T94'],
+  },
+  {
+    name: 'players read check requests directly (P4-6)',
+    why: 'a DC the DM hid would be readable',
+    sql: `drop policy "dm reads check requests" on check_requests;
+create policy "dm reads check requests" on check_requests for select to authenticated using (is_member(campaign_id));`,
+    fails: ['T94'],
+  },
+  {
+    name: 'my_check_requests shows a hidden DC (P4-6)',
+    why: 'show odds off would not hide the difficulty',
+    sql: `create or replace function my_check_requests(p_campaign uuid, p_open_only boolean default true) returns table (id uuid, character_ids uuid[], skill_or_ability text, kind text, dc int, mode text, reason text, show_odds boolean, prompt text, status text, npc_entity_id uuid, created_at timestamptz, answered uuid[]) language sql stable security definer set search_path = public as $$ select r.id, r.character_ids, r.skill_or_ability, r.kind, r.dc, r.mode, r.reason, r.show_odds, r.prompt, r.status, r.npc_entity_id, r.created_at, '{}'::uuid[] from check_requests r where r.campaign_id = p_campaign and (not p_open_only or r.status = 'open') and exists (select 1 from characters ch where ch.id = any (r.character_ids) and ch.owner_id = auth.uid()) $$;`,
+    fails: ['T94'],
+  },
+  {
+    name: 'a check can be answered twice (P4-6)',
+    why: 'a player could roll until they like the result',
+    sql: `alter table check_answers drop constraint check_answers_pkey;
+create or replace function roll_for_request(p_actor uuid, p_request uuid, p_character uuid, p_label text, p_bonus int, p_mode text, p_breakdown jsonb) returns rolls language plpgsql volatile security definer set search_path = public as $$ declare r check_requests; result rolls; begin select * into r from check_requests where id = p_request; if r.status <> 'open' then raise exception 'x' using errcode = '22023'; end if; if not p_character = any (r.character_ids) then raise exception 'x' using errcode = '42501'; end if; result := roll_d20(p_actor, r.campaign_id, p_character, r.kind, p_label, p_bonus, r.dc, p_mode, false, p_breakdown); insert into check_answers values (p_request, p_character, result.id, now()); return result; end $$;`,
+    fails: ['T94'],
+  },
+  {
+    name: 'any character answers any check (P4-6)',
+    why: 'a player could answer a check offered to someone else',
+    sql: `create or replace function roll_for_request(p_actor uuid, p_request uuid, p_character uuid, p_label text, p_bonus int, p_mode text, p_breakdown jsonb) returns rolls language plpgsql volatile security definer set search_path = public as $$ declare r check_requests; result rolls; begin select * into r from check_requests where id = p_request; if r.status <> 'open' then raise exception 'x' using errcode = '22023'; end if; if exists (select 1 from check_answers where request_id = p_request and character_id = p_character) then raise exception 'x' using errcode = '23505'; end if; result := roll_d20(p_actor, r.campaign_id, p_character, r.kind, p_label, p_bonus, r.dc, p_mode, false, p_breakdown); insert into check_answers values (p_request, p_character, result.id, now()); return result; end $$;`,
+    fails: ['T94'],
+  },
+  {
+    name: 'players make NPCs speak (P4-6)',
+    why: 'a player could put words in an NPC’s mouth for the whole table',
+    sql: `create or replace function say_line(p_npc uuid, p_text text, p_options jsonb, p_group_ids uuid[], p_save_to_npc boolean default false, p_save_to_log boolean default true) returns jsonb language plpgsql volatile security definer set search_path = public as $$ begin insert into dialogue_log (campaign_id, npc_entity_id, text, group_ids) values (entity_campaign(p_npc), p_npc, p_text, p_group_ids); return '{}'; end $$;`,
+    fails: ['T94'],
+  },
+  {
+    name: 'the dialogue log can be changed (P4-6)',
+    why: 'what an NPC said could be rewritten afterwards',
+    sql: `drop trigger dialogue_log_append_only on dialogue_log;`,
+    fails: ['T94'],
+  },
+  {
+    name: 'an offered check can be changed (P4-6)',
+    why: 'the DC could change after players saw their odds',
+    sql: `drop trigger check_requests_only_close on check_requests;`,
+    fails: ['T94'],
+  },
 ];
 
 const dbContainerRunning = () =>

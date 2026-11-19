@@ -13,6 +13,7 @@ export * from './core.ts';
 export * from './creation.ts';
 export * from './currency.ts';
 export * from './customContent.ts';
+export * from './dialogue.ts';
 export * from './dice.ts';
 export * from './effects.ts';
 export * from './encounters.ts';

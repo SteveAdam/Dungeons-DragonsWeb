@@ -1,0 +1,150 @@
+/* P4-6: the speech scroll (what a player is told) and the check offers. Parchment over the desk, ink on paper only. */
+.layer {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 35;
+  display: grid;
+  gap: 0.6rem;
+  width: min(30rem, calc(100vw - 2rem));
+}
+
+.scroll {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--ink);
+  box-shadow: var(--paper-drop);
+  color: var(--ink);
+}
+
+.speakerRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.speaker {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.disposition {
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+/* the line itself: a quotation with a gold rule, plain text with its line breaks */
+.line {
+  margin: 0;
+  padding-left: 0.7rem;
+  border-left: 3px solid var(--gold-dark);
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-style: italic;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.options {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover:not(:disabled),
+.option:focus-visible {
+  background: var(--ink-wash-strong);
+}
+
+.option:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.checkOption {
+  border-color: var(--wax-red);
+}
+
+.chosen {
+  font-weight: 700;
+}
+
+.optionNote {
+  color: var(--ink-faded);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.offers {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--ink);
+  box-shadow: var(--paper-drop);
+  color: var(--ink);
+}
+
+.offersTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+}
+
+.offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+}
+
+.offerText {
+  flex: 1;
+  margin: 0;
+}
+
+.muted {
+  color: var(--ink-faded);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 40rem) {
+  .layer {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+  }
+}

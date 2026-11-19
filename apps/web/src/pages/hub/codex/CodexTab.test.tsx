@@ -1,11 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Entity, EntityFolder, EntityLink } from '../../../data/entities';
 import * as api from '../../../data/entities';
 import { CodexTab } from './CodexTab';
 
+vi.mock('../../../data/dialogue', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../../data/dialogue')>()),
+  listLog: vi.fn(async () => []),
+}));
 vi.mock('../../../data/entities', async importOriginal => ({
   ...(await importOriginal<typeof import('../../../data/entities')>()),
   listEntities: vi.fn(),
@@ -67,7 +72,9 @@ function show(dmMode: boolean) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <CodexTab campaignId="c1" dmMode={dmMode} />
+      <MemoryRouter>
+        <CodexTab campaignId="c1" dmMode={dmMode} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -210,5 +217,35 @@ describe('the player codex', () => {
         .getAllByRole('button')
         .map(b => b.textContent),
     ).toEqual(['Port VellumLocation']);
+  });
+});
+
+describe('NPCs in the codex (P4-6)', () => {
+  it('a DM can open the dialogue tool for an NPC', async () => {
+    show(true);
+    await userEvent.setup().click(await screen.findByRole('button', { name: /Mira/ }));
+    expect(await screen.findByRole('link', { name: 'Talk as Mira' })).toHaveAttribute(
+      'href',
+      '/campaigns/c1/dialogue/mira',
+    );
+  });
+
+  it('a player reads what the NPC said to their group, and has no dialogue tool', async () => {
+    const dialogueApi = await import('../../../data/dialogue');
+    vi.mocked(dialogueApi.listLog).mockResolvedValue([
+      {
+        id: 'd1',
+        npcId: 'mira',
+        text: 'The tide turns at dusk.',
+        options: [],
+        groupIds: ['g1'],
+        saidAt: '2026-11-16T10:00:00Z',
+      },
+    ]);
+    show(false);
+    await userEvent.setup().click(await screen.findByRole('button', { name: /Mira/ }));
+    const heard = await screen.findByRole('region', { name: 'What Mira said to you' });
+    expect(within(heard).getByText(/The tide turns at dusk/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Talk as Mira' })).not.toBeInTheDocument();
   });
 });

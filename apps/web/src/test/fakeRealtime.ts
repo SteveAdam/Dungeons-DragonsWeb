@@ -53,7 +53,8 @@ export function createFakeCampaign(campaignId: string, roles: Record<string, 'dm
     if (!isMember(user)) return false;
     if (isDm(user)) return true;
     if (target === 'campaign') return type === 'ping';
-    if (target === 'dm') return false;
+    // P4-6: a player may tell the DMs what they chose to say, nothing else
+    if (target === 'dm') return type === 'dialogue_choice';
     return target.user === user && type === 'message';
   }
 

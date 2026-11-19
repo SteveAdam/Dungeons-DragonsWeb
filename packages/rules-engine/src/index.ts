@@ -12,6 +12,7 @@ export * from './core';
 export * from './creation';
 export * from './currency';
 export * from './customContent';
+export * from './dialogue';
 export * from './dice';
 export * from './effects';
 export * from './encounters';

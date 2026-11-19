@@ -1,6 +1,6 @@
-import { ArrowRightLeft, Eye, EyeOff, Link2, Pencil, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, Eye, EyeOff, Link2, MessagesSquare, Pencil, Trash2 } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
-import { Button, ICON_PROPS, iconClasses, Input, Tag, Toggle } from '../../../components/ui';
+import { Button, ICON_PROPS, iconClasses, IconLink, Input, Tag, Toggle } from '../../../components/ui';
 import { ENTITY_TYPE_LABELS, type Entity, type EntityFolder, type EntityLink } from '../../../data/entities';
 import { friendlyMessage } from '../../../data/errors';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../../../hooks/useEntities';
 import { flattenTree, folderTree, linksOf } from '../../../lib/entityTree';
 import styles from './codex.module.css';
+import { HeardFrom } from './HeardFrom';
 
 interface Props {
   campaignId: string;
@@ -46,6 +47,14 @@ export function EntityDetail({ campaignId, entity, entities, links, canEdit, fol
       {canEdit && (
         <DmTools key={entity.id} campaignId={campaignId} entity={entity} folders={folders} onDeleted={onDeleted} />
       )}
+      {canEdit && entity.type === 'npc' && (
+        <div className={styles.tools}>
+          <IconLink to={`/campaigns/${campaignId}/dialogue/${entity.id}`} icon={MessagesSquare}>
+            {`Talk as ${entity.name}`}
+          </IconLink>
+        </div>
+      )}
+      {entity.type === 'npc' && <HeardFrom campaignId={campaignId} npcId={entity.id} npcName={entity.name} />}
 
       <section aria-labelledby={`${id}-rel`} className={styles.relationships}>
         <h4 id={`${id}-rel`} className={styles.subTitle}>

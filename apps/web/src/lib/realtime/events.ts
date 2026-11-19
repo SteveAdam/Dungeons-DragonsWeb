@@ -9,10 +9,43 @@ const shortText = z.string().min(1).max(500);
 const payloads = {
   reveal: z.object({ kind: z.enum(['pin', 'region', 'map', 'entity', 'page']), id, mapId: id.optional() }).strict(),
   ping: z.object({ mapId: id, x: coord, y: coord, colour: z.string().max(32), name: z.string().max(120) }).strict(),
+  // P4-6: an NPC's line, sent by say_line to each player of the groups that hear it. A check option carries the request
+  // it became; its DC is missing when the DM hid the odds.
   dialogue: z
-    .object({ speaker: z.string().min(1).max(120), text: z.string().max(2000), groupId: id.nullable() })
+    .object({
+      npcId: id,
+      lineKey: id,
+      logId: id.nullable(),
+      speaker: z.string().min(1).max(120),
+      disposition: z.enum(['friendly', 'indifferent', 'hostile']),
+      text: z.string().min(1).max(2000),
+      options: z
+        .array(
+          z
+            .object({
+              label: z.string().min(1).max(120),
+              kind: z.enum(['say', 'check', 'end']),
+              requestId: id.optional(),
+              check: z
+                .object({
+                  skill: z.string().min(1).max(40),
+                  dc: z.number().int().min(1).max(30).optional(),
+                  showOdds: z.boolean(),
+                })
+                .strict()
+                .optional(),
+            })
+            .strict(),
+        )
+        .max(6),
+    })
     .strict(),
-  check_offer: z.object({ offerId: id, label: shortText, groupId: id.nullable() }).strict(),
+  // P4-6: a check offered to one of this player's characters; the request itself is read with my_check_requests
+  check_offer: z.object({ requestId: id }).strict(),
+  // P4-6: what a player chose to say, to the DMs (the sender is stamped by the database)
+  dialogue_choice: z
+    .object({ npcId: id, lineKey: id, optionIndex: z.number().int().min(0).max(5), label: z.string().min(1).max(120) })
+    .strict(),
   handout: z.object({ handoutId: id }).strict(),
   message: z.object({ messageId: id, playerId: id, kind: z.enum(['message', 'whisper']) }).strict(),
   pause: z.object({ state: z.enum(['requested', 'resumed']), name: z.string().max(120).nullable() }).strict(),
@@ -52,6 +85,7 @@ export const realtimeEventSchema = z.discriminatedUnion('type', [
   event('toast'),
   event('fog_stroke'),
   event('group_moved'),
+  event('dialogue_choice'),
 ]);
 
 export type RealtimeEvent = z.infer<typeof realtimeEventSchema>;

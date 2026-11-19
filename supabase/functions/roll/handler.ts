@@ -9,6 +9,9 @@
 //   search   { campaignId, characterId }                       -> { roll, found: [{ name, kind }] }   (P3-3)
 //   move-group { campaignId, groupId, mapId, regionId } (DM)   -> { revealed: [name] }                 (P3-3)
 //   weather-here { campaignId, characterId }                   -> { weather | null }                   (P3-8)
+//   preview / roll with requestId { campaignId, characterId, requestId } (P4-6): a check the DM offered. The kind,
+//     the skill, the DC, the mode and its reason come from the stored request; anything the client sends for them
+//     is ignored. One answer per character. When the DM hid the odds, a player's preview has no chance in it.
 //
 // Everything that touches the database or the token is in RollDeps, so the tests can run without a server.
 import {
@@ -116,6 +119,12 @@ export interface RollDeps {
   weatherDay(zoneId: string, day: number): Promise<WeatherDayRecord | null>;
   /** P3-8: the first time players see a day, it goes into the history. Never replaces a row. */
   recordWeatherDay(zoneId: string, day: number, weather: Omit<WeatherDayRecord, 'overridden' | 'note'>): Promise<void>;
+  /** P4-6: the check request, or null when there is none. */
+  loadRequest(requestId: string): Promise<CheckRequestRecord | null>;
+  /** P4-6: calls public.roll_for_request with the service role (one answer per character, through roll_d20). */
+  rollForRequest(
+    args: RollForRequestArgs,
+  ): Promise<{ data: unknown; error: { code?: string; message: string } | null }>;
   /** P3-3: calls public.search_region or public.move_group with the service role. */
   rpc(
     name: 'search_region' | 'move_group',
@@ -180,6 +189,32 @@ export interface RollInput {
   mode?: RollMode;
   /** DM only. */
   hidden?: boolean;
+  /** P4-6: answer this check request; kind, key, target and mode then come from the request. */
+  requestId?: string;
+}
+
+/** P4-6: a check the DM offered, as stored. */
+export interface CheckRequestRecord {
+  id: string;
+  campaignId: string;
+  characterIds: string[];
+  key: string;
+  kind: 'check' | 'save';
+  dc: number;
+  mode: RollMode;
+  reason: string | null;
+  showOdds: boolean;
+  status: 'open' | 'closed';
+}
+
+export interface RollForRequestArgs {
+  p_actor: string;
+  p_request: string;
+  p_character: string;
+  p_label: string;
+  p_bonus: number;
+  p_mode: RollMode;
+  p_breakdown: { label: string; value: number }[];
 }
 
 export interface Preview {
@@ -188,8 +223,8 @@ export interface Preview {
   bonusBreakdown: { label: string; value: number }[];
   mode: RollMode;
   reasons: RollModeReason[];
-  /** The chance to meet the target, 0 to 1. */
-  chance: number;
+  /** The chance to meet the target, 0 to 1. Null when the DM hid the odds of a check request (P4-6). */
+  chance: number | null;
   /** The chance of a natural 20. */
   critChance: number;
   /** Set when a condition makes the roll fail whatever the dice say. */
@@ -255,6 +290,19 @@ export function parseInput(body: unknown): RollInput | SearchInput | MoveGroupIn
   if (typeof b.campaignId !== 'string' || !UUID.test(b.campaignId)) throw new HttpError(400, 'campaignId is missing');
   if (typeof b.characterId !== 'string' || !UUID.test(b.characterId)) {
     throw new HttpError(400, 'characterId is missing');
+  }
+  if (b.requestId !== undefined && b.requestId !== null) {
+    // P4-6: everything about the roll comes from the request; kind, key, target and mode are not read at all
+    if (typeof b.requestId !== 'string' || !UUID.test(b.requestId)) throw new HttpError(400, 'requestId must be an id');
+    return {
+      action: b.action,
+      campaignId: b.campaignId,
+      characterId: b.characterId,
+      kind: 'check',
+      key: '',
+      target: 1,
+      requestId: b.requestId,
+    };
   }
   if (!KINDS.includes(b.kind as RollKind)) throw new HttpError(400, 'kind must be check, save or attack');
   if (typeof b.key !== 'string' || b.key.length < 1 || b.key.length > 80) throw new HttpError(400, 'key is missing');
@@ -399,6 +447,8 @@ export function computePreview(
   input: Pick<RollInput, 'kind' | 'key' | 'target'>,
   dmMode?: RollMode,
   items?: readonly InventoryItem[],
+  /** P4-6: why the DM set the mode, shown as the reason (default "Set by the DM"). */
+  dmReason?: string | null,
 ): Preview {
   const computed = computeSheet(sheet, effects, { seconds: gameSeconds }, state, items);
   let label: string;
@@ -459,7 +509,7 @@ export function computePreview(
         reasons:
           dmMode === 'normal'
             ? []
-            : [{ text: 'Set by the DM', kind: dmMode, cancelled: false } satisfies RollModeReason],
+            : [{ text: dmReason || 'Set by the DM', kind: dmMode, cancelled: false } satisfies RollModeReason],
       }
     : resolveRollMode(conditions);
 
@@ -478,7 +528,7 @@ export function computePreview(
   };
 }
 
-const ROLL_ERRORS: Record<string, number> = { PT429: 429, '42501': 403, '22023': 422 };
+const ROLL_ERRORS: Record<string, number> = { PT429: 429, '42501': 403, '22023': 422, '23505': 409, P0002: 404 };
 
 /**
  * P3-3: every skill's bonus for a d20 test (with the Exhaustion penalty) and its passive score. A passive score is
@@ -546,6 +596,51 @@ async function moveGroup(input: MoveGroupInput, userId: string, deps: RollDeps):
   });
   if (error) throw new HttpError(ROLL_ERRORS[error.code ?? ''] ?? 500, error.message);
   return json(200, { revealed: data ?? [] });
+}
+
+/**
+ * P4-6: a preview of, or the one answer to, a check the DM offered. The request decides the kind, the skill, the DC
+ * and the mode (with its reason); the client decides none of them. A player's preview of a check whose odds the DM
+ * hid has no chance in it.
+ */
+async function answerRequest(
+  input: RollInput,
+  userId: string,
+  role: 'dm' | 'player',
+  c: Awaited<ReturnType<typeof characterContext>>,
+  deps: RollDeps,
+): Promise<Response> {
+  const request = await deps.loadRequest(input.requestId!);
+  if (!request || request.campaignId !== input.campaignId) throw new HttpError(404, 'There is no such check');
+  if (request.status !== 'open') throw new HttpError(409, 'The DM has closed this check');
+  if (!request.characterIds.includes(input.characterId)) {
+    throw new HttpError(403, 'This check was not offered to that character');
+  }
+  const preview = computePreview(
+    c.sheet,
+    c.effects,
+    c.gameSeconds,
+    c.state,
+    { kind: request.kind, key: request.key, target: request.dc },
+    request.mode === 'normal' ? undefined : request.mode,
+    c.items,
+    request.reason,
+  );
+  if (input.action === 'preview') {
+    return json(200, request.showOdds || role === 'dm' ? preview : { ...preview, chance: null });
+  }
+  if (preview.autoFail) throw new HttpError(409, `No need to roll: ${preview.autoFail}`);
+  const { data, error } = await deps.rollForRequest({
+    p_actor: userId,
+    p_request: request.id,
+    p_character: input.characterId,
+    p_label: preview.label,
+    p_bonus: preview.bonus,
+    p_mode: preview.mode,
+    p_breakdown: preview.bonusBreakdown,
+  });
+  if (error) throw new HttpError(ROLL_ERRORS[error.code ?? ''] ?? 500, error.message);
+  return json(200, data);
 }
 
 /** The whole request: CORS, the token, the body, who may roll for whom, then preview or roll. */
@@ -639,6 +734,7 @@ export async function handle(req: Request, deps: RollDeps): Promise<Response> {
       if (error) throw new HttpError(ROLL_ERRORS[error.code ?? ''] ?? 500, error.message);
       return json(200, data);
     }
+    if (input.requestId) return await answerRequest(input, userId, role, c, deps);
     if (input.hidden && role !== 'dm') throw new HttpError(403, 'Only the DM can make a hidden roll');
 
     const preview = computePreview(

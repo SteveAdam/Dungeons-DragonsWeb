@@ -10,6 +10,7 @@ import { AudioSlot } from './AudioSlot';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { DisplaySettingsControls } from './DisplaySettingsControls';
 import { DmModeIndicator } from './DmModeIndicator';
+import { DialogueLayer } from './dialogue/DialogueLayer';
 import { HandoutPopup } from './handouts/HandoutPopup';
 import { MessagePanel } from './messages/MessagePanel';
 import { MessagesButton } from './messages/MessagesButton';
@@ -99,6 +100,7 @@ export function AppShell() {
       {session && campaignId && <LiveCampaign campaignId={campaignId} />}
       {session && campaignId && <HandoutPopup campaignId={campaignId} />}
       {session && campaignId && <MessagePanel campaignId={campaignId} />}
+      {session && campaignId && <DialogueLayer campaignId={campaignId} />}
       <ToastRegion />
       <AudioSlot />
     </>

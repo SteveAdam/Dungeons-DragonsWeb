@@ -42,6 +42,10 @@ vi.mock('../data/partyGroups', async importOriginal => ({
   ...(await importOriginal<typeof import('../data/partyGroups')>()),
   listGroups: vi.fn(async () => []),
 }));
+vi.mock('../data/dialogue', async importOriginal => ({
+  ...(await importOriginal<typeof import('../data/dialogue')>()),
+  listMyRequests: vi.fn(async () => []),
+}));
 vi.mock('../data/messages', async importOriginal => ({
   ...(await importOriginal<typeof import('../data/messages')>()),
   listThreads: vi.fn(async () => []),

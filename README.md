@@ -649,6 +649,30 @@ On a map, the DM switches between **Prep** (the editing tools) and **Table** (ru
 - The DM sees "Pause requested by Ana", or "Pause requested: an anonymous X-card", with a **Resume** button. Everyone else sees "The table is paused". A pause blocks nothing: it is a signal and a banner.
 - An anonymous request is stored with no user. Its live event has no sender (the nil id), and only the DMs' channel ever carries a name, and only for an open request. The five-minute rate table (`safety_rate`) has no read access for anyone, the DM included.
 
+## The NPC dialogue tool (P4-6)
+
+In DM mode, an NPC in the Codex has **Talk as <name>**, which opens the dialogue tool at `/campaigns/:id/dialogue/:npcId`. The DM's working page is on the left, and on the right is what the players see.
+
+**The DM's page**
+- **Who is listening:** one or more party groups.
+- **Prepared lines:** each has a tag, an optional condition and response options. A line is marked **eligible** when its condition suits the first listening group. The conditions are someone carries an item, the group is in a region, someone has reached a level, or a character is in the group; `evaluateCondition` in `packages/rules-engine` checks them against what the database holds.
+- **Say something new:** the line can also be kept among the NPC's saved lines. "Save what is said to the session log" decides whether it is logged.
+- **Offer a check:** a skill or ability, a check or a save, the DC, normal, advantage or disadvantage (with the reason), whether players see the DC and their odds, and who rolls: everyone listening, or chosen characters.
+- **Open checks** list each character's result as it lands, or "waiting", and can be closed. **Their answers** shows what players chose to say.
+
+**What players get**
+- When the DM speaks to their group, a speech scroll appears: the NPC, its disposition, the line (plain text) and the options.
+- A "say" option tells the DM what they chose.
+- A check option, or a check offered on its own, opens the odds popup with the server's own preview for that request. With the odds hidden, the percentage and the DC are not shown, but the bonus is.
+- Each NPC's page in the Codex lists what it said to their group.
+
+**What the database keeps** (migration 0032)
+- **Prepared lines and NPC profiles are the DM's alone.** A line the DM never says is never written anywhere a player can reach.
+- **The log can't be changed or deleted.** A player reads only the lines their group heard.
+- **Players never read check requests directly.** `my_check_requests` gives them their own, without a DC the DM hid. The options stored in the log and sent live leave out a hidden DC too.
+- **The roll function answers a check from the stored request.** Given a `requestId`, it takes the skill, DC, mode and reason from the request and ignores anything the client sends for them. It allows one answer per character (`roll_for_request`, service role only).
+- **`say_line` and `offer_check` tell exactly the targeted players,** each on their own channel. A player's choice reaches the DMs as a `dialogue_choice` event.
+
 ## End-to-end tests (P2-12, P3-9)
 
 `e2e/` is a Playwright test of the whole of Phase 2 with three browser contexts, a DM and two players, against

@@ -7,8 +7,23 @@ const ID2 = '22222222-2222-4222-8222-222222222222';
 const VALID: RealtimeEvent[] = [
   { type: 'reveal', payload: { kind: 'pin', id: ID, mapId: ID2 } },
   { type: 'ping', payload: { mapId: ID, x: 1, y: 2.5, colour: 'gold', name: 'Aldric' } },
-  { type: 'dialogue', payload: { speaker: 'Mira', text: 'Well met', groupId: null } },
-  { type: 'check_offer', payload: { offerId: ID, label: 'Perception', groupId: ID2 } },
+  {
+    type: 'dialogue',
+    payload: {
+      npcId: ID,
+      lineKey: ID2,
+      logId: null,
+      speaker: 'Mira',
+      disposition: 'friendly',
+      text: 'Well met',
+      options: [
+        { label: 'Ask about the wolves', kind: 'say' },
+        { label: 'Haggle', kind: 'check', requestId: ID, check: { skill: 'persuasion', showOdds: false } },
+      ],
+    },
+  },
+  { type: 'check_offer', payload: { requestId: ID } },
+  { type: 'dialogue_choice', payload: { npcId: ID, lineKey: ID2, optionIndex: 0, label: 'Ask about the wolves' } },
   { type: 'handout', payload: { handoutId: ID } },
   { type: 'message', payload: { messageId: ID, playerId: ID2, kind: 'whisper' } },
   { type: 'pause', payload: { state: 'requested', name: null } },

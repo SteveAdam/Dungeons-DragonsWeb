@@ -24,6 +24,7 @@ const CharacterSheetPage = lazy(() =>
 const CreateCharacterPage = lazy(() => import('./pages/characters/create/CreateCharacterPage'));
 const LevelUpPage = lazy(() => import('./pages/characters/levelup/LevelUpPage'));
 const LibraryPage = lazy(() => import('./pages/library/LibraryPage'));
+const DialoguePage = lazy(() => import('./pages/dialogue/DialoguePage'));
 
 export function App() {
   return (
@@ -37,6 +38,16 @@ export function App() {
           element={
             <ProtectedRoute>
               <CampaignListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:campaignId/dialogue/:npcId"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingRunes>Finding the NPC…</LoadingRunes>}>
+                <DialoguePage />
+              </Suspense>
             </ProtectedRoute>
           }
         />

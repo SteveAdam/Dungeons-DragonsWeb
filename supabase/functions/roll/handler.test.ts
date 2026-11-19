@@ -5,6 +5,8 @@ import { BRANNOC, BRANNOC_ITEMS, successChance } from '../_shared/rules-engine/i
 import {
   handle,
   type CharacterRecord,
+  type CheckRequestRecord,
+  type RollForRequestArgs,
   type EffectRow,
   type ItemRow,
   type RollD20Args,
@@ -43,9 +45,13 @@ function world(
     rpcResult?: { data: unknown; error: { code?: string; message: string } | null };
     weather?: WeatherContext;
     weatherRow?: WeatherDayRecord | null;
+    /** P4-6: the check requests there are, and what roll_for_request answers. */
+    requests?: CheckRequestRecord[];
+    answerError?: { code: string; message: string };
   } = {},
 ) {
   const calls: RollD20Args[] = [];
+  const answers: RollForRequestArgs[] = [];
   const recorded: Record<string, unknown>[] = [];
   const rpcCalls: { name: string; args: Record<string, unknown> }[] = [];
   const characters: Record<string, CharacterRecord> = {
@@ -85,6 +91,16 @@ function world(
         over.rpcResult ?? { data: name === 'move_group' ? ['Mossy shrine'] : { roll: {}, found: [] }, error: null },
       );
     },
+    loadRequest: id => Promise.resolve(over.requests?.find(r => r.id === id) ?? null),
+    rollForRequest: args => {
+      answers.push(args);
+      if (over.answerError) return Promise.resolve({ data: null, error: over.answerError });
+      const kept = 10;
+      return Promise.resolve({
+        data: { bonus: args.p_bonus, mode: args.p_mode, kept, total: kept + args.p_bonus, label: args.p_label },
+        error: null,
+      });
+    },
     rollD20: args => {
       calls.push(args);
       if (over.rollError) return Promise.resolve({ data: null, error: over.rollError });
@@ -102,7 +118,7 @@ function world(
       });
     },
   };
-  return { deps, calls, rpcCalls, recorded };
+  return { deps, calls, rpcCalls, recorded, answers };
 }
 
 // Brannoc's gear as items (P2-7), all equipped, as the database stores them
@@ -471,4 +487,103 @@ Deno.test('weather-here: another player cannot ask about my character', async ()
   const { deps } = world({ weather: inTown, brannoc: { ownerId: 'someone-else' } });
   const { status } = await call(deps, 'token-player', weatherHere);
   assert.equal(status, 403);
+});
+
+// P4-6: checks the DM offers through the dialogue tool
+const REQUEST_ID = '00000000-0000-4000-8000-0000000000c1';
+const persuasion = (over: Partial<CheckRequestRecord> = {}): CheckRequestRecord => ({
+  id: REQUEST_ID,
+  campaignId: CAMPAIGN,
+  characterIds: [BRANNOC_ID],
+  key: 'persuasion',
+  kind: 'check',
+  dc: 13,
+  mode: 'normal',
+  reason: null,
+  showOdds: true,
+  status: 'open',
+  ...over,
+});
+const answer = { campaignId: CAMPAIGN, characterId: BRANNOC_ID, requestId: REQUEST_ID };
+
+Deno.test('requested check: the preview uses the request’s skill and DC (Persuasion +0 at DC 13 is 40%)', async () => {
+  const { deps } = world({ requests: [persuasion()] });
+  const { status, body } = await call(deps, 'token-player', { action: 'preview', ...answer });
+  assert.equal(status, 200);
+  assert.equal(body.label, 'Persuasion check');
+  assert.equal(body.bonus, 0);
+  assert.equal(body.chance, 0.4);
+});
+
+Deno.test('requested check: a client-sent DC, skill, kind or mode is ignored', async () => {
+  const { deps, answers, calls } = world({ requests: [persuasion()] });
+  const forged = { ...answer, kind: 'attack', key: 'athletics', target: 2, mode: 'advantage', bonus: 30 };
+  const preview = await call(deps, 'token-dm', { action: 'preview', ...forged });
+  assert.equal(preview.body.label, 'Persuasion check');
+  assert.equal(preview.body.mode, 'normal');
+  assert.equal(preview.body.chance, 0.4);
+  const { status, body } = await call(deps, 'token-player', { action: 'roll', ...forged });
+  assert.equal(status, 200);
+  assert.equal(body.label, 'Persuasion check');
+  assert.equal(answers.length, 1);
+  assert.deepEqual(
+    { label: answers[0].p_label, bonus: answers[0].p_bonus, mode: answers[0].p_mode, request: answers[0].p_request },
+    { label: 'Persuasion check', bonus: 0, mode: 'normal', request: REQUEST_ID },
+  );
+  // the answer goes through roll_for_request (one per character), never straight to roll_d20
+  assert.equal(calls.length, 0);
+});
+
+Deno.test('requested check: the mode and its reason come from the request', async () => {
+  const { deps } = world({ requests: [persuasion({ mode: 'advantage', reason: 'She likes you' })] });
+  const { body } = await call(deps, 'token-player', { action: 'preview', ...answer, mode: 'disadvantage' });
+  assert.equal(body.mode, 'advantage');
+  assert.deepEqual(body.reasons, [{ text: 'She likes you', kind: 'advantage', cancelled: false }]);
+});
+
+Deno.test(
+  'requested check: with the odds hidden a player’s preview has no chance (the bonus still shows)',
+  async () => {
+    const { deps } = world({ requests: [persuasion({ showOdds: false })] });
+    const player = await call(deps, 'token-player', { action: 'preview', ...answer });
+    assert.equal(player.body.chance, null);
+    assert.equal(player.body.bonus, 0);
+    const dm = await call(deps, 'token-dm', { action: 'preview', ...answer });
+    assert.equal(dm.body.chance, 0.4);
+  },
+);
+
+Deno.test('requested check: one answer per character (the database refuses a second)', async () => {
+  const { deps } = world({
+    requests: [persuasion()],
+    answerError: { code: '23505', message: 'That character has already answered this check' },
+  });
+  const { status, body } = await call(deps, 'token-player', { action: 'roll', ...answer });
+  assert.equal(status, 409);
+  assert.equal(body.error, 'That character has already answered this check');
+});
+
+Deno.test('requested check: not offered to this character, closed, or from another campaign', async () => {
+  const { deps } = world({
+    requests: [
+      persuasion({ characterIds: [SERA_ID] }),
+      persuasion({ id: '00000000-0000-4000-8000-0000000000c2', status: 'closed' }),
+      persuasion({ id: '00000000-0000-4000-8000-0000000000c3', campaignId: '00000000-0000-4000-8000-000000000009' }),
+    ],
+  });
+  assert.equal((await call(deps, 'token-player', { action: 'roll', ...answer })).status, 403);
+  const closed = { ...answer, requestId: '00000000-0000-4000-8000-0000000000c2' };
+  assert.equal((await call(deps, 'token-player', { action: 'roll', ...closed })).status, 409);
+  const elsewhere = { ...answer, requestId: '00000000-0000-4000-8000-0000000000c3' };
+  assert.equal((await call(deps, 'token-player', { action: 'roll', ...elsewhere })).status, 404);
+  // and a player still rolls only for their own character
+  const { deps: d2 } = world({ requests: [persuasion({ characterIds: [SERA_ID] })] });
+  const sera = { ...answer, characterId: SERA_ID };
+  assert.equal((await call(d2, 'token-player', { action: 'roll', ...sera })).status, 403);
+});
+
+Deno.test('requested check: a malformed request id is refused', async () => {
+  const { deps } = world({ requests: [persuasion()] });
+  const { status } = await call(deps, 'token-player', { action: 'roll', ...answer, requestId: 'not-an-id' });
+  assert.equal(status, 400);
 });

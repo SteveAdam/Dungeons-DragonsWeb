@@ -6,7 +6,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(903);
+select plan(956);
 
 -- HELPERS --------------------------------------------------------------
 create schema tests;
@@ -395,7 +395,8 @@ reset role;
 -- as the database owner, who bypasses row level security and grants: only the trigger stands in the way
 select throws_ok($$ update rolls set total = 99 $$, 'P0001', 'The roll log is append-only: rolls cannot be changed or deleted', 'T20: even the database owner cannot update a roll');
 select throws_ok($$ delete from rolls $$, 'P0001', 'The roll log is append-only: rolls cannot be changed or deleted', 'T20: even the database owner cannot delete a roll');
-select throws_ok($$ truncate rolls $$, 'P0001', 'The roll log is append-only: rolls cannot be changed or deleted', 'T20: even the database owner cannot truncate the log');
+-- cascade: check_answers (P4-6) points at rolls, which alone would stop a plain truncate before the trigger is reached
+select throws_ok($$ truncate rolls cascade $$, 'P0001', 'The roll log is append-only: rolls cannot be changed or deleted', 'T20: even the database owner cannot truncate the log');
 insert into rolls (campaign_id, rolled_by, kind, label, bonus, mode, dice, kept, total)
 values (tests.u('campaign2'), tests.u('user:outsider'), 'check', 'Doomed', 0, 'normal', '{7}', 7, 7);
 select lives_ok($$ delete from campaigns where id = tests.u('campaign2') $$, 'T20: deleting a whole campaign still removes its rolls');
@@ -2078,6 +2079,87 @@ select tests.act_as('outsider');
 select throws_ok($$ select request_pause(tests.u('campaign'), true) $$, '42501', null, 'T93: a non-member cannot ask for a pause');
 select throws_ok($$ select get_table_pause(tests.u('campaign')) $$, '42501', null, 'T93: nor see whether the table is paused');
 reset role;
+
+-- T94: the NPC dialogue tool (P4-6). Mira speaks to group A (Brannoc and Ivo, the player's); group B is Kael (the
+-- roller's). Prepared lines stay with the DM; the log is read by the groups that heard it; checks are answered once.
+select tests.act_as('dm');
+select lives_ok($$ insert into npc_profiles (entity_id, campaign_id, disposition) values (tests.u('ent:mira'), tests.u('campaign:solo'), 'friendly') $$, 'T94: the DM gives Mira a profile');
+select is((select campaign_id from npc_profiles where entity_id = tests.u('ent:mira')), tests.u('campaign'), 'T94: in Mira''s own campaign, whatever the insert said');
+select throws_ok($$ insert into npc_profiles (entity_id, campaign_id) values (tests.u('ent:lore'), tests.u('campaign')) $$, '22023', null, 'T94: only an NPC has a profile');
+select lives_ok($$ insert into dialogue_lines (id, npc_entity_id, campaign_id, text, tag, condition, options) values (tests.u('line:wolves'), tests.u('ent:mira'), tests.u('campaign'), 'Three of them, and hungry.', 'wolves', '{"type":"always"}', '[{"label":"Ask where","kind":"say"},{"label":"Haggle","kind":"check","check":{"skill":"persuasion","dc":13,"showOdds":true}},{"label":"Leave","kind":"end"}]') $$, 'T94: and a prepared line with options');
+select throws_ok($$ insert into dialogue_lines (npc_entity_id, campaign_id, text, options) values (tests.u('ent:mira'), tests.u('campaign'), 'x', '[{"label":"Dance","kind":"dance"}]') $$, '23514', null, 'T94: an option is say, check or end');
+select throws_ok($$ insert into dialogue_lines (npc_entity_id, campaign_id, text, options) values (tests.u('ent:mira'), tests.u('campaign'), 'x', '[{"label":"Haggle","kind":"check","check":{"skill":"persuasion","dc":40,"showOdds":true}}]') $$, '23514', null, 'T94: a check''s DC is 1 to 30');
+select throws_ok($$ insert into dialogue_lines (npc_entity_id, campaign_id, text, options) values (tests.u('ent:mira'), tests.u('campaign'), 'x', '[{"label":"Juggle","kind":"check","check":{"skill":"juggling","dc":10,"showOdds":true}}]') $$, '23514', null, 'T94: with a real skill or ability');
+select throws_ok($$ insert into dialogue_lines (npc_entity_id, campaign_id, text) values (tests.u('ent:lore'), tests.u('campaign'), 'x') $$, '22023', null, 'T94: lines belong to an NPC');
+select say_line(tests.u('ent:mira'), 'Mind the roots, travellers.', '[{"label":"Ask about the wolves","kind":"say"},{"label":"Haggle","kind":"check","check":{"skill":"persuasion","dc":13,"showOdds":false}}]', array[(select id from here_groups where label = 'a')], false, true) as said \gset
+select ok((:'said'::jsonb ->> 'logId') is not null, 'T94: Mira says a line to group A, saved to the log');
+select is((select count(*)::int from dialogue_log where npc_entity_id = tests.u('ent:mira')), 1, 'T94: one line in the log');
+select is((select options -> 1 -> 'check' ? 'dc' from dialogue_log where npc_entity_id = tests.u('ent:mira')), false, 'T94: a hidden DC is not kept in the log');
+select is((select options -> 1 ->> 'requestId' from dialogue_log where npc_entity_id = tests.u('ent:mira')), :'said'::jsonb -> 'requestIds' ->> 0, 'T94: the check option became a request');
+select ok((select character_ids @> array[tests.u('char:brannoc'), tests.u('char:ivo')] and character_ids <@ array[tests.u('char:brannoc'), tests.u('char:ivo')] from check_requests where id = (:'said'::jsonb -> 'requestIds' ->> 0)::uuid), 'T94: for the characters of group A');
+select lives_ok(format($$ select say_line(tests.u('ent:mira'), 'Psst, over here.', '[]', array[%L::uuid], true, false) $$, (select id from here_groups where label = 'b')), 'T94: a line to group B, kept among Mira''s lines but not logged');
+select is((select count(*)::int from dialogue_log where npc_entity_id = tests.u('ent:mira')), 1, 'T94: so the log has still one line');
+select is((select count(*)::int from dialogue_lines where npc_entity_id = tests.u('ent:mira')), 2, 'T94: and Mira has two prepared lines');
+select throws_ok(format($$ select say_line(tests.u('ent:mira'), 'Hi', '[]', array[%L::uuid]) $$, tests.u('p42:foreign')), '22023', null, 'T94: only to groups of this campaign');
+select throws_ok(format($$ select say_line(tests.u('ent:lore'), 'Hi', '[]', array[%L::uuid]) $$, (select id from here_groups where label = 'a')), '22023', null, 'T94: only an NPC speaks');
+select offer_check(tests.u('campaign'), array[tests.u('char:brannoc')], 'persuasion', 'check', 13, 'advantage', 'She likes you', true, 'Haggle over the price', tests.u('ent:mira')) as req \gset
+select ok(:'req' is not null, 'T94: the DM offers Brannoc a Persuasion check at DC 13 with advantage');
+select offer_check(tests.u('campaign'), array[tests.u('char:brannoc')], 'insight', 'check', 10, 'normal', null, true, 'Read her face') as req2 \gset
+select throws_ok($$ select offer_check(tests.u('campaign'), array[tests.u('char:brannoc')], 'persuasion', 'check', 13, 'advantage', '', true, 'Haggle') $$, '23514', null, 'T94: advantage says why');
+select throws_ok($$ select offer_check(tests.u('campaign'), array[tests.u('char:brannoc')], 'persuasion', 'save', 13, 'normal', null, true, 'Haggle') $$, '23514', null, 'T94: a save is made with an ability');
+select throws_ok($$ select offer_check(tests.u('campaign'), array[tests.u('char:brannoc')], 'juggling', 'check', 13, 'normal', null, true, 'Haggle') $$, '23514', null, 'T94: with a real skill');
+select throws_ok($$ select offer_check(tests.u('campaign'), array[tests.u('char:pip')], 'insight', 'check', 10, 'normal', null, true, 'Read') $$, '22023', null, 'T94: to characters of this campaign');
+select throws_ok(format($$ update check_requests set dc = 5 where id = %L $$, :'req'), '42501', null, 'T94: an offered check''s DC never changes');
+reset role;
+
+select tests.act_as('player');
+select is((select count(*)::int from dialogue_lines), 0, 'T94: a player cannot read prepared lines');
+select is((select count(*)::int from npc_profiles), 0, 'T94: nor NPC profiles');
+select is((select count(*)::int from dialogue_log), 1, 'T94: the player reads the line their group heard');
+select is((select count(*)::int from check_requests), 0, 'T94: check requests are not read directly');
+select is((select count(*)::int from my_check_requests(tests.u('campaign'))), 3, 'T94: the player''s requests come through my_check_requests');
+select is((select dc from my_check_requests(tests.u('campaign')) where id = (:'said'::jsonb -> 'requestIds' ->> 0)::uuid), null, 'T94: with the DC left out when the DM hid the odds');
+select is((select dc from my_check_requests(tests.u('campaign')) where id = :'req'::uuid), 13, 'T94: and shown when not');
+select throws_ok($$ select say_line(tests.u('ent:mira'), 'I am Mira now', '[]', array[(select id from here_groups where label = 'a')]) $$, '42501', null, 'T94: a player cannot make an NPC speak');
+select throws_ok($$ select offer_check(tests.u('campaign'), array[tests.u('char:brannoc')], 'persuasion', 'check', 1, 'normal', null, true, 'Easy') $$, '42501', null, 'T94: nor offer a check');
+select throws_ok(format($$ select close_check(%L) $$, :'req'), '42501', null, 'T94: nor close one');
+select throws_ok($$ insert into dialogue_log (campaign_id, npc_entity_id, text, group_ids) values (tests.u('campaign'), tests.u('ent:mira'), 'Forged', array[tests.u('x')]) $$, '42501', null, 'T94: nor write in the log');
+select throws_ok(format($$ select roll_for_request(tests.u('user:player'), %L, tests.u('char:brannoc'), 'x', 30, 'normal', null) $$, :'req'), '42501', null, 'T94: nor answer a check without the roll function');
+select throws_ok(format($$ insert into check_answers (request_id, character_id, roll_id) values (%L, tests.u('char:brannoc'), tests.u('x')) $$, :'req'), '42501', null, 'T94: nor write an answer');
+select lives_ok($$ select send_realtime_event(tests.u('campaign'), 'dm', 'dialogue_choice', '{"choice":1}') $$, 'T94: a player tells the DM what they chose to say');
+select throws_ok($$ select send_realtime_event(tests.u('campaign'), 'dm', 'toast', '{"message":"x"}') $$, '42501', null, 'T94: but sends nothing else to the DMs');
+reset role;
+
+select tests.act_as('roller');
+select is((select count(*)::int from dialogue_log), 0, 'T94: the other group reads none of what group A heard');
+select is((select count(*)::int from my_check_requests(tests.u('campaign'))), 0, 'T94: nor its checks');
+reset role;
+
+select tests.act_as_service();
+select is((select target from roll_for_request(tests.u('user:player'), :'req'::uuid, tests.u('char:brannoc'), 'Persuasion check', 0, 'advantage', '[{"label":"Charisma","value":0}]')), 13, 'T94: Brannoc answers; the roll uses the request''s DC');
+select throws_ok(format($$ select roll_for_request(tests.u('user:player'), %L, tests.u('char:brannoc'), 'Persuasion check', 0, 'advantage', null) $$, :'req'), '23505', null, 'T94: once only');
+select throws_ok(format($$ select roll_for_request(tests.u('user:roller'), %L, tests.u('char:kael'), 'Persuasion check', 0, 'normal', null) $$, :'req'), '42501', null, 'T94: a character it was not offered to cannot answer');
+reset role;
+
+select tests.act_as('dm');
+select lives_ok(format($$ select close_check(%L) $$, :'req2'), 'T94: the DM closes a check');
+select is((select status from check_requests where id = :'req2'::uuid), 'closed', 'T94: it is closed');
+select is((select count(*)::int from check_answers where request_id = :'req'::uuid), 1, 'T94: the DM reads the answer');
+reset role;
+select tests.act_as_service();
+select throws_ok(format($$ select roll_for_request(tests.u('user:player'), %L, tests.u('char:brannoc'), 'Insight check', 0, 'normal', null) $$, :'req2'), '22023', 'The DM has closed this check', 'T94: a closed check takes no answers');
+reset role;
+
+select tests.act_as('player');
+select is((select count(*)::int from check_answers), 1, 'T94: the player reads their character''s answer');
+select is((select answered from my_check_requests(tests.u('campaign'), false) where id = :'req'::uuid), array[tests.u('char:brannoc')], 'T94: and sees it answered');
+reset role;
+select tests.act_as('roller');
+select is((select count(*)::int from check_answers), 0, 'T94: the other player does not');
+reset role;
+
+select throws_ok($$ update dialogue_log set text = 'Changed' where npc_entity_id = tests.u('ent:mira') $$, '42501', 'The dialogue log cannot be changed', 'T94: the log is never changed');
+select throws_ok($$ delete from dialogue_log where npc_entity_id = tests.u('ent:mira') $$, '42501', 'The dialogue log cannot be changed', 'T94: nor deleted from');
 
 select * from finish();
 rollback;
