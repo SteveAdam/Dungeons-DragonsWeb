@@ -654,6 +654,7 @@ On a map, the DM switches between **Prep** (the editing tools) and **Table** (ru
 In DM mode, an NPC in the Codex has **Talk as <name>**, which opens the dialogue tool at `/campaigns/:id/dialogue/:npcId`. The DM's working page is on the left, and on the right is what the players see.
 
 **The DM's page**
+
 - **Who is listening:** one or more party groups.
 - **Prepared lines:** each has a tag, an optional condition and response options. A line is marked **eligible** when its condition suits the first listening group. The conditions are someone carries an item, the group is in a region, someone has reached a level, or a character is in the group; `evaluateCondition` in `packages/rules-engine` checks them against what the database holds.
 - **Say something new:** the line can also be kept among the NPC's saved lines. "Save what is said to the session log" decides whether it is logged.
@@ -661,12 +662,14 @@ In DM mode, an NPC in the Codex has **Talk as <name>**, which opens the dialogue
 - **Open checks** list each character's result as it lands, or "waiting", and can be closed. **Their answers** shows what players chose to say.
 
 **What players get**
+
 - When the DM speaks to their group, a speech scroll appears: the NPC, its disposition, the line (plain text) and the options.
 - A "say" option tells the DM what they chose.
 - A check option, or a check offered on its own, opens the odds popup with the server's own preview for that request. With the odds hidden, the percentage and the DC are not shown, but the bonus is.
 - Each NPC's page in the Codex lists what it said to their group.
 
 **What the database keeps** (migration 0032)
+
 - **Prepared lines and NPC profiles are the DM's alone.** A line the DM never says is never written anywhere a player can reach.
 - **The log can't be changed or deleted.** A player reads only the lines their group heard.
 - **Players never read check requests directly.** `my_check_requests` gives them their own, without a DC the DM hid. The options stored in the log and sent live leave out a hidden DC too.

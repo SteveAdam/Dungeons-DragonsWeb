@@ -46,7 +46,8 @@ jobs:
   # P2-12, P3-9: the Phase 2 and Phase 3 scenarios end to end (a DM and two players each), against a fresh local stack
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # the step limit below fires first, so a hang fails the step and the report is still uploaded
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -67,7 +68,20 @@ jobs:
           done
           cat functions.log
           exit 1
+      # The app's dev server, started here rather than by Playwright: with Playwright owning it, every run finished its
+      # specs and then hung until the job was cancelled (and a cancelled job uploads no report).
+      - name: Serve the app
+        run: |
+          eval "$(pnpm exec supabase status -o env | grep -E '^(API_URL|ANON_KEY)=')"
+          VITE_SUPABASE_URL="$API_URL" VITE_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY" nohup pnpm -C apps/web exec vite --port 5174 --strictPort > vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:5174 && exit 0
+            sleep 2
+          done
+          cat vite.log
+          exit 1
       - run: pnpm test:e2e
+        timeout-minutes: 20
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -76,4 +90,5 @@ jobs:
             e2e/playwright-report
             e2e/test-results
             functions.log
+            vite.log
           retention-days: 7

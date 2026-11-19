@@ -27,7 +27,8 @@ export default defineConfig({
   webServer: {
     command: `pnpm -C ../apps/web exec vite --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: false,
+    // CI starts the server in its own step (see .github/workflows/ci.yml); locally Playwright starts and stops it
+    reuseExistingServer: !!process.env.CI,
     timeout: 120_000,
     env: {
       VITE_SUPABASE_URL: stack.url,
