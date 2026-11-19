@@ -312,7 +312,10 @@ describe('the game clock and the DM effects tool (P2-8)', () => {
       concentration: false,
       hiddenDetail: 'Brewed by a hag',
     });
-    expect(await within(tool).findByText('Applied Potion of Hill Giant Strength.')).toBeInTheDocument();
+    // the confirmation waits for the sheet to refetch (the hook returns invalidateQueries), which can pass 1 s on CI
+    expect(
+      await within(tool).findByText('Applied Potion of Hill Giant Strength.', undefined, { timeout: 5_000 }),
+    ).toBeInTheDocument();
     await user.click(within(sheet).getByRole('button', { name: 'End Potion of Hill Giant Strength' }));
     expect(charactersApi.removeEffect).toHaveBeenCalledWith('hill-giant-strength');
   });
