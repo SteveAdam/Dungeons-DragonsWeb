@@ -105,6 +105,7 @@ test('Phase 4: the NPC dialogue tool', async ({ browser }) => {
     await popup.getByRole('button', { name: 'Roll', exact: true }).click();
     await expect(popup.getByRole('button', { name: 'Roll again' })).toBeVisible();
     await a.page.keyboard.press('Escape');
+    await expect(popup).toHaveCount(0);
 
     const [request] = await rows(
       await dm.token(),

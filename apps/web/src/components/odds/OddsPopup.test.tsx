@@ -194,6 +194,22 @@ describe('keyboard and accessibility (acceptance 4)', () => {
     expect(opener).toHaveFocus();
   });
 
+  it('after a roll, focus is back on the button and Escape still closes it (P4-6)', async () => {
+    const user = userEvent.setup();
+    let land!: (row: RollRow) => void;
+    const onRoll = vi.fn(() => new Promise<RollRow>(resolve => (land = resolve)));
+    const { dialog, onClose } = show(perception, onRoll);
+    await user.click(within(dialog).getByRole('button', { name: 'Roll' }));
+    // while it rolls the button is disabled, and focus has gone to the page
+    (document.activeElement as HTMLElement | null)?.blur();
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+    land(rollRow({}));
+    expect(await within(dialog).findByRole('button', { name: 'Roll again' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
   it('clicking outside closes it; the close button too', async () => {
     const { onClose, dialog } = show(perception);
     await userEvent.click(within(dialog).getByRole('button', { name: 'Close the odds' }));

@@ -104,6 +104,19 @@ function OddsDialog({ onClose, check, onRoll, anchor, waiting, problem, hideOdds
     return () => before?.focus?.();
   }, []);
 
+  // Rolling disables the Roll button, which drops focus to the page; bring it back once the roll is in, and let Escape
+  // close the popup even while focus is outside it (inside, onKeyDown handles it and stops it here)
+  useEffect(() => {
+    if (!rolling) rollButton.current?.focus();
+  }, [rolling]);
+  useEffect(() => {
+    function onDocumentKey(e: globalThis.KeyboardEvent) {
+      if (e.key === 'Escape' && !dialog.current?.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener('keydown', onDocumentKey);
+    return () => document.removeEventListener('keydown', onDocumentKey);
+  }, [onClose]);
+
   const bonusDice = check.bonusDice ?? [];
   const { mode, reasons } =
     check.server ??
